@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "sber"
+version = "0.1.0"
+description = ""
+authors = ["Lunarskii <lunarskii0@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.116.0"
+requests = "^2.32.4"
+asyncpg = "^0.30.0"
+gunicorn = "^23.0.0"
+pypdf = "^5.7.0"
+beautifulsoup4 = "^4.13.4"
+langdetect = "^1.0.9"
+openpyxl = "^3.1.5"
+python-docx = "^1.2.0"
+httpx = "^0.28.1"
+python-dateutil = "^2.9.0.post0"
+pydantic-settings = "^2.10.1"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+uvicorn = "^0.35.0"
+black = "^25.1.0"
+pytest-mock = "^3.14.1"
+ruff = "^0.12.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
