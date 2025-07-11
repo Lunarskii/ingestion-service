@@ -3,19 +3,26 @@ import sqlite3
 from domain.schemas import DocumentMeta
 from services import MetadataRepository
 
-from config import default_settings
-
 
 class SQLiteMetadataRepository(MetadataRepository):
+    def __init__(
+        self,
+        url: str,
+        *,
+        table_name: str = "document_metadata",
+    ):
+        self.url = url
+        self.table_name = table_name
+
     def save(self, meta: DocumentMeta) -> None:
-        connection = sqlite3.connect(default_settings.sqlite_url)
+        connection = sqlite3.connect(self.url)
         cursor = connection.cursor()
 
         cursor.execute(
-            """
-                CREATE TABLE IF NOT EXISTS document_metadata (
-                    id TEXT PRIMARY KEY,
-                    type TEXT,
+            f"""
+                CREATE TABLE IF NOT EXISTS {self.table_name} (
+                    document_id TEXT PRIMARY KEY,
+                    document_type TEXT,
                     detected_language TEXT,
                     document_page_count INTEGER,
                     author TEXT,
@@ -24,13 +31,13 @@ class SQLiteMetadataRepository(MetadataRepository):
             """
         )
         cursor.execute(
-            """
-                INSERT INTO document_meta (
-                    id, type, detected_language, document_page_count, author, creation_date
+            f"""
+                INSERT INTO {self.table_name} (
+                    document_id, document_type, detected_language, document_page_count, author, creation_date
                 ) VALUES (
-                    :id, :type, :detected_language, :document_page_count, :author, :creation_date
+                    :document_id, :document_type, :detected_language, :document_page_count, :author, :creation_date
                 )
             """,
-            meta.model_dump(by_alias=True),
+            meta.model_dump(),
         )
         connection.commit()

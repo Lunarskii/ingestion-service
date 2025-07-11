@@ -1,26 +1,27 @@
-from typing import Annotated
+import uuid
 
 from fastapi import (
     APIRouter,
     UploadFile,
-    Depends,
     BackgroundTasks,
+    status as http_status,
 )
 
-from services import RawStorage
-from api.dependencies import raw_storage_dependency
+from domain.process import process_file
 
 
 router = APIRouter(prefix="/documents")
 
 
-@router.post("/upload")
+@router.post("/upload", status_code=http_status.HTTP_202_ACCEPTED)
 async def upload_file(
     file: UploadFile,
-    raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
     bg_tasks: BackgroundTasks,
     *,
     workspace_id: str | None = None,
 ):
-    bg_tasks.add_task(raw_storage.save, await file.read(), "./local_storage/raw/")
-
+    content: bytes = await file.read()
+    filename: str = file.filename
+    document_id = str(uuid.uuid4())
+    bg_tasks.add_task(process_file, content, filename, document_id=document_id)
+    return {"document_id": document_id}

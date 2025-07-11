@@ -20,6 +20,7 @@ python-dateutil = "^2.9.0.post0"
 pydantic-settings = "^2.10.1"
 sentence-transformers = "^5.0.0"
 python-multipart = "^0.0.20"
+langchain = "^0.3.26"
 
 
 [tool.poetry.group.dev.dependencies]

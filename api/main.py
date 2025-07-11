@@ -2,6 +2,7 @@ from fastapi import FastAPI
 import uvicorn
 
 from config import api_settings
+from api.documents import router as documents_router
 
 
 app = FastAPI(
@@ -14,6 +15,7 @@ app = FastAPI(
     redoc_url=api_settings.redoc_url,
     root_path=api_settings.root_path,
 )
+app.include_router(documents_router, prefix="/v1")
 
 
 """
