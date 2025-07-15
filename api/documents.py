@@ -1,13 +1,16 @@
 import uuid
+from typing import Annotated
 
 from fastapi import (
     APIRouter,
     UploadFile,
     BackgroundTasks,
     status as http_status,
+    Depends,
 )
 
-from domain.process import process_file
+from api.dependencies import document_processor_dependency
+from domain.process import DocumentProcessor
 
 
 router = APIRouter(prefix="/documents")
@@ -17,11 +20,19 @@ router = APIRouter(prefix="/documents")
 async def upload_file(
     file: UploadFile,
     bg_tasks: BackgroundTasks,
-    *,
+    document_processor: Annotated[DocumentProcessor, Depends(document_processor_dependency)],
     workspace_id: str | None = None,
 ):
+    """
+    Принимает документ для обработки, немедленно возвращает document_id и выполняет обработку в фоновом режиме.
+    """
+
     content: bytes = await file.read()
-    filename: str = file.filename
     document_id = str(uuid.uuid4())
-    bg_tasks.add_task(process_file, content, filename, document_id=document_id)
+    bg_tasks.add_task(
+        document_processor.process,
+        content=content,
+        document_id=document_id,
+        workspace_id=workspace_id,
+    )
     return {"document_id": document_id}

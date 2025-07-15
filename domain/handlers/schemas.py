@@ -4,6 +4,10 @@ from pydantic import BaseModel
 
 
 class ExtractedInfo(BaseModel):
+    """
+    Схема, которая содержит извлеченный из документа текст и метаданные документа.
+    """
+
     text: str = ""
     error_message: str = ""
     document_page_count: int | None = None

@@ -18,7 +18,21 @@ from domain.handlers import utils
 
 
 class TextExtractor(ABC):
+    """
+    Класс для извлечения текста из документов.
+    """
+
     def extract(self, document: IO[bytes]) -> ExtractedInfo:
+        """
+        Извлекает текст из документа.
+
+        :param document: Исходный документ в виде буфера (файл-подобного объекта).
+        :type document: IO[bytes] or BytesIO
+
+        :return: Извлеченный текст и метаданные документа.
+        :rtype: ExtractedInfo
+        """
+
         try:
             info: ExtractedInfo = self._extract(document)
         except Exception as e:
@@ -31,6 +45,10 @@ class TextExtractor(ABC):
 
 
 class PdfExtractor(TextExtractor):
+    """
+    Класс для извлечения текста из документов типа PDF.
+    """
+
     def _extract(self, document: IO[bytes]) -> ExtractedInfo:
         try:
             document = PdfReader(document)
@@ -48,6 +66,10 @@ class PdfExtractor(TextExtractor):
 
 
 class DocxExtractor(TextExtractor):
+    """
+    Класс для извлечения текста из документов типа DocX.
+    """
+
     def _extract(self, document: IO[bytes]) -> ExtractedInfo:
         try:
             document = DocxReader(document)

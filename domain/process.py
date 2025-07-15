@@ -9,74 +9,102 @@ from domain.schemas import (
     Vector,
     DocumentMeta,
 )
-from services.interfaces import (
-    RawStorage,
-    VectorStore,
-    MetadataRepository,
-)
-from stubs.raw_storage import FileRawStorage
-from stubs.vector_store import JSONVectorStore
-from stubs.metadata_repository import SQLiteMetadataRepository
 from domain.handlers import (
     TextExtractor,
     ExtractorFactory,
     ExtractedInfo,
 )
-from config import storage_settings
+from domain.utils import get_file_extension
+from services.interfaces import (
+    RawStorage,
+    VectorStore,
+    MetadataRepository,
+)
 
 
-_transformer = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+class DocumentProcessor:
+    """
+    Управляет всем процессом обработки документов.
 
+    :ivar raw_storage: Сервис для сохранения сырых файлов.
+    :type raw_storage: RawStorage
+    :ivar vector_store: Сервис для индексации векторов.
+    :type vector_store: VectorStore
+    :ivar metadata_repository: Сервис для хранения метаданных.
+    :type metadata_repository: MetadataRepository
+    """
 
-# TODO посмотреть как лучше всего у UploadFile узнать какой тип файла. Потому что возможно такое,
-#  что у файла после точки (или точка отсутствует) нет расширения, хотя файл является PDF или DOCX
-async def process_file(
-    content: bytes,
-    filename: str,
-    *,
-    document_id: str = str(uuid.uuid4()),
-    raw_storage: RawStorage | None = None,
-    vector_store: VectorStore | None = None,
-    metadata_repository: MetadataRepository | None = None,
-) -> None:
-    file_extension: str = filename.split(".")[-1].lower()
-    filename = f"{document_id}.{file_extension}"
-    file = BytesIO(content)
+    def __init__(
+        self,
+        raw_storage: RawStorage,
+        vector_store: VectorStore,
+        metadata_repository: MetadataRepository,
+    ):
+        self.raw_storage = raw_storage
+        self.vector_store = vector_store
+        self.metadata_repository = metadata_repository
+        self.sentence_transformer = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2") # TODO вынести в настройки
+        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50) # TODO вынести в настройки
 
-    raw_storage = raw_storage or FileRawStorage(f"{storage_settings.raw_storage_path}{filename}")
-    vector_store = vector_store or JSONVectorStore(f"{storage_settings.index_path}{filename}")
-    metadata_repository = metadata_repository or SQLiteMetadataRepository(storage_settings.sqlite_url)
+    def process(
+        self,
+        content: bytes,
+        document_id: str = str(uuid.uuid4()),
+        workspace_id: str | None = None,
+    ) -> None:
+        """
+        Выполняет полный цикл обработки загруженного файла:
+            1. Сохраняет исходный файл.
+            2. Извлекает текст в зависимости от типа файла.
+            3. Определяет язык.
+            4. Разбивает текст на фрагменты.
+            5. Создает эмбеддинги для каждого чанка.
+            6. Загружает векторы в хранилище векторов.
+            7. Сохраняет метаданные документа.
 
-    raw_storage.save(content, filename)
+        :param content: Документ в байтах.
+        :type content: bytes
+        :param document_id: ID документа. По умолчанию генерируется новый UUID4.
+        :type document_id: str
+        :param workspace_id: ...
+        :type workspace_id: str
+        """
 
-    extractor: TextExtractor = ExtractorFactory().get_extractor(file_extension)
-    document_info: ExtractedInfo = extractor.extract(file)
+        file_extension: str = get_file_extension(content)
+        raw_storage_path: str = f"{document_id}{file_extension}"
+        if workspace_id:
+            raw_storage_path = f"{workspace_id}/{raw_storage_path}"
+        self.raw_storage.save(content, raw_storage_path)
 
-    if not document_info.text:
-        return
+        file = BytesIO(content)
+        extractor: TextExtractor = ExtractorFactory().get_extractor(file_extension)
+        document_info: ExtractedInfo = extractor.extract(file)
 
-    language: str = detect(document_info.text)
+        if not document_info.text:
+            return
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks: list[str] = text_splitter.split_text(document_info.text)
+        language: str = detect(document_info.text)
+        chunks: list[str] = self.text_splitter.split_text(document_info.text)
+        vectors: list[Vector] = self._vectorize_chunks(document_id, chunks)
+        self.vector_store.upsert(vectors)
 
-    # embeddings = _transformer.encode(chunks)
-    # vectors = [
-    #     Vector(
-    #         document_id=document_id,
-    #         embedding=embedding.tolist() if hasattr(embedding, "tolist") else embedding,
-    #         metadata={"chunk": i},
-    #     )
-    #     for i, embedding in enumerate(embeddings)
-    # ]
-    # vector_store.upsert(vectors)
+        metadata = DocumentMeta(
+            document_id=document_id,
+            document_type="",
+            detected_language=language,
+            document_page_count=document_info.document_page_count,
+            author=document_info.author,
+            creation_date=document_info.creation_date,
+        )
+        self.metadata_repository.save(metadata)
 
-    metadata = DocumentMeta(
-        document_id=document_id,
-        document_type="",
-        detected_language=language,
-        document_page_count=document_info.document_page_count,
-        author=document_info.author,
-        creation_date=document_info.creation_date,
-    )
-    metadata_repository.save(metadata)
+    def _vectorize_chunks(self, document_id: str, chunks: list[str]) -> list[Vector]:
+        embeddings = self.sentence_transformer.encode(chunks)
+        return [
+            Vector(
+                document_id=document_id,
+                embedding=embedding.tolist() if hasattr(embedding, "tolist") else embedding, # TODO посмотреть почему
+                metadata={"chunk": i},
+            )
+            for i, embedding in enumerate(embeddings)
+        ]

@@ -9,6 +9,7 @@ class Vector(BaseModel):
     metadata: dict
 
 
+# TODO нужно привести creation_date к единому виду (без TZ) при сериализации
 class DocumentMeta(BaseModel):
     document_id: str
     document_type: str | None = None

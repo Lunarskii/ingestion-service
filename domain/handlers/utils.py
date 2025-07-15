@@ -7,7 +7,17 @@ import re
 from dateutil import parser as dateutil_parser
 
 
-def parse_iso8824_date(text: str | None) -> datetime | None:
+def parse_iso8824_date(text: str) -> datetime | None:
+    """
+    Конвертирует строковый формат даты PDF в datetime. Наивный UTC: конвертирует к UTC+0.
+
+    :param text: Дата в строковом формате
+    :type text: str
+
+    :return: Дата в формате datetime
+    :rtype: datetime
+    """
+
     if text is None:
         return None
 
@@ -52,6 +62,16 @@ def parse_iso8824_date(text: str | None) -> datetime | None:
 
 
 def parse_date(text: str) -> datetime | None:
+    """
+    Конвертирует строковый формат PDF, ISO и неструктурированных дат в datetime.
+
+    :param text: Дата в строковом формате
+    :type text: str
+
+    :return: Дата в формате datetime
+    :rtype: datetime
+    """
+
     if not text:
         return None
     text = text.strip()

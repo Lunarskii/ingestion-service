@@ -7,12 +7,36 @@ from domain.schemas import (
 
 
 class RawStorage(Protocol):
-    def save(self, file_bytes: bytes, path: str) -> None: ...
+    """
+    Интерфейс для хранения необработанных файлов.
+    """
+
+    def save(self, file_bytes: bytes, path: str) -> None:
+        """
+        Сохраняет файл в байтах по указанному пути.
+        """
+        ...
 
 
 class VectorStore(Protocol):
-    def upsert(self, vectors: list[Vector]) -> None: ...
+    """
+    Интерфейс для хранения и индексации векторных документов.
+    """
+
+    def upsert(self, vectors: list[Vector]) -> None:
+        """
+        Вставляет или обновляет векторы в хранилище.
+        """
+        ...
 
 
 class MetadataRepository(Protocol):
-    def save(self, meta: DocumentMeta) -> None: ...
+    """
+    Интерфейс для хранения метаданных документа.
+    """
+
+    def save(self, meta: DocumentMeta) -> None:
+        """
+        Сохраняет метаданные документа.
+        """
+        ...

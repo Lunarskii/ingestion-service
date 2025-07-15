@@ -1,18 +1,37 @@
 import os
 import json
-import uuid
 
 from domain.schemas import Vector
 from services import VectorStore
+from config import storage_settings
 
 
 class JSONVectorStore(VectorStore):
-    def __init__(self, path: str):
-        self.path = path
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+    """
+    Реализация VectorStore для локальной разработки.
+    """
+
+    def __init__(
+        self,
+        *,
+        directory: str = storage_settings.index_path,
+    ):
+        self.directory: str = directory
+        os.makedirs(directory, exist_ok=True)
 
     def upsert(self, vectors: list[Vector]) -> None:
+        """
+        Сохраняет векторы в JSON-файл, именованный 'document_id'.json.
+        """
+
+        if not vectors:
+            return
+
+        document_id: str = vectors[0].document_id
+        if not document_id:
+            raise ValueError("Вектор должен содержать 'document_id'")
+
+        full_path: str = os.path.join(self.directory, f"{document_id}.json")
         data = [vector.model_dump() for vector in vectors]
-        full_path = os.path.join(self.path, str(uuid.uuid4()))
         with open(full_path, "w") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)

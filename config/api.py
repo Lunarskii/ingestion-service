@@ -5,6 +5,10 @@ from pydantic_settings import BaseSettings
 
 
 class APISettings(BaseSettings):
+    """
+    Настройки API (FastAPI).
+    """
+
     title: Annotated[str, Field(alias="API_TITLE")] = "Ingestion Service"
     description: Annotated[str, Field(alias="API_DESCRIPTION")] = ""
     version: Annotated[str, Field(alias="API_VERSION")] = "0.1.0"
