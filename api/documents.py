@@ -20,7 +20,9 @@ router = APIRouter(prefix="/documents")
 async def upload_file(
     file: UploadFile,
     bg_tasks: BackgroundTasks,
-    document_processor: Annotated[DocumentProcessor, Depends(document_processor_dependency)],
+    document_processor: Annotated[
+        DocumentProcessor, Depends(document_processor_dependency)
+    ],
     workspace_id: str | None = None,
 ):
     """

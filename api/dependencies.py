@@ -30,6 +30,8 @@ def metadata_repository_dependency() -> MetadataRepository:
 def document_processor_dependency(
     raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
     vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
-    metadata_repository: Annotated[MetadataRepository, Depends(metadata_repository_dependency)],
+    metadata_repository: Annotated[
+        MetadataRepository, Depends(metadata_repository_dependency)
+    ],
 ):
     return DocumentProcessor(raw_storage, vector_store, metadata_repository)

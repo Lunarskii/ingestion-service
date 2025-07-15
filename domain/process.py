@@ -14,7 +14,10 @@ from domain.handlers import (
     ExtractorFactory,
     ExtractedInfo,
 )
-from domain.utils import get_file_extension
+from domain.utils import (
+    get_mime_type,
+    get_file_extension,
+)
 from services.interfaces import (
     RawStorage,
     VectorStore,
@@ -43,8 +46,12 @@ class DocumentProcessor:
         self.raw_storage = raw_storage
         self.vector_store = vector_store
         self.metadata_repository = metadata_repository
-        self.sentence_transformer = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2") # TODO вынести в настройки
-        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50) # TODO вынести в настройки
+        self.sentence_transformer = SentenceTransformer(
+            "sentence-transformers/all-MiniLM-L6-v2"
+        )  # TODO вынести в настройки
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500, chunk_overlap=50
+        )  # TODO вынести в настройки
 
     def process(
         self,
@@ -90,11 +97,13 @@ class DocumentProcessor:
 
         metadata = DocumentMeta(
             document_id=document_id,
-            document_type="",
+            document_type=file_extension.lstrip(".").upper(),
             detected_language=language,
             document_page_count=document_info.document_page_count,
             author=document_info.author,
             creation_date=document_info.creation_date,
+            raw_storage_path=raw_storage_path,
+            file_size_bytes=len(content),
         )
         self.metadata_repository.save(metadata)
 
@@ -103,7 +112,9 @@ class DocumentProcessor:
         return [
             Vector(
                 document_id=document_id,
-                embedding=embedding.tolist() if hasattr(embedding, "tolist") else embedding, # TODO посмотреть почему
+                embedding=embedding.tolist()
+                if hasattr(embedding, "tolist")
+                else embedding,  # TODO посмотреть почему
                 metadata={"chunk": i},
             )
             for i, embedding in enumerate(embeddings)

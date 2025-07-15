@@ -28,9 +28,9 @@ class SQLiteMetadataRepository(MetadataRepository):
         cursor.execute(
             f"""
                 INSERT INTO {self.table_name} (
-                    document_id, document_type, detected_language, document_page_count, author, creation_date
+                    document_id, document_type, detected_language, document_page_count, author, creation_date, raw_storage_path, file_size_bytes
                 ) VALUES (
-                    :document_id, :document_type, :detected_language, :document_page_count, :author, :creation_date
+                    :document_id, :document_type, :detected_language, :document_page_count, :author, :creation_date, :raw_storage_path, :file_size_bytes
                 )
             """,
             meta.model_dump(),
@@ -51,7 +51,9 @@ class SQLiteMetadataRepository(MetadataRepository):
                     detected_language TEXT,
                     document_page_count INTEGER,
                     author TEXT,
-                    creation_date TEXT
+                    creation_date TEXT,
+                    raw_storage_path TEXT,
+                    file_size_bytes INTEGER
                 )
             """
         )
