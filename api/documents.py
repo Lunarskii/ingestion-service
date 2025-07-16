@@ -29,11 +29,11 @@ async def upload_file(
     Принимает документ для обработки, немедленно возвращает document_id и выполняет обработку в фоновом режиме.
     """
 
-    content: bytes = await file.read()
+    file_bytes: bytes = await file.read()
     document_id = str(uuid.uuid4())
     bg_tasks.add_task(
         document_processor.process,
-        content=content,
+        file_bytes=file_bytes,
         document_id=document_id,
         workspace_id=workspace_id,
     )

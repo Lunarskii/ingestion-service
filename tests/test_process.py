@@ -1,8 +1,9 @@
-import pytest
+from unittest.mock import MagicMock
 import uuid
-from datetime import datetime
 
-from domain.process import process_file
+import pytest
+
+from domain.process import DocumentProcessor
 from services import (
     RawStorage,
     VectorStore,
@@ -14,70 +15,69 @@ from domain.schemas import (
 )
 
 
-# @pytest.mark.asyncio
-def test_process_file_pdf(mocker):
-    with open("tests/resources/1mb.pdf", "rb") as file:
-        file_bytes: bytes = file.read()
+@pytest.fixture
+def mock_raw_storage(mocker):
+    return mocker.MagicMock(spec=RawStorage)
 
-    document_id: str = str(uuid.uuid4())
 
-    mock_raw_storage = mocker.create_autospec(RawStorage, instance=True)
-    mock_vector_store = mocker.create_autospec(VectorStore, instance=True)
-    mock_metadata_repository = mocker.create_autospec(MetadataRepository, instance=True)
+@pytest.fixture
+def mock_vector_store(mocker):
+    return mocker.MagicMock(spec=VectorStore)
 
-    process_file(
-        file_bytes,
-        "1mb.pdf",
-        document_id=document_id,
+
+@pytest.fixture
+def mock_metadata_repository(mocker):
+    return mocker.MagicMock(spec=MetadataRepository)
+
+
+@pytest.fixture
+def document_processor(
+    mock_raw_storage: MagicMock,
+    mock_vector_store: MagicMock,
+    mock_metadata_repository: MagicMock,
+) -> DocumentProcessor:
+    return DocumentProcessor(
         raw_storage=mock_raw_storage,
         vector_store=mock_vector_store,
         metadata_repository=mock_metadata_repository,
     )
 
-    mock_raw_storage.save.assert_called_once()
-    file_bytes, path = mock_raw_storage.save.call_args.args
-    assert file_bytes.startswith(b"%PDF-")
-    assert document_id in path
 
-    # mock_vector_store.upsert.assert_called_once()
-    # vectors: list[Vector] = mock_vector_store.upsert.call_args.args[0]
-    # assert isinstance(vectors, list) and all(isinstance(vector, Vector) for vector in vectors)
-
-    mock_metadata_repository.save.assert_called_once()
-    metadata: DocumentMeta = mock_metadata_repository.save.call_args.args[0]
-    assert metadata.document_id == document_id
-    assert isinstance(metadata.creation_date, datetime) or metadata.creation_date is None
-
-
-def test_process_file_docx(mocker):
-    with open("tests/resources/1mb.docx", "rb") as file:
+@pytest.mark.parametrize(
+    "path, file_extension",
+    [
+        ("tests/resources/1mb.docx", ".docx"),
+        ("tests/resources/1mb.pdf", ".pdf"),
+    ]
+)
+def test_process_docx_document(
+    document_processor: DocumentProcessor,
+    mock_raw_storage: MagicMock,
+    mock_vector_store: MagicMock,
+    mock_metadata_repository: MagicMock,
+    path: str,
+    file_extension: str,
+):
+    with open(path, "rb") as file:
         file_bytes: bytes = file.read()
-
     document_id: str = str(uuid.uuid4())
+    workspace_id: str = str(uuid.uuid4())
 
-    mock_raw_storage = mocker.create_autospec(RawStorage, instance=True)
-    mock_vector_store = mocker.create_autospec(VectorStore, instance=True)
-    mock_metadata_repository = mocker.create_autospec(MetadataRepository, instance=True)
-
-    process_file(
-        file_bytes,
-        "1mb.docx",
+    document_processor.process(
+        file_bytes=file_bytes,
         document_id=document_id,
-        raw_storage=mock_raw_storage,
-        vector_store=mock_vector_store,
-        metadata_repository=mock_metadata_repository,
+        workspace_id=workspace_id,
     )
 
-    mock_raw_storage.save.assert_called_once()
-    file_bytes, path = mock_raw_storage.save.call_args.args
-    assert file_bytes.startswith(b"%PDF-")
-    assert document_id in path
+    mock_raw_storage.save.assert_called_once_with(file_bytes, f"{workspace_id}/{document_id}{file_extension}")
 
-    # mock_vector_store.upsert.assert_called_once()
-    # vectors: list[Vector] = mock_vector_store.upsert.call_args.args[0]
-    # assert isinstance(vectors, list) and all(isinstance(vector, Vector) for vector in vectors)
+    mock_vector_store.upsert.assert_called_once()
+    args, _ = mock_vector_store.upsert.call_args
+    assert len(args[0]) > 0
+    assert isinstance(args[0], list) and all(isinstance(vector, Vector) for vector in args[0])
+    assert args[0][0].metadata["document_id"] == document_id
 
     mock_metadata_repository.save.assert_called_once()
-    metadata: DocumentMeta = mock_metadata_repository.save.call_args.args[0]
-    assert metadata.document_id == document_id
-    assert isinstance(metadata.creation_date, datetime) or metadata.creation_date is None
+    args, _ = mock_metadata_repository.save.call_args
+    assert isinstance(args[0], DocumentMeta)
+    assert args[0].document_id == document_id

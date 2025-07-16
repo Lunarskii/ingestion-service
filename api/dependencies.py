@@ -13,18 +13,25 @@ from stubs import (
     SQLiteMetadataRepository,
 )
 from domain.process import DocumentProcessor
+from config import storage_settings
 
 
 def raw_storage_dependency() -> RawStorage:
-    return FileRawStorage()
+    if storage_settings.raw_storage_path:
+        return FileRawStorage()
+    raise ValueError("Переменная окружения 'RAW_STORAGE_PATH' не установлена или установлена неверно.")
 
 
 def vector_store_dependency() -> VectorStore:
-    return JSONVectorStore()
+    if storage_settings.index_path:
+        return JSONVectorStore()
+    raise ValueError("Переменная окружения 'INDEX_PATH' не установлена или установлена неверно.")
 
 
 def metadata_repository_dependency() -> MetadataRepository:
-    return SQLiteMetadataRepository()
+    if storage_settings.sqlite_url:
+        return SQLiteMetadataRepository()
+    raise ValueError("Переменная окружения 'SQLITE_URL' не установлена или установлена неверно.")
 
 
 def document_processor_dependency(

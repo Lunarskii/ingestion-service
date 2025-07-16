@@ -1,7 +1,10 @@
 from typing import Annotated
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+)
 
 
 class APISettings(BaseSettings):
@@ -17,3 +20,5 @@ class APISettings(BaseSettings):
     docs_url: Annotated[str, Field(alias="DOCS_URL")] = "/docs"
     redoc_url: Annotated[str, Field(alias="REDOC_URL")] = "/redoc"
     root_path: Annotated[str, Field(alias="ROOT_PATH")] = ""
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

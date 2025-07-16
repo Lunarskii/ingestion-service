@@ -16,8 +16,10 @@ class JSONVectorStore(VectorStore):
         *,
         directory: str = storage_settings.index_path,
     ):
+        if not directory.endswith(os.path.sep):
+            raise ValueError(f"Ожидалась директория, но было получено {directory}")
         self.directory: str = directory
-        os.makedirs(directory, exist_ok=True)
+        os.makedirs(self.directory, exist_ok=True)
 
     def upsert(self, vectors: list[Vector]) -> None:
         """
@@ -27,7 +29,7 @@ class JSONVectorStore(VectorStore):
         if not vectors:
             return
 
-        document_id: str = vectors[0].document_id
+        document_id: str | None = vectors[0].metadata.get("document_id", None)
         if not document_id:
             raise ValueError("Вектор должен содержать 'document_id'")
 

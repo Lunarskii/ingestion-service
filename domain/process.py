@@ -14,10 +14,7 @@ from domain.handlers import (
     ExtractorFactory,
     ExtractedInfo,
 )
-from domain.utils import (
-    get_mime_type,
-    get_file_extension,
-)
+from domain.utils import get_file_extension
 from services.interfaces import (
     RawStorage,
     VectorStore,
@@ -55,7 +52,7 @@ class DocumentProcessor:
 
     def process(
         self,
-        content: bytes,
+        file_bytes: bytes,
         document_id: str = str(uuid.uuid4()),
         workspace_id: str | None = None,
     ) -> None:
@@ -69,21 +66,21 @@ class DocumentProcessor:
             6. Загружает векторы в хранилище векторов.
             7. Сохраняет метаданные документа.
 
-        :param content: Документ в байтах.
-        :type content: bytes
+        :param file_bytes: Документ в байтах.
+        :type file_bytes: bytes
         :param document_id: ID документа. По умолчанию генерируется новый UUID4.
         :type document_id: str
         :param workspace_id: ...
         :type workspace_id: str
         """
 
-        file_extension: str = get_file_extension(content)
+        file_extension: str = get_file_extension(file_bytes)
         raw_storage_path: str = f"{document_id}{file_extension}"
         if workspace_id:
             raw_storage_path = f"{workspace_id}/{raw_storage_path}"
-        self.raw_storage.save(content, raw_storage_path)
+        self.raw_storage.save(file_bytes, raw_storage_path)
 
-        file = BytesIO(content)
+        file = BytesIO(file_bytes)
         extractor: TextExtractor = ExtractorFactory().get_extractor(file_extension)
         document_info: ExtractedInfo = extractor.extract(file)
 
@@ -92,7 +89,7 @@ class DocumentProcessor:
 
         language: str = detect(document_info.text)
         chunks: list[str] = self.text_splitter.split_text(document_info.text)
-        vectors: list[Vector] = self._vectorize_chunks(document_id, chunks)
+        vectors: list[Vector] = self._vectorize_chunks(chunks, document_id)
         self.vector_store.upsert(vectors)
 
         metadata = DocumentMeta(
@@ -103,19 +100,21 @@ class DocumentProcessor:
             author=document_info.author,
             creation_date=document_info.creation_date,
             raw_storage_path=raw_storage_path,
-            file_size_bytes=len(content),
+            file_size_bytes=len(file_bytes),
         )
         self.metadata_repository.save(metadata)
 
-    def _vectorize_chunks(self, document_id: str, chunks: list[str]) -> list[Vector]:
-        embeddings = self.sentence_transformer.encode(chunks)
+    def _vectorize_chunks(self, chunks: list[str], document_id: str) -> list[Vector]:
+        embeddings = self.sentence_transformer.encode(chunks, show_progress_bar=False)
         return [
             Vector(
-                document_id=document_id,
-                embedding=embedding.tolist()
-                if hasattr(embedding, "tolist")
-                else embedding,  # TODO посмотреть почему
-                metadata={"chunk": i},
+                id=f"{document_id}-{i}",
+                values=embedding.tolist(), # noqa
+                metadata={
+                    "document_id": document_id,
+                    "chunk_index": i,
+                    "text": chunk,
+                },
             )
-            for i, embedding in enumerate(embeddings)
+            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))
         ]
