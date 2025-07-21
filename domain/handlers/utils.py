@@ -6,6 +6,8 @@ import re
 
 from dateutil import parser as dateutil_parser
 
+import logging
+
 
 def parse_iso8824_date(text: str) -> datetime | None:
     """
@@ -18,7 +20,7 @@ def parse_iso8824_date(text: str) -> datetime | None:
     :rtype: datetime
     """
 
-    if text is None:
+    if not text or (text := text.strip()) is None:
         return None
 
     if text[0].isdigit():
@@ -39,6 +41,7 @@ def parse_iso8824_date(text: str) -> datetime | None:
 
     if match := re.match(pdf_date_re, text):
         gd: dict[str, str] = match.groupdict()
+        logging.info(f"gd = {gd}")
 
         dt = datetime(
             year=int(gd.get("year")),
@@ -51,8 +54,8 @@ def parse_iso8824_date(text: str) -> datetime | None:
 
         if sign := gd.get("tz_sign"):
             offset = timedelta(
-                hours=int(gd.get("tz_hour", 0)),
-                minutes=int(gd.get("tz_minute", 0)),
+                hours=int(gd.get("tz_hour") or 0),
+                minutes=int(gd.get("tz_minute") or 0),
             )
             if sign == "-":
                 offset = -offset
@@ -72,12 +75,8 @@ def parse_date(text: str) -> datetime | None:
     :rtype: datetime
     """
 
-    if not text:
+    if not text or (text := text.strip()) is None:
         return None
-    text = text.strip()
-
-    if dt := parse_iso8824_date(text):
-        return dt
 
     for fmt in (
         "%Y-%m-%dT%H:%M:%S",
@@ -90,6 +89,9 @@ def parse_date(text: str) -> datetime | None:
             return datetime.strptime(text, fmt)
         except ValueError:
             pass
+
+    if dt := parse_iso8824_date(text):
+        return dt
 
     try:
         return dateutil_parser.parse(text, fuzzy=True)

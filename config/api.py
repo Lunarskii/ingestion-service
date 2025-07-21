@@ -21,4 +21,6 @@ class APISettings(BaseSettings):
     redoc_url: Annotated[str, Field(alias="REDOC_URL")] = "/redoc"
     root_path: Annotated[str, Field(alias="ROOT_PATH")] = ""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )

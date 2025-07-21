@@ -18,11 +18,11 @@ sentence-transformers = "^5.0.0"
 python-multipart = "^0.0.20"
 langchain = "^0.3.26"
 python-magic = "^0.4.27"
-
+uvicorn = "^0.35.0"
+loguru = "^0.7.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"
-uvicorn = "^0.35.0"
 black = "^25.1.0"
 pytest-mock = "^3.14.1"
 ruff = "^0.12.2"

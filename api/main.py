@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from config import api_settings
 from api.documents import router as documents_router
+from api.exc_handlers import setup_exception_handlers
 
 
 app = FastAPI(
@@ -14,4 +15,6 @@ app = FastAPI(
     redoc_url=api_settings.redoc_url,
     root_path=api_settings.root_path,
 )
+
+setup_exception_handlers(app)
 app.include_router(documents_router, prefix="/v1")

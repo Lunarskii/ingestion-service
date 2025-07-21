@@ -48,9 +48,9 @@ def document_processor(
     [
         ("tests/resources/1mb.docx", ".docx"),
         ("tests/resources/1mb.pdf", ".pdf"),
-    ]
+    ],
 )
-def test_process_docx_document(
+def test_process_document(
     document_processor: DocumentProcessor,
     mock_raw_storage: MagicMock,
     mock_vector_store: MagicMock,
@@ -69,12 +69,16 @@ def test_process_docx_document(
         workspace_id=workspace_id,
     )
 
-    mock_raw_storage.save.assert_called_once_with(file_bytes, f"{workspace_id}/{document_id}{file_extension}")
+    mock_raw_storage.save.assert_called_once_with(
+        file_bytes, f"{workspace_id}/{document_id}{file_extension}"
+    )
 
     mock_vector_store.upsert.assert_called_once()
     args, _ = mock_vector_store.upsert.call_args
     assert len(args[0]) > 0
-    assert isinstance(args[0], list) and all(isinstance(vector, Vector) for vector in args[0])
+    assert isinstance(args[0], list) and all(
+        isinstance(vector, Vector) for vector in args[0]
+    )
     assert args[0][0].metadata["document_id"] == document_id
 
     mock_metadata_repository.save.assert_called_once()

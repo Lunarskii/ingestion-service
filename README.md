@@ -38,7 +38,7 @@ pip install poetry
 # Установка всех зависимостей
 poetry install
 
-# Без dev-зависимостей (pytest, pytest-mock, requests)
+# Без dev-зависимостей (ruff, pytest, pytest-mock)
 poetry install --only=main
 ```
 

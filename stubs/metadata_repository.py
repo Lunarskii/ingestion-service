@@ -1,5 +1,8 @@
+from datetime import datetime
 import os
 import sqlite3
+import typing
+import types
 
 from domain.schemas import DocumentMeta
 from services import MetadataRepository
@@ -28,9 +31,9 @@ class SQLiteMetadataRepository(MetadataRepository):
         cursor.execute(
             f"""
                 INSERT INTO {self.table_name} (
-                    document_id, document_type, detected_language, document_page_count, author, creation_date, raw_storage_path, file_size_bytes
+                    {",".join(DocumentMeta.model_fields.keys())}
                 ) VALUES (
-                    :document_id, :document_type, :detected_language, :document_page_count, :author, :creation_date, :raw_storage_path, :file_size_bytes
+                    :{",:".join(DocumentMeta.model_fields.keys())}
                 )
             """,
             meta.model_dump(),
@@ -47,14 +50,28 @@ class SQLiteMetadataRepository(MetadataRepository):
             f"""
                 CREATE TABLE IF NOT EXISTS {self.table_name} (
                     document_id TEXT PRIMARY KEY,
-                    document_type TEXT,
-                    detected_language TEXT,
-                    document_page_count INTEGER,
-                    author TEXT,
-                    creation_date TEXT,
-                    raw_storage_path TEXT,
-                    file_size_bytes INTEGER
+                    {",".join([f"{key} {self._convert_type_to_sqlite_type(value.annotation)}" for key, value in DocumentMeta.model_fields.items()][1:])}
                 )
             """
         )
         self.db_connection.commit()
+
+    @classmethod
+    def _convert_type_to_sqlite_type(cls, type_: typing.Any) -> str:
+        _PYTHON_TO_SQLITE = {
+            str: "TEXT",
+            datetime: "TEXT",
+            int: "INTEGER",
+            bool: "INTEGER",
+            float: "REAL",
+            bytes: "BLOB",
+        }
+
+        origin = typing.get_origin(type_)
+
+        if origin is (typing.Union, types.UnionType):
+            args = [arg for arg in typing.get_args(type_) if arg is not type(None)]
+            if len(args) == 1:
+                return cls._convert_type_to_sqlite_type(args[0])
+            return _PYTHON_TO_SQLITE.get(str)
+        return _PYTHON_TO_SQLITE.get(type_, "TEXT")
