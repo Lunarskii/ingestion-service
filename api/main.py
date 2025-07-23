@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 
 from config import api_settings
-from api.documents import router as documents_router
 from api.exc_handlers import setup_exception_handlers
+from api.v1 import router as v1_router
 
 
 app = FastAPI(
@@ -17,4 +17,4 @@ app = FastAPI(
 )
 
 setup_exception_handlers(app)
-app.include_router(documents_router, prefix="/v1")
+app.include_router(v1_router)

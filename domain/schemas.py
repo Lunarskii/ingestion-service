@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import (
-    Annotated,
-    Any,
-)
 from enum import Enum
+from typing import (
+    Any,
+    Annotated,
+)
 import uuid
 
 from pydantic import (
@@ -16,7 +16,7 @@ from pydantic import (
 class Vector(BaseModel):
     id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # noqa
     values: list[float]
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = {}
 
 
 class DocumentStatus(str, Enum):

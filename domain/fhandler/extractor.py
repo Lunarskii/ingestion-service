@@ -13,8 +13,8 @@ from docx import Document as DocxReader
 from docx.opc.exceptions import PackageNotFoundError
 from zipfile import BadZipFile as BadZipFileError
 
-from domain.handlers.schemas import ExtractedInfo
-from domain.handlers import utils
+from domain.fhandler.schemas import ExtractedInfo
+from domain.fhandler.utils import parse_date
 
 
 class TextExtractor(ABC):
@@ -61,7 +61,7 @@ class PdfExtractor(TextExtractor):
                 text=text,
                 document_page_count=len(document.pages),
                 author=metadata.author,
-                creation_date=utils.parse_date(metadata.creation_date_raw),
+                creation_date=parse_date(metadata.creation_date_raw),
             )
 
 

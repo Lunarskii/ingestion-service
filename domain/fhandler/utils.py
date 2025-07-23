@@ -3,10 +3,10 @@ from datetime import (
     timedelta,
 )
 import re
+import mimetypes
 
 from dateutil import parser as dateutil_parser
-
-import logging
+import magic
 
 
 def parse_iso8824_date(text: str) -> datetime | None:
@@ -41,7 +41,6 @@ def parse_iso8824_date(text: str) -> datetime | None:
 
     if match := re.match(pdf_date_re, text):
         gd: dict[str, str] = match.groupdict()
-        logging.info(f"gd = {gd}")
 
         dt = datetime(
             year=int(gd.get("year")),
@@ -97,3 +96,32 @@ def parse_date(text: str) -> datetime | None:
         return dateutil_parser.parse(text, fuzzy=True)
     except (ValueError, OverflowError):
         pass
+
+
+def get_mime_type(file: bytes | str) -> str:
+    """
+    Определяет MIME-тип файла по его первым байтам, хедеру.
+
+    :param file: Любой файл в виде байтов или строки.
+    :type file: bytes | str
+
+    :return: MIME-тип файла
+    :rtype: str
+    """
+
+    return magic.from_buffer(file, mime=True)
+
+
+def get_file_extension(file: bytes | str) -> str:
+    """
+    Определяет расширение файла по его первым байтам, хедеру.
+
+    :param file: Любой файл в виде байтов или строки.
+    :type file: bytes | str
+
+    :return: Расширение файла в формате '.ext', например '.pdf' или '.docx'.
+    :rtype: str
+    """
+
+    mime_type: str = get_mime_type(file)
+    return mimetypes.guess_extension(mime_type) or ""

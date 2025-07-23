@@ -69,7 +69,7 @@ class SQLiteMetadataRepository(MetadataRepository):
 
         origin = typing.get_origin(type_)
 
-        if origin is (typing.Union, types.UnionType):
+        if origin in (typing.Union, types.UnionType):
             args = [arg for arg in typing.get_args(type_) if arg is not type(None)]
             if len(args) == 1:
                 return cls._convert_type_to_sqlite_type(args[0])

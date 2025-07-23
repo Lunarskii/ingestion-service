@@ -19,5 +19,7 @@ class StorageSettings(BaseSettings):
     sqlite_url: Annotated[str, Field(alias="SQLITE_URL")] = "./local_storage/sqlite.db"
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )

@@ -29,6 +29,10 @@ class VectorStore(Protocol):
         """
         ...
 
+    def search(self, vector: Vector, top_k: int, workspace_id: str) -> list[Vector]:
+        # TODO doc
+        ...
+
 
 class MetadataRepository(Protocol):
     """

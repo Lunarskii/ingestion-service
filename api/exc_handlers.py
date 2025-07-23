@@ -2,8 +2,8 @@ from typing import TYPE_CHECKING
 
 from fastapi.responses import JSONResponse
 
-from exceptions.http import (
-    HTTPApplicationError,
+from exceptions.base import (
+    ApplicationError,
     ErrorResponse,
     UnexpectedErrorResponse,
 )
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 async def application_exception_handler(
     request: "Request",
-    ex: HTTPApplicationError,
+    ex: ApplicationError,
 ) -> JSONResponse:
     return JSONResponse(
         status_code=ex.status_code,
@@ -38,5 +38,5 @@ async def unhandled_exception_handler(
 
 
 def setup_exception_handlers(app: "FastAPI") -> None:
-    app.add_exception_handler(HTTPApplicationError, application_exception_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(ApplicationError, application_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(Exception, unhandled_exception_handler)

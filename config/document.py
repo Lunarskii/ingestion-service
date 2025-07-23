@@ -7,14 +7,19 @@ from pydantic_settings import (
 )
 
 
-class DocumentSettings(BaseSettings):
+class DocumentRestrictionSettings(BaseSettings):
     """
     Настройки (ограничения) документа.
     """
 
-    max_upload_mb: Annotated[int, Field(alias="MAX_UPLOAD_MB")] = 25
-    allowed_extensions: Annotated[set[str], Field(alias="ALLOWED_EXTENSIONS")] = {".pdf", ".docx"}
+    max_upload_mb: Annotated[int, Field(alias="DR_MAX_UPLOAD_MB")] = 25
+    allowed_extensions: Annotated[set[str], Field(alias="DR_ALLOWED_EXTENSIONS")] = {
+        ".pdf",
+        ".docx",
+    }
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )

@@ -1,19 +1,21 @@
+from typing import (
+    Annotated,
+    Any,
+)
 import uuid
-from typing import Annotated
 
 from fastapi import (
     APIRouter,
-    UploadFile,
     BackgroundTasks,
     status as http_status,
     Depends,
 )
 
-from api.dependencies import (
+from api.v1.dependencies import (
     document_processor_dependency,
     validate_upload_file,
 )
-from domain.process import DocumentProcessor
+from domain.fhandler.service import DocumentProcessor
 
 
 router = APIRouter(prefix="/documents")
@@ -25,7 +27,7 @@ async def upload_file(
     bg_tasks: BackgroundTasks,
     document_processor: Annotated[DocumentProcessor, Depends(document_processor_dependency)],
     workspace_id: str,
-):
+) -> dict[str, Any]:
     """
     Принимает документ для обработки, немедленно возвращает document_id и выполняет обработку в фоновом режиме.
     """

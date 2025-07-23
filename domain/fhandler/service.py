@@ -3,7 +3,10 @@ from datetime import datetime
 from typing import Any
 
 from langdetect import detect
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.text_splitter import (
+    TextSplitter,
+    RecursiveCharacterTextSplitter,
+)
 from sentence_transformers import SentenceTransformer
 
 from domain.schemas import (
@@ -11,13 +14,13 @@ from domain.schemas import (
     DocumentMeta,
     DocumentStatus,
 )
-from domain.handlers import (
+from domain.fhandler.extractor import (
     TextExtractor,
-    ExtractorFactory,
     ExtractedInfo,
 )
-from domain.utils import get_file_extension
-from services.interfaces import (
+from domain.fhandler.factory import ExtractorFactory
+from domain.fhandler.utils import get_file_extension
+from services import (
     RawStorage,
     VectorStore,
     MetadataRepository,
@@ -42,12 +45,14 @@ class DocumentProcessor:
         raw_storage: RawStorage,
         vector_store: VectorStore,
         metadata_repository: MetadataRepository,
+        embedding_model: SentenceTransformer | None = None,
+        text_splitter: TextSplitter | None = None,
     ):
         self.raw_storage = raw_storage
         self.vector_store = vector_store
         self.metadata_repository = metadata_repository
-        self.sentence_transformer = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        self.embedding_model = embedding_model or SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.text_splitter = text_splitter or RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 
     def process(
         self,
@@ -98,7 +103,10 @@ class DocumentProcessor:
         document_info: ExtractedInfo | None = None
         language: str | None = None
         try:
-            context_logger.info("Сохранение необработанного документа", raw_storage_path=raw_storage_path)
+            context_logger.info(
+                "Сохранение необработанного документа",
+                raw_storage_path=raw_storage_path,
+            )
             self.raw_storage.save(file_bytes, raw_storage_path)
 
             context_logger.info("Извлечение текста и метаданных из документа")
@@ -112,7 +120,7 @@ class DocumentProcessor:
             chunks: list[str] = self.text_splitter.split_text(document_info.text)
 
             context_logger.info("Создание эмбеддингов для каждого чанка, векторизация")
-            vectors: list[Vector] = self._vectorize_chunks(chunks, document_id)
+            vectors: list[Vector] = self._vectorize_chunks(chunks, document_id, workspace_id)
 
             context_logger.info("Сохранение векторов")
             self.vector_store.upsert(vectors)
@@ -136,15 +144,16 @@ class DocumentProcessor:
         context_logger.info("Сохранение метаданных документа")
         self.metadata_repository.save(DocumentMeta(**metadata_kwargs))
 
-    def _vectorize_chunks(self, chunks: list[str], document_id: str) -> list[Vector]:
-        embeddings = self.sentence_transformer.encode(chunks, show_progress_bar=False)
+    def _vectorize_chunks(self, chunks: list[str], document_id: str, workspace_id: str) -> list[Vector]:
+        embeddings = self.embedding_model.encode(chunks, show_progress_bar=False)
         return [
             Vector(
                 id=f"{document_id}-{i}",
                 values=embedding.tolist(),  # noqa
                 metadata={
                     "document_id": document_id,
-                    "chunk_id": i,
+                    "workspace_id": workspace_id,
+                    "chunk_index": i,
                     "text": chunk,
                 },
             )
