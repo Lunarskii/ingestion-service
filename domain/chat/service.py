@@ -27,7 +27,7 @@ class ChatService:
         """
         Обрабатывает запрос в чат с помощью RAG-логики.
             1. Векторизует вопрос.
-            2. Запрашивает в хранилище векторов соответствующие чанки.
+            2. Запрашивает в хранилище векторов соответствующие вектора с фильтром по 'workspace_id'.
             3. Генерирует ответ, используя LLM.
             4. Формирует ответ.
         """
@@ -46,8 +46,18 @@ class ChatService:
             )
             for vector in retrieved_vectors
         ]
+        prompt: str = "\n".join(
+            [
+                "Основываясь на следующем контексте, ответь на вопрос.",
+                "---",
+                "Контекст:",
+                "\n".join([source.snippet for source in sources]),
+                "---",
+                f"Вопрос: {request.question}",
+            ],
+        )
 
         return ChatResponse(
-            answer=llm_stub.generate([source.snippet for source in sources]),
+            answer=llm_stub.generate(prompt),
             sources=sources,
         )

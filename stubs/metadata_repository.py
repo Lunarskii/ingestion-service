@@ -19,7 +19,7 @@ class SQLiteMetadataRepository(MetadataRepository):
         self.url = sqlite_url
         self.table_name = table_name
         os.makedirs(os.path.dirname(sqlite_url), exist_ok=True)
-        self.db_connection = sqlite3.connect(self.url)
+        self.db_connection = sqlite3.connect(self.url, check_same_thread=False)
         self._create_table()
 
     def save(self, meta: DocumentMeta) -> None:
@@ -39,6 +39,19 @@ class SQLiteMetadataRepository(MetadataRepository):
             meta.model_dump(),
         )
         self.db_connection.commit()
+
+    def get(self, workspace_id: str) -> list[DocumentMeta]:
+        """
+        Извлекает список документов для заданного 'workspace_id' из базы данных SQLite.
+        """
+
+        cursor = self.db_connection.cursor()
+        cursor.execute(
+            f"SELECT * FROM {self.table_name} WHERE workspace_id = ?", (workspace_id,)
+        )
+        rows = cursor.fetchall()
+        columns = [description[0] for description in cursor.description]
+        return [DocumentMeta(**dict(zip(columns, row))) for row in rows]
 
     def _create_table(self):
         """

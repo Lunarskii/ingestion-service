@@ -38,7 +38,7 @@ class DocumentMeta(BaseModel):
     status: DocumentStatus = DocumentStatus.success
     error_message: str | None = None
 
-    @field_serializer("creation_date")
+    @field_serializer("creation_date", "ingested_at")
     def datetime_to_str(self, value: datetime):
         if value is None:
             return value

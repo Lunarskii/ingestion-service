@@ -14,8 +14,11 @@ from fastapi import (
 from api.v1.dependencies import (
     document_processor_dependency,
     validate_upload_file,
+    metadata_repository_dependency,
 )
 from domain.fhandler.service import DocumentProcessor
+from domain.schemas import DocumentMeta
+from services import MetadataRepository
 
 
 router = APIRouter(prefix="/documents")
@@ -40,3 +43,11 @@ async def upload_file(
         workspace_id=workspace_id,
     )
     return {"document_id": document_id}
+
+
+@router.get("/")
+async def documents_list(
+    metadata_repository: Annotated[MetadataRepository, Depends(metadata_repository_dependency)],
+    workspace_id: str,
+) -> list[DocumentMeta]:
+    return metadata_repository.get(workspace_id)

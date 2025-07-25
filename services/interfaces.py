@@ -44,3 +44,9 @@ class MetadataRepository(Protocol):
         Сохраняет метаданные документа.
         """
         ...
+
+    def get(self, workspace_id: str) -> list[DocumentMeta]:
+        """
+        Отдает список документов для заданного 'workspace_id'.
+        """
+        ...

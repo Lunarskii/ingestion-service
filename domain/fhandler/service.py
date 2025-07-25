@@ -101,7 +101,6 @@ class DocumentProcessor:
             "status": DocumentStatus.success,
         }
         document_info: ExtractedInfo | None = None
-        language: str | None = None
         try:
             context_logger.info(
                 "Сохранение необработанного документа",
@@ -112,9 +111,15 @@ class DocumentProcessor:
             context_logger.info("Извлечение текста и метаданных из документа")
             extractor: TextExtractor = ExtractorFactory().get_extractor(file_extension)
             document_info: ExtractedInfo = extractor.extract(file)
+            metadata_kwargs["document_text"] = document_info.text
+            metadata_kwargs["error_message"] = document_info.error_message
+            metadata_kwargs["document_page_count"] = document_info.document_page_count
+            metadata_kwargs["author"] = document_info.author
+            metadata_kwargs["creation_date"] = document_info.creation_date
 
             context_logger.info("Определение основного языка документа")
             language: str = detect(document_info.text)
+            metadata_kwargs["detected_language"] = language
 
             context_logger.info("Разбиение текста на чанки")
             chunks: list[str] = self.text_splitter.split_text(document_info.text)
@@ -131,15 +136,6 @@ class DocumentProcessor:
             )
             context_logger.error("Ошибка обработки документа", error_message=error_message)
             metadata_kwargs["error_message"] = error_message
-
-        if document_info:
-            metadata_kwargs["document_text"] = document_info.text
-            metadata_kwargs["error_message"] = document_info.error_message
-            metadata_kwargs["document_page_count"] = document_info.document_page_count
-            metadata_kwargs["author"] = document_info.author
-            metadata_kwargs["creation_date"] = document_info.creation_date
-        if language:
-            metadata_kwargs["detected_language"] = language
 
         context_logger.info("Сохранение метаданных документа")
         self.metadata_repository.save(DocumentMeta(**metadata_kwargs))
