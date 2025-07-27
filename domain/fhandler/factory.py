@@ -3,6 +3,7 @@ from domain.fhandler.extractor import (
     PdfExtractor,
     DocxExtractor,
 )
+from domain.fhandler.exc import ExtractError
 
 
 class ExtractorFactory:
@@ -31,5 +32,5 @@ class ExtractorFactory:
             extension = extension[1:]
         extractor_cls: type[TextExtractor] = cls._map.get(extension)
         if not extractor_cls:
-            raise ValueError(f"Нет экстрактора для расширения '{extension}'")
+            raise ExtractError(f"Нет экстрактора для расширения '{extension}'")
         return extractor_cls()

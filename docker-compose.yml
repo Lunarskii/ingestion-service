@@ -1,0 +1,22 @@
+services:
+  backend:
+    container_name: backend
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: docker/backend.dockerfile
+    ports:
+      - "8000:8000"
+
+  ui:
+    container_name: ui
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: docker/ui.dockerfile
+    environment:
+      BACKEND_URL: "${BACKEND_URL:-http://backend:8000}" # TODO
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend

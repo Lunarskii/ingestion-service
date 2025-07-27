@@ -2,11 +2,8 @@ from io import BytesIO
 from datetime import datetime
 from typing import Any
 
-from langdetect import detect
-from langchain.text_splitter import (
-    TextSplitter,
-    RecursiveCharacterTextSplitter,
-)
+import langdetect
+from langchain.text_splitter import TextSplitter
 from sentence_transformers import SentenceTransformer
 
 from domain.schemas import (
@@ -45,14 +42,14 @@ class DocumentProcessor:
         raw_storage: RawStorage,
         vector_store: VectorStore,
         metadata_repository: MetadataRepository,
-        embedding_model: SentenceTransformer | None = None,
-        text_splitter: TextSplitter | None = None,
+        embedding_model: SentenceTransformer,
+        text_splitter: TextSplitter,
     ):
         self.raw_storage = raw_storage
         self.vector_store = vector_store
         self.metadata_repository = metadata_repository
-        self.embedding_model = embedding_model or SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-        self.text_splitter = text_splitter or RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        self.embedding_model = embedding_model
+        self.text_splitter = text_splitter
 
     def process(
         self,
@@ -80,17 +77,12 @@ class DocumentProcessor:
 
         context_logger = logger.bind(document_id=document_id, workspace_id=workspace_id)
 
-        context_logger.info("Начало обработки документа")
-
         ingested_at: datetime = datetime.now()
         file = BytesIO(file_bytes)
         file_extension: str = get_file_extension(file_bytes)
         file_size_bytes: int = len(file_bytes)
         document_type: str = file_extension.lstrip(".").upper()
-        raw_storage_path: str = f"{document_id}{file_extension}"
-        if workspace_id:
-            raw_storage_path = f"{workspace_id}/{raw_storage_path}"
-
+        raw_storage_path: str = f"{workspace_id}/{document_id}{file_extension}"
         metadata_kwargs: dict[str, Any] = {
             "document_id": document_id,
             "workspace_id": workspace_id,
@@ -100,7 +92,7 @@ class DocumentProcessor:
             "ingested_at": ingested_at,
             "status": DocumentStatus.success,
         }
-        document_info: ExtractedInfo | None = None
+
         try:
             context_logger.info(
                 "Сохранение необработанного документа",
@@ -108,18 +100,17 @@ class DocumentProcessor:
             )
             self.raw_storage.save(file_bytes, raw_storage_path)
 
-            context_logger.info("Извлечение текста и метаданных из документа")
+            context_logger.info(
+                "Извлечение текста и метаданных из документа",
+                document_type=document_type,
+                file_size_bytes=file_size_bytes,
+            )
             extractor: TextExtractor = ExtractorFactory().get_extractor(file_extension)
             document_info: ExtractedInfo = extractor.extract(file)
-            metadata_kwargs["document_text"] = document_info.text
-            metadata_kwargs["error_message"] = document_info.error_message
-            metadata_kwargs["document_page_count"] = document_info.document_page_count
-            metadata_kwargs["author"] = document_info.author
-            metadata_kwargs["creation_date"] = document_info.creation_date
+            metadata_kwargs.update(document_info.model_dump(include={"document_page_count", "author", "creation_date"}))
 
             context_logger.info("Определение основного языка документа")
-            language: str = detect(document_info.text)
-            metadata_kwargs["detected_language"] = language
+            metadata_kwargs["detected_language"] = langdetect.detect(document_info.text)
 
             context_logger.info("Разбиение текста на чанки")
             chunks: list[str] = self.text_splitter.split_text(document_info.text)
@@ -130,15 +121,16 @@ class DocumentProcessor:
             context_logger.info("Сохранение векторов")
             self.vector_store.upsert(vectors)
         except Exception as e:
-            metadata_kwargs["status"] = DocumentStatus.failed
-            error_message: str = (
-                document_info.error_message if document_info and document_info.error_message else str(e)
-            )
-            context_logger.error("Ошибка обработки документа", error_message=error_message)
+            error_message: str = str(e)
+            context_logger.error("Не удалось обработать документ", error_message=error_message)
             metadata_kwargs["error_message"] = error_message
+            metadata_kwargs["status"] = DocumentStatus.failed
 
-        context_logger.info("Сохранение метаданных документа")
-        self.metadata_repository.save(DocumentMeta(**metadata_kwargs))
+        try:
+            context_logger.info("Сохранение метаданных документа")
+            self.metadata_repository.save(DocumentMeta(**metadata_kwargs))
+        except Exception as e:
+            context_logger.error("Не удалось сохранить метаданные документа", error_message=str(e))
 
     def _vectorize_chunks(self, chunks: list[str], document_id: str, workspace_id: str) -> list[Vector]:
         embeddings = self.embedding_model.encode(chunks, show_progress_bar=False)

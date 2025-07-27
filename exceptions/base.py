@@ -15,8 +15,8 @@ class ApplicationError(Exception):
 
     def __init__(
         self,
-        *,
         message: str | None = None,
+        *,
         error_code: str | None = None,
         status_code: int | None = None,
         headers: dict[str, str] | None = None,
