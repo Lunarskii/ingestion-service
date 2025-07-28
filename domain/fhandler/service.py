@@ -31,10 +31,14 @@ class DocumentProcessor:
 
     :ivar raw_storage: Сервис для сохранения сырых файлов.
     :type raw_storage: RawStorage
-    :ivar vector_store: Сервис для индексации векторов.
+    :ivar vector_store: Сервис векторного хранилища.
     :type vector_store: VectorStore
-    :ivar metadata_repository: Сервис для хранения метаданных.
+    :ivar metadata_repository: Сервис репозитория метаданных.
     :type metadata_repository: MetadataRepository
+    :ivar embedding_model: Модель для эмбеддингов.
+    :type embedding_model: SentenceTransformer
+    :ivar text_splitter: Разделитель текста на чанки.
+    :type text_splitter: TextSplitter
     """
 
     def __init__(
