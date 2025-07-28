@@ -78,7 +78,7 @@ class DocumentMeta(BaseModel):
     detected_language: str | None = None
     document_page_count: int | None = None
     author: str | None = None
-    creation_date: Annotated[datetime, Field(default_factory=datetime.now)]
+    creation_date: Annotated[datetime | None, Field(default_factory=datetime.now)]
     raw_storage_path: str
     file_size_bytes: int
     ingested_at: Annotated[datetime, Field(default_factory=datetime.now)]

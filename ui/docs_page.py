@@ -10,7 +10,9 @@ from requests import (
 import requests
 
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
+BACKEND_URL = os.getenv("BACKEND_URL")
+if not BACKEND_URL:
+    raise RuntimeError("Переменная окружения BACKEND_URL не установлена")
 
 
 def upload_file(file: UploadedFile, workspace_id: str) -> Any:

@@ -21,6 +21,10 @@ RUN poetry config virtualenvs.in-project true && \
 
 FROM python:3.12-slim-bookworm AS production
 
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    libmagic1 libmagic-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY api ./api
