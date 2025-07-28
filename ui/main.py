@@ -1,7 +1,7 @@
 import streamlit as st
 
 
-def main():
+def main() -> None:
     st.set_page_config(
         layout="wide",
         initial_sidebar_state="expanded",

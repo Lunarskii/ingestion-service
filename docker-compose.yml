@@ -15,7 +15,7 @@ services:
       context: .
       dockerfile: docker/ui.dockerfile
     environment:
-      BACKEND_URL: "${BACKEND_URL:-http://backend:8000}" # TODO
+      BACKEND_URL: "${BACKEND_URL:-http://backend:8000}"
     ports:
       - "8501:8501"
     depends_on:

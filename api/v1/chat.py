@@ -21,4 +21,9 @@ async def ask_llm(
     question: ChatRequest,
     chat_service: Annotated[ChatService, Depends(chat_service_dependency)],
 ) -> ChatResponse:
+    """
+    Принимает вопрос пользователя и ID рабочего пространства, находит релевантные документы в векторном
+    хранилище и генерирует ответ на основе найденного контекста.
+    """
+
     return chat_service.ask(question)

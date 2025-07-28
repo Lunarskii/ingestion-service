@@ -3,7 +3,7 @@ from exceptions.base import ApplicationError
 
 class RawStorageError(ApplicationError):
     """
-    Общий базовый класс для всех исключений RawStorage.
+    Базовый класс для ошибок RawStorage.
     """
 
     message = "RawStorage error"
@@ -12,7 +12,7 @@ class RawStorageError(ApplicationError):
 
 class VectorStoreError(ApplicationError):
     """
-    Общий базовый класс для всех исключений VectorStore.
+    Базовый класс для ошибок VectorStore.
     """
 
     message = "VectorStore error"
@@ -21,7 +21,7 @@ class VectorStoreError(ApplicationError):
 
 class MetadataRepositoryError(ApplicationError):
     """
-    Общий базовый класс для всех исключений MetadataRepository.
+    Базовый класс для ошибок MetadataRepository.
     """
 
     message = "MetadataRepository error"

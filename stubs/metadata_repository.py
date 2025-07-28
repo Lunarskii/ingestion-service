@@ -10,12 +10,28 @@ from config import storage_settings
 
 
 class SQLiteMetadataRepository(MetadataRepository):
+    """
+    Заглушка репозитория метаданных для локальных тестов и разработки.
+
+    Создает или подключается к локальной SQLite-базе и обеспечивает
+    методы сохранения и извлечения `DocumentMeta`.
+    """
+
     def __init__(
         self,
         *,
         sqlite_url: str = storage_settings.sqlite_url,
         table_name: str = "document_metadata",
     ):
+        """
+        Инициализирует соединение и создает таблицу, если её нет.
+
+        :param sqlite_url: Путь к файлу SQLite, например `tests/local.db`.
+        :type sqlite_url: str
+        :param table_name: Имя таблицы для метаданных.
+        :type table_name: str
+        """
+
         self.url = sqlite_url
         self.table_name = table_name
         os.makedirs(os.path.dirname(sqlite_url), exist_ok=True)
@@ -24,7 +40,10 @@ class SQLiteMetadataRepository(MetadataRepository):
 
     def save(self, meta: DocumentMeta) -> None:
         """
-        Сохраняет метаданные документа в базе данных SQLite.
+        Сохраняет объект `DocumentMeta` в базу данных.
+
+        :param meta: Метаданные документа.
+        :type meta: DocumentMeta
         """
 
         cursor = self.db_connection.cursor()
@@ -42,7 +61,12 @@ class SQLiteMetadataRepository(MetadataRepository):
 
     def get(self, workspace_id: str) -> list[DocumentMeta]:
         """
-        Извлекает список документов для заданного 'workspace_id' из базы данных SQLite.
+        Возвращает все записи `DocumentMeta` для заданного workspace_id.
+
+        :param workspace_id: Идентификатор рабочего пространства.
+        :type workspace_id: str
+        :return: Список объектов DocumentMeta.
+        :rtype: list[DocumentMeta]
         """
 
         cursor = self.db_connection.cursor()
@@ -55,7 +79,9 @@ class SQLiteMetadataRepository(MetadataRepository):
 
     def _create_table(self):
         """
-        Создает таблицу в базе данных, если она не существует.
+        Создает таблицу метаданных в SQLite, если она не существует.
+
+        Типы столбцов определяются динамически через `_convert_type_to_sqlite_type`.
         """
 
         cursor = self.db_connection.cursor()
@@ -71,6 +97,16 @@ class SQLiteMetadataRepository(MetadataRepository):
 
     @classmethod
     def _convert_type_to_sqlite_type(cls, type_: typing.Any) -> str:
+        """
+        Конвертация Python-типов в соответствующие SQLite-типизации.
+
+        Поддерживает примитивы и Optional[...].
+
+        :param type_: Любой Python-тип или Union.
+        :return: Соответствующий SQLite тип как строка.
+        :rtype: str
+        """
+
         _PYTHON_TO_SQLITE = {
             str: "TEXT",
             datetime: "TEXT",

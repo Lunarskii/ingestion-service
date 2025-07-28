@@ -17,18 +17,22 @@ from domain.fhandler.exc import ExtractError
 
 class TextExtractor(ABC):
     """
-    Класс для извлечения текста из документов.
+    Абстрактный базовый класс для извлечения текста и метаданных из разных
+    форматов документов.
+
+    Реализация должна предоставлять метод `_extract()`, возвращающий `ExtractedInfo`.
+    Внешний метод `extract()` оборачивает вызов в общий обработчик ошибок.
     """
 
     def extract(self, document: IO[bytes]) -> ExtractedInfo:
         """
-        Извлекает текст из документа.
+        Универсальный метод для извлечения текста и метаданных из переданного документа.
 
-        :param document: Исходный документ в виде буфера (файл-подобного объекта).
-        :type document: IO[bytes] or BytesIO
-
-        :return: Извлеченный текст и метаданные документа.
+        :param document: Файлоподобный объект с байтами документа.
+        :type document: IO[bytes]
+        :return: Объект `ExtractedInfo`, включающий в себя текст и метаданные документа.
         :rtype: ExtractedInfo
+        :raises ExtractError: В случае любой ошибки при разборе документа
         """
 
         try:
@@ -39,12 +43,21 @@ class TextExtractor(ABC):
             return info
 
     @abstractmethod
-    def _extract(self, document: IO[bytes]) -> ExtractedInfo: ...
+    def _extract(self, document: IO[bytes]) -> ExtractedInfo:
+        """
+        Абстрактный метод, реализуемый потомками для конкретного формата документа.
+
+        :param document: Файлоподобный объект с байтами документа.
+        :type document: IO[bytes]
+        :return: Объект `ExtractedInfo`, включающий в себя текст и метаданные документа.
+        :rtype: ExtractedInfo
+        """
+        ...
 
 
 class PdfExtractor(TextExtractor):
     """
-    Класс для извлечения текста из документов типа PDF.
+    Извлекает текст и метаданные из PDF-документов с помощью библиотеки pypdf.
     """
 
     def _extract(self, document: IO[bytes]) -> ExtractedInfo:
@@ -61,7 +74,7 @@ class PdfExtractor(TextExtractor):
 
 class DocxExtractor(TextExtractor):
     """
-    Класс для извлечения текста из документов типа DocX.
+    Извлекает текст и метаданные из DOCX-документов с помощью python-docx.
     """
 
     def _extract(self, document: IO[bytes]) -> ExtractedInfo:

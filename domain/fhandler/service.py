@@ -67,11 +67,11 @@ class DocumentProcessor:
             6. Загружает векторы в хранилище векторов.
             7. Сохраняет метаданные документа.
 
-        :param file_bytes: Документ в байтах.
+        :param file_bytes: Файл в байтах.
         :type file_bytes: bytes
         :param document_id: ID документа.
         :type document_id: str
-        :param workspace_id: ...
+        :param workspace_id: Идентификатор рабочего пространства.
         :type workspace_id: str
         """
 

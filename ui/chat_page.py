@@ -1,3 +1,6 @@
+from typing import Any
+import os
+
 import streamlit as st
 from requests import (
     Response,
@@ -6,11 +9,10 @@ from requests import (
 import requests
 
 
-# BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
-BACKEND_URL = "http://127.0.0.1:8000"  # TODO вынести в переменные окружения, будет приходить из docker-compose
+BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
 
 
-def ask_question(question: str, workspace_id: str):
+def ask_question(question: str, workspace_id: str) -> Any:
     try:
         response: Response = requests.post(
             f"{BACKEND_URL}/v1/chat/ask",
@@ -28,7 +30,7 @@ def ask_question(question: str, workspace_id: str):
         return response.json()
 
 
-def main():
+def main() -> None:
     workspace_id = st.session_state["workspace_id"]
     if not workspace_id:
         return

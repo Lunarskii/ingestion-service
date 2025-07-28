@@ -6,7 +6,7 @@ from config import storage_settings
 
 class FileRawStorage(RawStorage):
     """
-    Реализация RawStorage для локальной разработки.
+    Заглушка хранилища сырых файлов для локальных тестов и разработки.
     """
 
     def __init__(
@@ -14,6 +14,15 @@ class FileRawStorage(RawStorage):
         *,
         directory: str = storage_settings.raw_storage_path,
     ):
+        """
+        Проверяет, что `directory` является путем к директории (оканчивается слешем),
+        создает её при необходимости.
+
+        :param directory: Путь к папке, где будут храниться файлы.
+        :type directory: str
+        :raises ValueError: Если путь не заканчивается разделителем файловой системы.
+        """
+
         if not directory.endswith(os.path.sep):
             raise ValueError(f"Ожидалась директория, но было получено {directory}")
         self.directory: str = directory
@@ -21,7 +30,12 @@ class FileRawStorage(RawStorage):
 
     def save(self, file_bytes: bytes, path: str) -> None:
         """
-        Сохраняет файл на локальный диск.
+        Сохраняет бинарные данные в файл относительно `self.directory`.
+
+        :param file_bytes: Содержимое файла.
+        :type file_bytes: bytes
+        :param path: Относительный путь внутри корня директории.
+        :type path: str
         """
 
         relative_path: str = path.lstrip("/\\")

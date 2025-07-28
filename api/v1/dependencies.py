@@ -30,8 +30,16 @@ async def validate_upload_file(
     settings: Annotated[DocumentRestrictionSettings, Depends(lambda: document_restriction_settings)],
 ) -> bytes:
     """
-    Валидация расширения и размера загружаемого файла.
-    Читает файл чанками. Если размер файла превышает допустимый - выбрасывает исключение.
+    Валидирует загружаемый файл по расширению и размеру.
+
+    :param file: Загружаемый файл из запроса multipart/form-data.
+    :type file: UploadFile
+    :param settings: Ограничения на типы и максимальный размер файла.
+    :type settings: DocumentRestrictionSettings
+    :return: Полные байты файла, считанные чанками.
+    :rtype: bytes
+    :raises UnsupportedFileTypeError: Если расширение файла не входит в разрешенный список.
+    :raises FileTooLargeError: Если размер файла превышает максимально допустимый.
     """
 
     ext: str = Path(file.filename or "").suffix.lower()
@@ -57,28 +65,73 @@ async def validate_upload_file(
 async def raw_storage_dependency(
     raw_storage: Annotated[RawStorage, Depends(lambda: fh_dependencies.get_raw_storage())],
 ) -> RawStorage:
+    """
+    DI-зависимость для RawStorage.
+
+    :param raw_storage: Экземпляр RawStorage, полученный из get_raw_storage().
+    :type raw_storage: RawStorage
+    :return: Тот же переданный экземпляр RawStorage.
+    :rtype: RawStorage
+    """
+
     return raw_storage
 
 
 async def vector_store_dependency(
     vector_store: Annotated[VectorStore, Depends(lambda: fh_dependencies.get_vector_store())],
 ) -> VectorStore:
+    """
+    DI-зависимость для VectorStore.
+
+    :param vector_store: Экземпляр VectorStore, полученный из get_vector_store().
+    :type vector_store: VectorStore
+    :return: Тот же переданный экземпляр VectorStore.
+    :rtype: VectorStore
+    """
+
     return vector_store
 
 
 async def metadata_repository_dependency(
     metadata_repository: Annotated[MetadataRepository, Depends(lambda: fh_dependencies.get_metadata_repository())],
 ) -> MetadataRepository:
+    """
+    DI-зависимость для MetadataRepository.
+
+    :param metadata_repository: Экземпляр MetadataRepository, полученный из get_metadata_repository().
+    :type metadata_repository: MetadataRepository
+    :return: Тот же переданный экземпляр MetadataRepository.
+    :rtype: MetadataRepository
+    """
+
     return metadata_repository
 
 
 async def document_processor_dependency(
     document_processor: Annotated[DocumentProcessor, Depends(lambda: fh_dependencies.get_document_processor())],
 ) -> DocumentProcessor:
+    """
+    DI-зависимость для DocumentProcessor.
+
+    :param document_processor: Экземпляр DocumentProcessor, полученный из get_document_processor().
+    :type document_processor: DocumentProcessor
+    :return: Тот же переданный экземпляр DocumentProcessor.
+    :rtype: DocumentProcessor
+    """
+
     return document_processor
 
 
 async def chat_service_dependency(
     chat_service: Annotated[ChatService, Depends(lambda: chat_dependencies.get_chat_service())],
 ):
+    """
+    DI-зависимость для ChatService.
+
+    :param chat_service: Экземпляр ChatService, полученный из get_chat_service().
+    :type chat_service: ChatService
+    :return: Тот же переданный экземпляр ChatService.
+    :rtype: ChatService
+    """
+
     return chat_service

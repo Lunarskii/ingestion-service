@@ -8,6 +8,7 @@ from domain.chat.schemas import (
 from domain.schemas import Vector
 from stubs import llm_stub
 from services import VectorStore
+from services.exc import VectorStoreDocumentsNotFound
 from config import logger
 
 
@@ -29,8 +30,9 @@ class ChatService:
         Обрабатывает запрос в чат с помощью RAG-логики.
             1. Векторизует вопрос.
             2. Запрашивает в хранилище векторов соответствующие вектора с фильтром по 'workspace_id'.
-            3. Генерирует ответ, используя LLM.
-            4. Формирует ответ.
+            3. Формирует контекст для LLM.
+            4. Генерирует ответ, используя LLM.
+            5. Формирует ответ.
         """
 
         context_logger = logger.bind(workspace_id=request.workspace_id)
@@ -67,6 +69,9 @@ class ChatService:
 
             context_logger.info("Получение ответа от LLM")
             answer: str = llm_stub.generate(prompt)
+        except VectorStoreDocumentsNotFound as e:
+            context_logger.error("Не удалось обработать запрос к чату", error_message=e.message)
+            raise VectorStoreDocumentsNotFound(e.message)
         except Exception as e:
             context_logger.error("Не удалось обработать запрос к чату", error_message=str(e))
         else:

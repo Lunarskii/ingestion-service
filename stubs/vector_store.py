@@ -14,7 +14,7 @@ from config import storage_settings
 
 class JSONVectorStore(VectorStore):
     """
-    Реализация VectorStore для локальной разработки.
+    Заглушка векторного хранилища для локальных тестов и разработки.
     """
 
     def __init__(
@@ -22,6 +22,15 @@ class JSONVectorStore(VectorStore):
         *,
         directory: str = storage_settings.index_path,
     ):
+        """
+        Проверяет, что `directory` является путем к директории (оканчивается слешем),
+        создает её при необходимости.
+
+        :param directory: Путь к папке, где будут храниться вектора.
+        :type directory: str
+        :raises ValueError: Если путь не заканчивается разделителем файловой системы.
+        """
+
         if not directory.endswith(os.path.sep):
             raise ValueError(f"Ожидалась директория, но было получено {directory}")
         self.directory: str = directory
@@ -29,7 +38,14 @@ class JSONVectorStore(VectorStore):
 
     def upsert(self, vectors: list[Vector]) -> None:
         """
-        Сохраняет векторы в JSON-файл, именованный workspace_id/document_id.json.
+        Сохраняет или обновляет список векторов.
+
+        Требует, чтобы в метаданных вектора были `document_id` и `workspace_id`.
+
+        :param vectors: Список векторов для индексации.
+        :type vectors: list[Vector]
+        :raises VectorStoreMissingData: Если список `vectors` пуст.
+        :raises VectorStoreMissingMetadata: Если отсутствует `document_id` или `workspace_id`.
         """
 
         if not vectors:
@@ -47,7 +63,20 @@ class JSONVectorStore(VectorStore):
             json.dump(data, file, ensure_ascii=False, indent=4)
 
     def search(self, vector: Vector, top_k: int, workspace_id: str) -> list[Vector]:
-        # TODO doc
+        """
+        Ищет ближайшие по косинусному сходству векторы в JSON-индексе.
+
+        :param vector: Вектор-запрос для поиска похожих чанков.
+        :type vector: Vector
+        :param top_k: Максимальное число возвращаемых результатов.
+        :type top_k: int
+        :param workspace_id: Идентификатор рабочего пространства.
+        :type workspace_id: str
+        :return: Список из не более `top_k` объектов `Vector`, упорядоченных по убыванию сходства.
+        :rtype: list[Vector]
+        :raises VectorStoreDocumentsNotFound: Если нет файлов в папке `workspace_id`.
+        """
+
         base_path: str = os.path.join(self.directory, f"{workspace_id}/")
         similarities: list[tuple[Vector, float]] = []
 
@@ -70,6 +99,13 @@ class JSONVectorStore(VectorStore):
     def _cosine_similarity(cls, vec1: list[float], vec2: list[float]) -> float:
         """
         Вычисляет косинусное сходство между двумя векторами.
+
+        :param vec1: Первый вектор значений.
+        :type vec1: list[float]
+        :param vec2: Второй вектор значений.
+        :type vec2: list[float]
+        :return: Значение сходства в диапазоне [0.0, 1.0].
+        :rtype: float
         """
 
         dot_product = sum(x * y for x, y in zip(vec1, vec2))

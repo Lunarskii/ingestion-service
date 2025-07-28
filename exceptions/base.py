@@ -5,7 +5,15 @@ from pydantic import BaseModel
 
 class ApplicationError(Exception):
     """
-    Общий базовый класс для всех исключений.
+    Базовый класс исключений для всех ошибок бизнес-логики приложения.
+
+    Содержит поля:
+      - message: читаемое сообщение об ошибке.
+      - error_code: машинно-ориентированный код ошибки.
+      - status_code: HTTP-статус для ответа.
+      - headers: дополнительные HTTP-заголовки.
+
+    При инициализации можно переопределить любое поле.
     """
 
     message: str = "Internal server error"
@@ -21,6 +29,15 @@ class ApplicationError(Exception):
         status_code: int | None = None,
         headers: dict[str, str] | None = None,
     ):
+        """
+        Инициализирует исключение с возможностью перегрузки параметров.
+
+        :param message: Текст сообщения ошибки.
+        :param error_code: Машинно-ориентированный код ошибки.
+        :param status_code: HTTP-статус для ответа.
+        :param headers: Дополнительные HTTP-заголовки.
+        """
+
         self.message = message or self.message
         self.error_code = error_code or self.error_code
         self.status_code = status_code or self.status_code
@@ -38,13 +55,25 @@ class ApplicationError(Exception):
 
 
 class ErrorResponse(BaseModel):
+    """
+    Структура JSON-ответа для ошибок.
+
+    Поля:
+      - msg: человекочитаемое сообщение.
+      - code: машинный код ошибки.
+    """
+
     msg: str
     code: str
 
 
 class UnexpectedErrorResponse(JSONResponse):
     """
-    Класс для всех непредвиденных, неизвестных ошибок.
+    Ответ при непредвиденной ошибке, не относящейся к ApplicationError.
+
+    Возвращает:
+      - HTTP 500 Internal Server Error
+      - JSON: {msg: "Internal Server Error", code: "unexpected_error"}
     """
 
     def __init__(self):

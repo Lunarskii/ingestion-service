@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import (datetime, timezone,)
 import os
 import uuid
 import json
@@ -209,6 +209,20 @@ class TestSQLiteMetadataRepository:
                 "raw_storage_path": "",
                 "file_size_bytes": 0,
                 "ingested_at": datetime(1111, 7, 8, 9, 10, 11),
+                "status": "FAILED",
+                "error_message": None,
+            },
+            {
+                "document_id": "id3",
+                "workspace_id": "ws3",
+                "document_type": "DOCX",
+                "detected_language": "ru",
+                "document_page_count": None,
+                "author": None,
+                "creation_date": datetime.now(timezone.utc),
+                "raw_storage_path": "",
+                "file_size_bytes": 0,
+                "ingested_at": datetime.now(timezone.utc),
                 "status": "FAILED",
                 "error_message": None,
             },

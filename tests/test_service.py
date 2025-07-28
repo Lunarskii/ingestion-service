@@ -3,6 +3,7 @@ import uuid
 
 import pytest
 from sentence_transformers import SentenceTransformer
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from domain.fhandler.service import DocumentProcessor
 from domain.chat.service import ChatService
@@ -41,21 +42,30 @@ def mock_metadata_repository(mocker):
 
 
 @pytest.fixture
+def mock_embedding_model(mocker):
+    return mocker.MagicMock(spec=SentenceTransformer)
+
+
+@pytest.fixture
+def mock_text_splitter(mocker):
+    return mocker.MagicMock(spec=RecursiveCharacterTextSplitter)
+
+
+@pytest.fixture
 def document_processor(
     mock_raw_storage: MagicMock,
     mock_vector_store: MagicMock,
     mock_metadata_repository: MagicMock,
+    mock_embedding_model: MagicMock,
+    mock_text_splitter: MagicMock,
 ) -> DocumentProcessor:
     return DocumentProcessor(
         raw_storage=mock_raw_storage,  # noqa
         vector_store=mock_vector_store,  # noqa
         metadata_repository=mock_metadata_repository,  # noqa
+        embedding_model=mock_embedding_model,  # noqa
+        text_splitter=mock_text_splitter,  # noqa
     )
-
-
-@pytest.fixture
-def mock_embedding_model(mocker):
-    return mocker.MagicMock(spec=SentenceTransformer)
 
 
 @pytest.fixture
@@ -70,6 +80,27 @@ def chat_service(
 
 
 class TestDocumentProcessor:
+    class DummyEmbeddingModel:
+        def __init__(self, vector: list[float]):
+            self._vector = vector
+
+        def encode(self, sentences, **kwargs):
+            class _Vector:
+                def __init__(self, values):
+                    self._values = values
+
+                def tolist(self) -> list:
+                    return self._values
+
+            return [_Vector(self._vector)]
+
+    class DummyTextSplitter:
+        def __init__(self, chunks: list[str]):
+            self.chunks = chunks
+
+        def split_text(self, text: str):
+            return self.chunks
+
     @pytest.mark.parametrize(
         "path, file_extension",
         [
@@ -79,7 +110,6 @@ class TestDocumentProcessor:
     )
     def test_process_success(
         self,
-        document_processor: DocumentProcessor,
         mock_raw_storage: MagicMock,
         mock_vector_store: MagicMock,
         mock_metadata_repository: MagicMock,
@@ -91,22 +121,44 @@ class TestDocumentProcessor:
         document_id: str = str(uuid.uuid4())
         workspace_id: str = str(uuid.uuid4())
 
+        vectors: list[float] = [0.1, 0.5, 1.0]
+        embedding_model = self.DummyEmbeddingModel(vectors)
+
+        chunks: list[str] = ["abcdef"]
+        text_splitter = self.DummyTextSplitter(chunks)
+
+        document_processor = DocumentProcessor(
+            raw_storage=mock_raw_storage,  # noqa
+            vector_store=mock_vector_store,  # noqa
+            metadata_repository=mock_metadata_repository,  # noqa
+            embedding_model=embedding_model,  # noqa
+            text_splitter=text_splitter,  # noqa
+        )
         document_processor.process(
             file_bytes=file_bytes,
             document_id=document_id,
             workspace_id=workspace_id,
         )
 
-        mock_raw_storage.save.assert_called_once_with(
-            file_bytes, f"{workspace_id}/{document_id}{file_extension}"
-        )
+        mock_raw_storage.save.assert_called_once_with(file_bytes, f"{workspace_id}/{document_id}{file_extension}")
 
-        mock_vector_store.upsert.assert_called_once()
+        mock_vector_store.upsert.assert_called_once_with(
+            [
+                Vector(
+                    id=f"{document_id}-0",
+                    values=vectors,
+                    metadata={
+                        "document_id": document_id,
+                        "workspace_id": workspace_id,
+                        "chunk_index": 0,
+                        "text": chunks[0],
+                    },
+                )
+            ]
+        )
         args, _ = mock_vector_store.upsert.call_args
         assert len(args[0]) > 0
-        assert isinstance(args[0], list) and all(
-            isinstance(vector, Vector) for vector in args[0]
-        )
+        assert isinstance(args[0], list) and all(isinstance(vector, Vector) for vector in args[0])
         assert args[0][0].metadata["document_id"] == document_id
 
         mock_metadata_repository.save.assert_called_once()
@@ -114,31 +166,28 @@ class TestDocumentProcessor:
         assert isinstance(args[0], DocumentMeta)
         assert args[0].document_id == document_id
 
-    def test_restricted_file_type(self):
-        ...
-
-
-class DummyEmbeddingModel:
-    def __init__(self, vector: list[float]):
-        self._vector = vector
-
-    def encode(self, sentences, **kwargs):
-        class _Vector:
-            def __init__(self, values):
-                self._values = values
-
-            def tolist(self) -> list:
-                return self._values
-
-        return _Vector(self._vector)
-
-
-class DummyVectorStore:
-    def __init__(self):
-        self.search = MagicMock()
+    def test_restricted_file_type(self): ...
 
 
 class TestChatService:
+    class DummyEmbeddingModel:
+        def __init__(self, vector: list[float]):
+            self._vector = vector
+
+        def encode(self, sentences, **kwargs):
+            class _Vector:
+                def __init__(self, values):
+                    self._values = values
+
+                def tolist(self) -> list:
+                    return self._values
+
+            return _Vector(self._vector)
+
+    class DummyVectorStore:
+        def __init__(self):
+            self.search = MagicMock()
+
     @pytest.mark.parametrize(
         "chat_request, retrieved_vectors, embedding, llm_answer, expected_response",
         [
@@ -209,9 +258,9 @@ class TestChatService:
         llm_answer: str,
         expected_response: ChatResponse,
     ):
-        dummy_vector_store = DummyVectorStore()
+        dummy_vector_store = self.DummyVectorStore()
         dummy_vector_store.search.return_value = retrieved_vectors
-        dummy_embedding_model = DummyEmbeddingModel(embedding)
+        dummy_embedding_model = self.DummyEmbeddingModel(embedding)
         mocker.patch("stubs.llm_stub.generate", return_value=llm_answer)
         service = ChatService(vector_store=dummy_vector_store, embedding_model=dummy_embedding_model)  # noqa
         response = service.ask(chat_request)
@@ -228,14 +277,13 @@ class TestChatService:
     @pytest.mark.parametrize(
         "chat_request, embedding",
         [
-            (ChatRequest(question="test", workspace_id="test-workspace", top_k=3),
-            [0.1, 0.11, 0.12, 0.13, 0.14]),
+            (ChatRequest(question="test", workspace_id="test-workspace", top_k=3), [0.1, 0.11, 0.12, 0.13, 0.14]),
         ],
     )
     def test_ask_raises_for_empty_workspace(self, chat_request, embedding):
         vector_store = JSONVectorStore()
-        dummy_embedding_model = DummyEmbeddingModel(embedding)
-        service = ChatService(vector_store=vector_store, embedding_model=dummy_embedding_model) # noqa
+        dummy_embedding_model = self.DummyEmbeddingModel(embedding)
+        service = ChatService(vector_store=vector_store, embedding_model=dummy_embedding_model)  # noqa
         with pytest.raises(VectorStoreDocumentsNotFound) as exc:
             service.ask(chat_request)
         assert_any_exception(VectorStoreDocumentsNotFound, exc)

@@ -1,4 +1,5 @@
 from typing import Any
+import os
 
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 import streamlit as st
@@ -9,8 +10,7 @@ from requests import (
 import requests
 
 
-# BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
-BACKEND_URL = "http://127.0.0.1:8000"  # TODO вынести в переменные окружения, будет приходить из docker-compose
+BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
 
 
 def upload_file(file: UploadedFile, workspace_id: str) -> Any:
@@ -44,7 +44,7 @@ def get_documents(workspace_id: str) -> Any:
         return response.json()
 
 
-def main():
+def main() -> None:
     workspace_id = st.session_state["workspace_id"]
     if not workspace_id:
         return

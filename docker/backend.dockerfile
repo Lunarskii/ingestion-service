@@ -13,7 +13,7 @@ WORKDIR /app
 
 COPY pyproject.toml ./
 RUN poetry config virtualenvs.in-project true && \
-    poetry install --no-root --only=backend --no-interaction --no-ansi
+    poetry install --no-root --only=main --no-interaction --no-ansi
 
 
 

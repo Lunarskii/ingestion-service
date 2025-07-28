@@ -32,7 +32,7 @@ async def upload_file(
     workspace_id: str,
 ) -> dict[str, Any]:
     """
-    Принимает документ для обработки, немедленно возвращает document_id и выполняет обработку в фоновом режиме.
+    Принимает документ для обработки, немедленно возвращает ID документа и выполняет обработку в фоновом режиме.
     """
 
     document_id = str(uuid.uuid4())
@@ -50,4 +50,8 @@ async def documents_list(
     metadata_repository: Annotated[MetadataRepository, Depends(metadata_repository_dependency)],
     workspace_id: str,
 ) -> list[DocumentMeta]:
+    """
+    Возвращает список метаданных документов в заданном пространстве.
+    """
+
     return metadata_repository.get(workspace_id)

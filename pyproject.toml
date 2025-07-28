@@ -20,6 +20,8 @@ langchain = "^0.3.26"
 python-magic = "^0.4.27"
 uvicorn = "^0.35.0"
 loguru = "^0.7.3"
+
+[tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"
 
 [tool.poetry.group.dev.dependencies]

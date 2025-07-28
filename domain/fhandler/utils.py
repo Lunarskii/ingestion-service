@@ -15,7 +15,6 @@ def parse_iso8824_date(text: str) -> datetime | None:
 
     :param text: Дата в строковом формате
     :type text: str
-
     :return: Дата в формате datetime
     :rtype: datetime
     """
@@ -69,7 +68,6 @@ def parse_date(text: str) -> datetime | None:
 
     :param text: Дата в строковом формате
     :type text: str
-
     :return: Дата в формате datetime
     :rtype: datetime
     """
@@ -104,7 +102,6 @@ def get_mime_type(file: bytes | str) -> str:
 
     :param file: Любой файл в виде байтов или строки.
     :type file: bytes | str
-
     :return: MIME-тип файла
     :rtype: str
     """
@@ -118,7 +115,6 @@ def get_file_extension(file: bytes | str) -> str:
 
     :param file: Любой файл в виде байтов или строки.
     :type file: bytes | str
-
     :return: Расширение файла в формате '.ext', например '.pdf' или '.docx'.
     :rtype: str
     """
