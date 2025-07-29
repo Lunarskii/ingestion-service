@@ -17,7 +17,9 @@ class RawStorageInvalidPath(RawStorageSaveError):
 
 
 class VectorStoreDocumentsNotFound(VectorStoreError):
-    message = "'workspace_id' отсутствует или в этом рабочем пространстве нет документов"
+    message = (
+        "'workspace_id' отсутствует или в этом рабочем пространстве нет документов"
+    )
     error_code = "documents_not_found"
     status_code = status.HTTP_404_NOT_FOUND
 

@@ -39,7 +39,9 @@ class ChatService:
 
         try:
             context_logger.info("Векторизация вопроса")
-            question_vector: list[float] = self.embedding_model.encode(request.question).tolist()
+            question_vector: list[float] = self.embedding_model.encode(
+                request.question
+            ).tolist()
 
             context_logger.info("Поиск top_k чанков в VectorStore", top_k=request.top_k)
             retrieved_vectors: list[Vector] = self.vector_store.search(
@@ -70,10 +72,14 @@ class ChatService:
             context_logger.info("Получение ответа от LLM")
             answer: str = llm_stub.generate(prompt)
         except VectorStoreDocumentsNotFound as e:
-            context_logger.error("Не удалось обработать запрос к чату", error_message=e.message)
+            context_logger.error(
+                "Не удалось обработать запрос к чату", error_message=e.message
+            )
             raise VectorStoreDocumentsNotFound(e.message)
         except Exception as e:
-            context_logger.error("Не удалось обработать запрос к чату", error_message=str(e))
+            context_logger.error(
+                "Не удалось обработать запрос к чату", error_message=str(e)
+            )
         else:
             return ChatResponse(
                 answer=answer,

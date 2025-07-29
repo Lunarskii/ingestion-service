@@ -28,7 +28,9 @@ router = APIRouter(prefix="/documents")
 async def upload_file(
     file_bytes: Annotated[bytes, Depends(validate_upload_file)],
     bg_tasks: BackgroundTasks,
-    document_processor: Annotated[DocumentProcessor, Depends(document_processor_dependency)],
+    document_processor: Annotated[
+        DocumentProcessor, Depends(document_processor_dependency)
+    ],
     workspace_id: str,
 ) -> dict[str, Any]:
     """
@@ -47,7 +49,9 @@ async def upload_file(
 
 @router.get("/")
 async def documents_list(
-    metadata_repository: Annotated[MetadataRepository, Depends(metadata_repository_dependency)],
+    metadata_repository: Annotated[
+        MetadataRepository, Depends(metadata_repository_dependency)
+    ],
     workspace_id: str,
 ) -> list[DocumentMeta]:
     """

@@ -24,11 +24,17 @@ def upload_file(file: UploadedFile, workspace_id: str) -> Any:
             timeout=5,
         )
         response.raise_for_status()
-    except HTTPError as e:
-        st.error(f"Ошибка загрузки: {e!r}")
+    except HTTPError:
+        response_json = response.json()
+        st.error(
+            f"Произошла ошибка при загрузке файла: {response_json['msg']}; "
+            f"Код ошибки: '{response_json['code']}'"
+        )
     else:
         response_json = response.json()
-        st.success(f"Документ успешно принят в обработку! ID документа: {response_json.get('document_id')}")
+        st.success(
+            f"Документ успешно принят в обработку! ID документа: {response_json.get('document_id')}"
+        )
         return response_json
 
 
@@ -52,9 +58,10 @@ def main() -> None:
         return
 
     with st.sidebar:
+
         def on_change_uploaded_file():
-            if file := st.session_state['uploaded_file']:
-                with st.spinner(f"Добавление документа в очередь на обработку..."):
+            if file := st.session_state["uploaded_file"]:
+                with st.spinner("Добавление документа в очередь на обработку..."):
                     _: Any = upload_file(file, workspace_id)
 
         st.header("Файлы")
@@ -65,9 +72,14 @@ def main() -> None:
             on_change=on_change_uploaded_file,
         )
 
-    st.header(f"Документы", divider=True)
+    st.header("Документы", divider=True)
     if docs := get_documents(workspace_id):
-        st.dataframe(docs, use_container_width=True, hide_index=True, column_config={"workspace_id": None})
+        st.dataframe(
+            docs,
+            use_container_width=True,
+            hide_index=True,
+            column_config={"workspace_id": None},
+        )
     else:
         st.text("В этом пространстве пока нет документов.")
     if st.button("Обновить"):

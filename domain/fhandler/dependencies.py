@@ -41,7 +41,9 @@ def get_raw_storage(settings: StorageSettings = storage_settings) -> RawStorage:
 
     if settings.raw_storage_path:
         return FileRawStorage()
-    raise ValueError("Переменная окружения 'RAW_STORAGE_PATH' не установлена или установлена неверно.")
+    raise ValueError(
+        "Переменная окружения 'RAW_STORAGE_PATH' не установлена или установлена неверно."
+    )
 
 
 @lru_cache
@@ -61,11 +63,15 @@ def get_vector_store(settings: StorageSettings = storage_settings) -> VectorStor
 
     if settings.index_path:
         return JSONVectorStore()
-    raise ValueError("Переменная окружения 'INDEX_PATH' не установлена или установлена неверно.")
+    raise ValueError(
+        "Переменная окружения 'INDEX_PATH' не установлена или установлена неверно."
+    )
 
 
 @lru_cache
-def get_metadata_repository(settings: StorageSettings = storage_settings) -> MetadataRepository:
+def get_metadata_repository(
+    settings: StorageSettings = storage_settings,
+) -> MetadataRepository:
     """
     Инициализирует и кэширует реализацию MetadataRepository.
 
@@ -81,11 +87,15 @@ def get_metadata_repository(settings: StorageSettings = storage_settings) -> Met
 
     if settings.sqlite_url:
         return SQLiteMetadataRepository()
-    raise ValueError("Переменная окружения 'SQLITE_URL' не установлена или установлена неверно.")
+    raise ValueError(
+        "Переменная окружения 'SQLITE_URL' не установлена или установлена неверно."
+    )
 
 
 @lru_cache
-def get_embedding_model(settings: EmbeddingSettings = embedding_settings) -> SentenceTransformer:
+def get_embedding_model(
+    settings: EmbeddingSettings = embedding_settings,
+) -> SentenceTransformer:
     """
     Инициализирует и кэширует модель SentenceTransformer для создания эмбеддингов.
 
@@ -103,11 +113,15 @@ def get_embedding_model(settings: EmbeddingSettings = embedding_settings) -> Sen
             cache_folder=settings.cache_folder,
             token=settings.token,
         )
-    raise ValueError("Переменная окружения 'EMBEDDING_MODEL_NAME' не установлена или установлена неверно.")
+    raise ValueError(
+        "Переменная окружения 'EMBEDDING_MODEL_NAME' не установлена или установлена неверно."
+    )
 
 
 @lru_cache
-def get_text_splitter(settings: TextSplitterSettings = text_splitter_settings) -> RecursiveCharacterTextSplitter:
+def get_text_splitter(
+    settings: TextSplitterSettings = text_splitter_settings,
+) -> RecursiveCharacterTextSplitter:
     """
     Инициализирует и кэширует текстовый разделитель для разбиения текста на чанки.
 

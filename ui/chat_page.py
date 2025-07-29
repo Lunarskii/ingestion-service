@@ -18,11 +18,15 @@ def ask_question(question: str, workspace_id: str) -> Any:
     try:
         response: Response = requests.post(
             f"{BACKEND_URL}/v1/chat/ask",
-            json={"question": question, "workspace_id": workspace_id, "top_k": 3},  # TODO откуда получить top_k?
+            json={
+                "question": question,
+                "workspace_id": workspace_id,
+                "top_k": 3,
+            },  # TODO откуда получить top_k?
             timeout=5,
         )
         response.raise_for_status()
-    except HTTPError as e:
+    except HTTPError:
         response_json = response.json()
         st.error(
             f"Произошла ошибка при обработке вашего запроса: {response_json['msg']}; "
@@ -48,7 +52,9 @@ def main() -> None:
             if "sources" in message:
                 with st.expander("Источники"):
                     for source in message["sources"]:
-                        st.info(f"**Фрагмент (ID: {source['chunk_id']}):**\n\n{source['snippet']}")
+                        st.info(
+                            f"**Фрагмент (ID: {source['chunk_id']}):**\n\n{source['snippet']}"
+                        )
 
     if prompt := st.chat_input("Спросите что-нибудь"):
         st.chat_message("user").text(prompt)
@@ -64,7 +70,9 @@ def main() -> None:
                     st.text(answer)
                     with st.expander("Источники ответа"):
                         for source in sources:
-                            st.info(f"**Chunk (ID: {source['chunk_id']}):**\n\n{source['snippet']}")
+                            st.info(
+                                f"**Chunk (ID: {source['chunk_id']}):**\n\n{source['snippet']}"
+                            )
 
                     st.session_state[workspace_messages].append(
                         {"role": "assistant", "content": answer, "sources": sources}

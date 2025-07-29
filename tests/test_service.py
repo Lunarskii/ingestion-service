@@ -1,82 +1,20 @@
 from unittest.mock import MagicMock
-import uuid
 
 import pytest
-from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from domain.fhandler.service import DocumentProcessor
 from domain.chat.service import ChatService
 from domain.chat.schemas import (
     ChatRequest,
-    Source,
     ChatResponse,
 )
 from domain.schemas import (
     Vector,
     DocumentMeta,
 )
-from services import (
-    RawStorage,
-    VectorStore,
-    MetadataRepository,
-)
 from services.exc import VectorStoreDocumentsNotFound
 from stubs import JSONVectorStore
 from tests.conftest import assert_any_exception
-
-
-@pytest.fixture
-def mock_raw_storage(mocker):
-    return mocker.MagicMock(spec=RawStorage)
-
-
-@pytest.fixture
-def mock_vector_store(mocker):
-    return mocker.MagicMock(spec=VectorStore)
-
-
-@pytest.fixture
-def mock_metadata_repository(mocker):
-    return mocker.MagicMock(spec=MetadataRepository)
-
-
-@pytest.fixture
-def mock_embedding_model(mocker):
-    return mocker.MagicMock(spec=SentenceTransformer)
-
-
-@pytest.fixture
-def mock_text_splitter(mocker):
-    return mocker.MagicMock(spec=RecursiveCharacterTextSplitter)
-
-
-@pytest.fixture
-def document_processor(
-    mock_raw_storage: MagicMock,
-    mock_vector_store: MagicMock,
-    mock_metadata_repository: MagicMock,
-    mock_embedding_model: MagicMock,
-    mock_text_splitter: MagicMock,
-) -> DocumentProcessor:
-    return DocumentProcessor(
-        raw_storage=mock_raw_storage,  # noqa
-        vector_store=mock_vector_store,  # noqa
-        metadata_repository=mock_metadata_repository,  # noqa
-        embedding_model=mock_embedding_model,  # noqa
-        text_splitter=mock_text_splitter,  # noqa
-    )
-
-
-@pytest.fixture
-def chat_service(
-    mock_vector_store: MagicMock,
-    mock_embedding_model: MagicMock,
-) -> ChatService:
-    return ChatService(
-        vector_store=mock_vector_store,  # noqa
-        embedding_model=mock_embedding_model,  # noqa
-    )
 
 
 class TestDocumentProcessor:
@@ -84,6 +22,7 @@ class TestDocumentProcessor:
         def __init__(self, vector: list[float]):
             self._vector = vector
 
+        # TODO сделать overload для возврата и [_Vector()] и _Vector()
         def encode(self, sentences, **kwargs):
             class _Vector:
                 def __init__(self, values):
@@ -101,25 +40,18 @@ class TestDocumentProcessor:
         def split_text(self, text: str):
             return self.chunks
 
-    @pytest.mark.parametrize(
-        "path, file_extension",
-        [
-            ("tests/resources/1mb.docx", ".docx"),
-            ("tests/resources/1mb.pdf", ".pdf"),
-        ],
-    )
     def test_process_success(
         self,
         mock_raw_storage: MagicMock,
         mock_vector_store: MagicMock,
         mock_metadata_repository: MagicMock,
-        path: str,
-        file_extension: str,
+        random_document_id: str,
+        random_workspace_id: str,
+        tmp_document,
     ):
+        path, file_extension = tmp_document()
         with open(path, "rb") as file:
             file_bytes: bytes = file.read()
-        document_id: str = str(uuid.uuid4())
-        workspace_id: str = str(uuid.uuid4())
 
         vectors: list[float] = [0.1, 0.5, 1.0]
         embedding_model = self.DummyEmbeddingModel(vectors)
@@ -136,20 +68,22 @@ class TestDocumentProcessor:
         )
         document_processor.process(
             file_bytes=file_bytes,
-            document_id=document_id,
-            workspace_id=workspace_id,
+            document_id=random_document_id,
+            workspace_id=random_workspace_id,
         )
 
-        mock_raw_storage.save.assert_called_once_with(file_bytes, f"{workspace_id}/{document_id}{file_extension}")
+        mock_raw_storage.save.assert_called_once_with(
+            file_bytes, f"{random_workspace_id}/{random_document_id}{file_extension}"
+        )
 
         mock_vector_store.upsert.assert_called_once_with(
             [
                 Vector(
-                    id=f"{document_id}-0",
+                    id=f"{random_document_id}-0",
                     values=vectors,
                     metadata={
-                        "document_id": document_id,
-                        "workspace_id": workspace_id,
+                        "document_id": random_document_id,
+                        "workspace_id": random_workspace_id,
                         "chunk_index": 0,
                         "text": chunks[0],
                     },
@@ -158,13 +92,15 @@ class TestDocumentProcessor:
         )
         args, _ = mock_vector_store.upsert.call_args
         assert len(args[0]) > 0
-        assert isinstance(args[0], list) and all(isinstance(vector, Vector) for vector in args[0])
-        assert args[0][0].metadata["document_id"] == document_id
+        assert isinstance(args[0], list) and all(
+            isinstance(vector, Vector) for vector in args[0]
+        )
+        assert args[0][0].metadata["document_id"] == random_document_id
 
         mock_metadata_repository.save.assert_called_once()
         args, _ = mock_metadata_repository.save.call_args
         assert isinstance(args[0], DocumentMeta)
-        assert args[0].document_id == document_id
+        assert args[0].document_id == random_document_id
 
     def test_restricted_file_type(self): ...
 
@@ -225,11 +161,31 @@ class TestChatService:
                 ChatResponse(
                     answer="fake llm answer",
                     sources=[
-                        {"document_id": "doc1", "chunk_id": "chunk-1", "snippet": "snippet1"},
-                        {"document_id": "doc2", "chunk_id": "chunk-2", "snippet": "snippet2"},
-                        {"document_id": "doc3", "chunk_id": "chunk-3", "snippet": "snippet3"},
-                        {"document_id": "doc4", "chunk_id": "chunk-4", "snippet": "snippet4"},
-                        {"document_id": "doc5", "chunk_id": "chunk-5", "snippet": "snippet5"},
+                        {
+                            "document_id": "doc1",
+                            "chunk_id": "chunk-1",
+                            "snippet": "snippet1",
+                        },
+                        {
+                            "document_id": "doc2",
+                            "chunk_id": "chunk-2",
+                            "snippet": "snippet2",
+                        },
+                        {
+                            "document_id": "doc3",
+                            "chunk_id": "chunk-3",
+                            "snippet": "snippet3",
+                        },
+                        {
+                            "document_id": "doc4",
+                            "chunk_id": "chunk-4",
+                            "snippet": "snippet4",
+                        },
+                        {
+                            "document_id": "doc5",
+                            "chunk_id": "chunk-5",
+                            "snippet": "snippet5",
+                        },
                     ],
                 ),
             ),
@@ -243,7 +199,11 @@ class TestChatService:
                 ChatResponse(
                     answer="fake llm answer",
                     sources=[
-                        {"document_id": "unknown", "chunk_id": "chunk-1", "snippet": ""},
+                        {
+                            "document_id": "unknown",
+                            "chunk_id": "chunk-1",
+                            "snippet": "",
+                        },
                     ],
                 ),
             ),
@@ -262,7 +222,9 @@ class TestChatService:
         dummy_vector_store.search.return_value = retrieved_vectors
         dummy_embedding_model = self.DummyEmbeddingModel(embedding)
         mocker.patch("stubs.llm_stub.generate", return_value=llm_answer)
-        service = ChatService(vector_store=dummy_vector_store, embedding_model=dummy_embedding_model)  # noqa
+        service = ChatService(
+            vector_store=dummy_vector_store, embedding_model=dummy_embedding_model
+        )  # noqa
         response = service.ask(chat_request)
 
         assert isinstance(response, ChatResponse)
@@ -277,13 +239,18 @@ class TestChatService:
     @pytest.mark.parametrize(
         "chat_request, embedding",
         [
-            (ChatRequest(question="test", workspace_id="test-workspace", top_k=3), [0.1, 0.11, 0.12, 0.13, 0.14]),
+            (
+                ChatRequest(question="test", workspace_id="test-workspace", top_k=3),
+                [0.1, 0.11, 0.12, 0.13, 0.14],
+            ),
         ],
     )
     def test_ask_raises_for_empty_workspace(self, chat_request, embedding):
         vector_store = JSONVectorStore()
         dummy_embedding_model = self.DummyEmbeddingModel(embedding)
-        service = ChatService(vector_store=vector_store, embedding_model=dummy_embedding_model)  # noqa
+        service = ChatService(
+            vector_store=vector_store, embedding_model=dummy_embedding_model
+        )  # noqa
         with pytest.raises(VectorStoreDocumentsNotFound) as exc:
             service.ask(chat_request)
         assert_any_exception(VectorStoreDocumentsNotFound, exc)

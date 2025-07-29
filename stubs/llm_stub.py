@@ -11,4 +11,6 @@ def generate(prompt: str) -> str:
     :rtype: str
     """
 
-    return f"Имитация ответа LLM.\n\n[Получен следующий промпт для обработки]:\n{prompt}"
+    return (
+        f"Имитация ответа LLM.\n\n[Получен следующий промпт для обработки]:\n{prompt}"
+    )

@@ -12,9 +12,13 @@ class EmbeddingSettings(BaseSettings):
     Настройки Embedding модели.
     """
 
-    model_name: Annotated[str, Field(alias="EMBEDDING_MODEL_NAME")] = "sentence-transformers/all-MiniLM-L6-v2"
+    model_name: Annotated[str, Field(alias="EMBEDDING_MODEL_NAME")] = (
+        "sentence-transformers/all-MiniLM-L6-v2"
+    )
     device: Annotated[str | None, Field(alias="EMBEDDING_MODEL_DEVICE")] = None
-    cache_folder: Annotated[str | None, Field(alias="EMBEDDING_MODEL_CACHE_FOLDER")] = None
+    cache_folder: Annotated[str | None, Field(alias="EMBEDDING_MODEL_CACHE_FOLDER")] = (
+        None
+    )
     token: Annotated[bool | str | None, Field(alias="EMBEDDING_MODEL_TOKEN")] = None
 
     model_config = SettingsConfigDict(

@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock
 from typing import Any
-import uuid
 
 from fastapi.testclient import TestClient
 from fastapi import (
@@ -29,15 +28,14 @@ client = TestClient(app)
 
 
 class TestDocumentsAPI:
-    def test_upload_file_success(self):
-        mock_processor.process.reset_mock()
-
-        with open("tests/resources/1mb.docx", "rb") as file:
+    def test_upload_file_success(self, tmp_document, random_workspace_id):
+        path, file_extension = tmp_document()
+        with open(path, "rb") as file:
             file_bytes: bytes = file.read()
-        filename: str = "test.pdf"
-        workspace_id: str = str(uuid.uuid4())
+
+        filename: str = f"test{file_extension}"
         files: dict = {"file": (filename, file_bytes, "application/pdf")}
-        params: dict = {"workspace_id": workspace_id}
+        params: dict = {"workspace_id": random_workspace_id}
 
         response = client.post("/v1/documents/upload", files=files, params=params)
 
@@ -48,14 +46,37 @@ class TestDocumentsAPI:
         mock_processor.process.assert_called_once()
         call_args = mock_processor.process.call_args.kwargs
         assert call_args["document_id"] == json_response["document_id"]
-        assert call_args["workspace_id"] == workspace_id
+        assert call_args["workspace_id"] == random_workspace_id
         assert call_args["file_bytes"] == file_bytes
 
-    def test_upload_file_restricted_type(self):
-        ...
+    def test_upload_file_restricted_type(self, random_workspace_id):
+        file_bytes: bytes = b"some dummy file content"
+        filename: str = "test.pdf"
+        files: dict = {"file": (filename, file_bytes, "application/pdf")}
+        params: dict = {"workspace_id": random_workspace_id}
 
-    def test_upload_file_too_large(self):
-        ...
+        response = client.post("/v1/documents/upload", files=files, params=params)
+
+        assert response.status_code == 415
+        json_response = response.json()
+        assert "code" in json_response
+        assert "msg" in json_response
+
+    def test_upload_file_too_large(self, tmp_document, random_workspace_id):
+        path, file_extension = tmp_document(30_000_000)
+        with open(path, "rb") as file:
+            file_bytes: bytes = file.read()
+
+        filename: str = f"test{file_extension}"
+        files: dict = {"file": (filename, file_bytes, "application/pdf")}
+        params: dict = {"workspace_id": random_workspace_id}
+
+        response = client.post("/v1/documents/upload", files=files, params=params)
+
+        assert response.status_code == 413
+        json_response = response.json()
+        assert "code" in json_response
+        assert "msg" in json_response
 
 
 class TestChatAPI:
@@ -63,7 +84,11 @@ class TestChatAPI:
         "payload, chat_response, expected_status_code",
         [
             (
-                {"question": "Hello, world!", "workspace_id": "test-workspace", "top_k": 1},
+                {
+                    "question": "Hello, world!",
+                    "workspace_id": "test-workspace",
+                    "top_k": 1,
+                },
                 ChatResponse(
                     answer="fake llm answer",
                     sources=[],

@@ -111,7 +111,11 @@ class DocumentProcessor:
             )
             extractor: TextExtractor = ExtractorFactory().get_extractor(file_extension)
             document_info: ExtractedInfo = extractor.extract(file)
-            metadata_kwargs.update(document_info.model_dump(include={"document_page_count", "author", "creation_date"}))
+            metadata_kwargs.update(
+                document_info.model_dump(
+                    include={"document_page_count", "author", "creation_date"}
+                )
+            )
 
             context_logger.info("Определение основного языка документа")
             metadata_kwargs["detected_language"] = langdetect.detect(document_info.text)
@@ -120,13 +124,17 @@ class DocumentProcessor:
             chunks: list[str] = self.text_splitter.split_text(document_info.text)
 
             context_logger.info("Создание эмбеддингов для каждого чанка, векторизация")
-            vectors: list[Vector] = self._vectorize_chunks(chunks, document_id, workspace_id)
+            vectors: list[Vector] = self._vectorize_chunks(
+                chunks, document_id, workspace_id
+            )
 
             context_logger.info("Сохранение векторов")
             self.vector_store.upsert(vectors)
         except Exception as e:
             error_message: str = str(e)
-            context_logger.error("Не удалось обработать документ", error_message=error_message)
+            context_logger.error(
+                "Не удалось обработать документ", error_message=error_message
+            )
             metadata_kwargs["error_message"] = error_message
             metadata_kwargs["status"] = DocumentStatus.failed
 
@@ -134,9 +142,13 @@ class DocumentProcessor:
             context_logger.info("Сохранение метаданных документа")
             self.metadata_repository.save(DocumentMeta(**metadata_kwargs))
         except Exception as e:
-            context_logger.error("Не удалось сохранить метаданные документа", error_message=str(e))
+            context_logger.error(
+                "Не удалось сохранить метаданные документа", error_message=str(e)
+            )
 
-    def _vectorize_chunks(self, chunks: list[str], document_id: str, workspace_id: str) -> list[Vector]:
+    def _vectorize_chunks(
+        self, chunks: list[str], document_id: str, workspace_id: str
+    ) -> list[Vector]:
         embeddings = self.embedding_model.encode(chunks, show_progress_bar=False)
         return [
             Vector(

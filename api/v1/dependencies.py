@@ -1,5 +1,4 @@
 from typing import Annotated
-from pathlib import Path
 
 from fastapi import (
     Depends,
@@ -10,6 +9,7 @@ from api.v1.exc import (
     UnsupportedFileTypeError,
     FileTooLargeError,
 )
+from domain.fhandler.utils import get_file_extension
 from domain.fhandler.service import DocumentProcessor
 import domain.fhandler.dependencies as fh_dependencies
 from domain.chat.service import ChatService
@@ -27,7 +27,9 @@ from config import (
 
 async def validate_upload_file(
     file: UploadFile,
-    settings: Annotated[DocumentRestrictionSettings, Depends(lambda: document_restriction_settings)],
+    settings: Annotated[
+        DocumentRestrictionSettings, Depends(lambda: document_restriction_settings)
+    ],
 ) -> bytes:
     """
     Валидирует загружаемый файл по расширению и размеру.
@@ -42,11 +44,12 @@ async def validate_upload_file(
     :raises FileTooLargeError: Если размер файла превышает максимально допустимый.
     """
 
-    ext: str = Path(file.filename or "").suffix.lower()
+    ext: str = get_file_extension(await file.read(8192))
     if ext not in settings.allowed_extensions:
         raise UnsupportedFileTypeError(
             f"Неподдерживаемый формат {ext!r}. Поддерживаются: {settings.allowed_extensions}"
         )
+    await file.seek(0)
 
     max_upload_bytes: int = settings.max_upload_mb * 1024 * 1024
     size: int = 0
@@ -56,14 +59,18 @@ async def validate_upload_file(
     while chunk := await file.read(chunk_size):
         size += len(chunk)
         if size > max_upload_bytes:
-            raise FileTooLargeError(f"Размер файла превышает максимально допустимый размер {settings.max_upload_mb}MB")
+            raise FileTooLargeError(
+                f"Размер файла превышает максимально допустимый размер {settings.max_upload_mb}MB"
+            )
         chunks.append(chunk)
 
     return b"".join(chunks)
 
 
 async def raw_storage_dependency(
-    raw_storage: Annotated[RawStorage, Depends(lambda: fh_dependencies.get_raw_storage())],
+    raw_storage: Annotated[
+        RawStorage, Depends(lambda: fh_dependencies.get_raw_storage())
+    ],
 ) -> RawStorage:
     """
     DI-зависимость для RawStorage.
@@ -78,7 +85,9 @@ async def raw_storage_dependency(
 
 
 async def vector_store_dependency(
-    vector_store: Annotated[VectorStore, Depends(lambda: fh_dependencies.get_vector_store())],
+    vector_store: Annotated[
+        VectorStore, Depends(lambda: fh_dependencies.get_vector_store())
+    ],
 ) -> VectorStore:
     """
     DI-зависимость для VectorStore.
@@ -93,7 +102,9 @@ async def vector_store_dependency(
 
 
 async def metadata_repository_dependency(
-    metadata_repository: Annotated[MetadataRepository, Depends(lambda: fh_dependencies.get_metadata_repository())],
+    metadata_repository: Annotated[
+        MetadataRepository, Depends(lambda: fh_dependencies.get_metadata_repository())
+    ],
 ) -> MetadataRepository:
     """
     DI-зависимость для MetadataRepository.
@@ -108,7 +119,9 @@ async def metadata_repository_dependency(
 
 
 async def document_processor_dependency(
-    document_processor: Annotated[DocumentProcessor, Depends(lambda: fh_dependencies.get_document_processor())],
+    document_processor: Annotated[
+        DocumentProcessor, Depends(lambda: fh_dependencies.get_document_processor())
+    ],
 ) -> DocumentProcessor:
     """
     DI-зависимость для DocumentProcessor.
@@ -123,7 +136,9 @@ async def document_processor_dependency(
 
 
 async def chat_service_dependency(
-    chat_service: Annotated[ChatService, Depends(lambda: chat_dependencies.get_chat_service())],
+    chat_service: Annotated[
+        ChatService, Depends(lambda: chat_dependencies.get_chat_service())
+    ],
 ):
     """
     DI-зависимость для ChatService.

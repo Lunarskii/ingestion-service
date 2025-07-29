@@ -56,7 +56,9 @@ class JSONVectorStore(VectorStore):
         if not (document_id and workspace_id):
             raise VectorStoreMissingMetadata()
 
-        full_path: str = os.path.join(self.directory, f"{workspace_id}/{document_id}.json")
+        full_path: str = os.path.join(
+            self.directory, f"{workspace_id}/{document_id}.json"
+        )
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         data = [vector.model_dump() for vector in vectors]
         with open(full_path, "w") as file:
@@ -90,7 +92,12 @@ class JSONVectorStore(VectorStore):
                     data: dict = json.load(file)
                     for vec_data in data:
                         file_vec = Vector(**vec_data)
-                        similarities.append((file_vec, self._cosine_similarity(file_vec.values, vector.values)))
+                        similarities.append(
+                            (
+                                file_vec,
+                                self._cosine_similarity(file_vec.values, vector.values),
+                            )
+                        )
 
         similarities.sort(key=lambda x: x[1], reverse=True)
         return [vec for vec, _ in similarities[:top_k]]

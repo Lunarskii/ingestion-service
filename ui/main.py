@@ -12,7 +12,9 @@ def main() -> None:
 
         def on_change_workspace_id():
             if not st.session_state["workspace_id"]:
-                workspace_form_container.error("Поле с Workspace ID не может быть пустым")
+                workspace_form_container.error(
+                    "Поле с Workspace ID не может быть пустым"
+                )
 
         workspace_form_container.header("Управление")
         workspace_form_container.text_input(
