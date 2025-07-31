@@ -21,6 +21,9 @@ langchain = "^0.3.26"
 python-magic = "^0.4.27"
 uvicorn = "^0.35.0"
 loguru = "^0.7.3"
+alembic = "^1.16.4"
+asyncpg = "^0.30.0"
+sqlalchemy = "^2.0.42"
 
 [tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"
@@ -36,3 +39,21 @@ reportlab = "^4.4.3"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.alembic]
+script_location = "%(here)s/alembic"
+prepend_sys_path = [
+    "."
+]
+
+[[tool.alembic.post_write_hooks]]
+name = "black"
+type = "console_scripts"
+entrypoint = "black"
+options = "-l 120 REVISION_SCRIPT_FILENAME"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff"
+type = "module"
+module = "ruff"
+options = "check --fix REVISION_SCRIPT_FILENAME"

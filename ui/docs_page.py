@@ -53,7 +53,7 @@ def get_documents(workspace_id: str) -> Any:
 
 
 def main() -> None:
-    workspace_id = st.session_state["workspace_id"]
+    workspace_id: str = st.session_state["workspace_id"]
     if not workspace_id:
         return
 

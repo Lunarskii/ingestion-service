@@ -24,23 +24,24 @@ from domain.schemas import Vector
 
 class ValueGenerator:
     @classmethod
-    def generate_float_list(
+    def float_list(
         cls,
-        float_range: tuple[int, int],
-        n: int | None = None,
+        min_f: int = 0,
+        max_f: int = 1,
+        n_values: int | None = None,
         exclude: set[float] | None = None,
     ) -> list[float]:
         if exclude is None:
             exclude = {}
-        n = n or 10
+        n_values = n_values or 10
         floats: list[float] = []
 
         def random_float():
             return (
-                random.randrange(float_range[0], float_range[1] + 1) * random.random()
+                random.randrange(min_f, max_f + 1) * random.random()
             )
 
-        for _ in range(n):
+        for _ in range(n_values):
             while (value := random_float()) in exclude:
                 pass
             floats.append(value)
@@ -48,11 +49,11 @@ class ValueGenerator:
         return floats
 
     @classmethod
-    def word(cls, n: int = 10):
+    def word(cls, n: int = 10) -> str:
         return "".join(random.choices(string.ascii_letters, k=n))
 
     @classmethod
-    def text(cls, n: int = 10):
+    def text(cls, n: int = 10) -> str:
         return "".join(
             random.choices(
                 string.ascii_letters + string.digits + string.punctuation + " ", k=n
@@ -70,7 +71,7 @@ class ValueGenerator:
         return str(uuid.uuid4())
 
     @classmethod
-    def path(cls, sub_directories: int = 0):
+    def path(cls, sub_directories: int = 0) -> str:
         return f"{'/'.join([cls.word() for _ in range(sub_directories + 1)])}/"
 
     @classmethod
@@ -89,13 +90,21 @@ class ValueGenerator:
         if chunk_index:
             metadata["chunk_index"] = cls.integer()
         return Vector(
-            values=cls.generate_float_list((-1, 1), n_values, {0}),
+            values=cls.float_list(-1, 1, n_values, {0}),
             metadata=metadata,
         )
 
     @classmethod
-    def vectors(cls, n_vectors: int = 10, n_values: int = 384):
+    def vectors(cls, n_vectors: int = 10, n_values: int = 384) -> list[Vector]:
         return [cls.vector(n_values) for _ in range(n_vectors)]
+
+    @classmethod
+    def float_vector(cls, n_values: int = 384) -> list[float]:
+        return cls.float_list(-1, 1, n_values, {0})
+
+    @classmethod
+    def chunks(cls, n_values: int) -> list[str]:
+        return [cls.word() for _ in range(n_values)]
 
     @classmethod
     def pdf(
@@ -164,7 +173,7 @@ class ValueGenerator:
 
 
 @pytest.fixture
-def tmp_document(tmp_path):
+def tmp_document(tmp_path) -> Any:
     _map: dict[int, tuple] = {
         0: (ValueGenerator.pdf, ".pdf"),
         1: (ValueGenerator.docx, ".docx"),
@@ -179,7 +188,7 @@ def tmp_document(tmp_path):
     return _make
 
 
-def assert_any_exception(exctype, excinfo):
+def assert_any_exception(exctype, excinfo) -> None:
     assert excinfo.type is exctype
     assert excinfo.value.message == exctype.message
     assert excinfo.value.error_code == exctype.error_code
@@ -187,38 +196,38 @@ def assert_any_exception(exctype, excinfo):
 
 
 @pytest.fixture
-def random_document_id() -> str:
+def document_id() -> str:
     return ValueGenerator.uuid()
 
 
 @pytest.fixture
-def random_workspace_id() -> str:
+def workspace_id() -> str:
     return ValueGenerator.uuid()
 
 
 @pytest.fixture
-def mock_raw_storage(mocker):
-    return mocker.MagicMock(spec=RawStorage)
+def mock_raw_storage(mocker) -> MagicMock:
+    return mocker.create_autospec(RawStorage, instance=True)
 
 
 @pytest.fixture
-def mock_vector_store(mocker):
-    return mocker.MagicMock(spec=VectorStore)
+def mock_vector_store(mocker) -> MagicMock:
+    return mocker.create_autospec(VectorStore, instance=True)
 
 
 @pytest.fixture
-def mock_metadata_repository(mocker):
-    return mocker.MagicMock(spec=MetadataRepository)
+def mock_metadata_repository(mocker) -> MagicMock:
+    return mocker.create_autospec(MetadataRepository, instance=True)
 
 
 @pytest.fixture
-def mock_embedding_model(mocker):
-    return mocker.MagicMock(spec=SentenceTransformer)
+def mock_embedding_model(mocker) -> MagicMock:
+    return mocker.create_autospec(SentenceTransformer, instance=True)
 
 
 @pytest.fixture
-def mock_text_splitter(mocker):
-    return mocker.MagicMock(spec=RecursiveCharacterTextSplitter)
+def mock_text_splitter(mocker) -> MagicMock:
+    return mocker.create_autospec(RecursiveCharacterTextSplitter, instance=True)
 
 
 @pytest.fixture

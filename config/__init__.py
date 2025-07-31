@@ -9,6 +9,7 @@ from config.document import DocumentRestrictionSettings
 from config.log import LogSettings
 from config.embedding import EmbeddingSettings
 from config.splitter import TextSplitterSettings
+from config.database import DatabaseSettings
 
 
 api_settings = APISettings()
@@ -17,6 +18,7 @@ document_restriction_settings = DocumentRestrictionSettings()
 log_settings = LogSettings()
 embedding_settings = EmbeddingSettings()
 text_splitter_settings = TextSplitterSettings()
+database_settings = DatabaseSettings()
 
 __logger_kwargs: dict[str, Any] = {
     "level": log_settings.level,
@@ -43,11 +45,13 @@ __all__ = [
     "LogSettings",
     "EmbeddingSettings",
     "TextSplitterSettings",
+    "DatabaseSettings",
     "api_settings",
     "storage_settings",
     "document_restriction_settings",
     "log_settings",
     "embedding_settings",
     "text_splitter_settings",
+    "database_settings",
     "logger",
 ]

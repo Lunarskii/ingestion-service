@@ -52,7 +52,7 @@ class ChatService:
 
             sources: list[Source] = [
                 Source(
-                    document_id=vector.metadata.get("document_id", "unknown"),
+                    document_id=vector.metadata.get("document_id", ""),
                     chunk_id=vector.id,
                     snippet=vector.metadata.get("text", ""),
                 )
