@@ -7,7 +7,7 @@ from pydantic_settings import (
 )
 
 
-class StorageSettings(BaseSettings):
+class StubSettings(BaseSettings):
     """
     Настройки хранилищ для локальной разработки.
     """

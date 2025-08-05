@@ -1,15 +1,15 @@
 import os
 import json
 import math
+from typing import Any
 
 from domain.schemas import Vector
 from services import VectorStore
 from services.exc import (
-    VectorStoreMissingMetadata,
     VectorStoreDocumentsNotFound,
     VectorStoreMissingData,
 )
-from config import storage_settings
+from config import stub_settings
 
 
 class JSONVectorStore(VectorStore):
@@ -20,7 +20,7 @@ class JSONVectorStore(VectorStore):
     def __init__(
         self,
         *,
-        directory: str = storage_settings.index_path,
+        directory: str = stub_settings.index_path,
     ):
         """
         Проверяет, что `directory` является путем к директории (оканчивается слешем),
@@ -51,25 +51,21 @@ class JSONVectorStore(VectorStore):
         if not vectors:
             raise VectorStoreMissingData()
 
-        document_id: str | None = vectors[0].metadata.get("document_id", None)
-        workspace_id: str | None = vectors[0].metadata.get("workspace_id", None)
-        if not (document_id and workspace_id):
-            raise VectorStoreMissingMetadata()
-
         full_path: str = os.path.join(
-            self.directory, f"{workspace_id}/{document_id}.json"
+            self.directory,
+            f"{vectors[0].metadata.workspace_id}/{vectors[0].metadata.document_id}.json",
         )
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        data = [vector.model_dump() for vector in vectors]
+        data: list[dict[str, Any]] = [vector.model_dump() for vector in vectors]
         with open(full_path, "w") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
 
-    def search(self, vector: Vector, top_k: int, workspace_id: str) -> list[Vector]:
+    def search(self, vector: list[float], top_k: int, workspace_id: str) -> list[Vector]:
         """
         Ищет ближайшие по косинусному сходству векторы в JSON-индексе.
 
         :param vector: Вектор-запрос для поиска похожих чанков.
-        :type vector: Vector
+        :type vector: list[float]
         :param top_k: Максимальное число возвращаемых результатов.
         :type top_k: int
         :param workspace_id: Идентификатор рабочего пространства.
@@ -89,13 +85,13 @@ class JSONVectorStore(VectorStore):
             if filename.endswith(".json"):
                 filename = f"{base_path}/{filename}"
                 with open(filename, "r") as file:
-                    data: dict = json.load(file)
-                    for vec_data in data:
-                        file_vec = Vector(**vec_data)
+                    data: list[dict[str, Any]] = json.load(file)
+                    for vector_data in data:
+                        _vector = Vector(**vector_data)
                         similarities.append(
                             (
-                                file_vec,
-                                self._cosine_similarity(file_vec.values, vector.values),
+                                _vector,
+                                self._cosine_similarity(_vector.values, vector),
                             )
                         )
 

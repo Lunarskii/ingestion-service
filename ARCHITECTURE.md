@@ -81,15 +81,15 @@
     - Добавить логику в `get_raw_storage()`, чтобы она возвращала `S3RawStorage`, если `storage_settings.s3_storage` установлен.
 
     ```python
-    from config import storage_settings
+    from config import stub_settings
     from stubs.storage import FileRawStorage
     from implementations.s3_storage import S3RawStorage # Импортируем новый класс
 
     def get_raw_storage() -> RawStorage:
-        if s3_bucket := storage_settings.s3_bucket:
+        if s3_bucket := stub_settings.s3_bucket:
             return S3RawStorage(bucket_name=s3_bucket)
         
-        if storage_settings.raw_storage_path:
+        if stub_settings.raw_storage_path:
             return FileRawStorage()
             
         raise ValueError(...)

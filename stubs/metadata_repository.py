@@ -6,7 +6,7 @@ import types
 
 from domain.schemas import DocumentMeta
 from services import MetadataRepository
-from config import storage_settings
+from config import stub_settings
 
 
 class SQLiteMetadataRepository(MetadataRepository):
@@ -20,7 +20,7 @@ class SQLiteMetadataRepository(MetadataRepository):
     def __init__(
         self,
         *,
-        sqlite_url: str = storage_settings.sqlite_url,
+        sqlite_url: str = stub_settings.sqlite_url,
         table_name: str = "document_metadata",
     ):
         """

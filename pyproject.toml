@@ -6,7 +6,7 @@ authors = ["Lunarskii <DVIshcheryakov@sberbank.ru>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.12,<3.14"
 fastapi = "^0.116.0"
 gunicorn = "^23.0.0"
 pypdf = "^5.7.0"
@@ -24,6 +24,8 @@ loguru = "^0.7.3"
 alembic = "^1.16.4"
 asyncpg = "^0.30.0"
 sqlalchemy = "^2.0.42"
+mammoth = "^1.10.0"
+weasyprint = "^66.0"
 
 [tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"

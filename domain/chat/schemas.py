@@ -1,4 +1,13 @@
-from pydantic import BaseModel
+from datetime import datetime
+from enum import Enum
+from typing import Annotated
+import uuid
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+)
 
 
 class ChatRequest(BaseModel):
@@ -9,29 +18,35 @@ class ChatRequest(BaseModel):
     :type question: str
     :param workspace_id: Идентификатор рабочего пространства.
     :type workspace_id: str
-    :param top_k: Количество релевантных отрывков (чанков) для поиска в RAG.
+    :param session_id: Идентификатор сессии.
+    :type session_id: str | None
+    :param top_k: Количество релевантных источников (фрагментов) для поиска в RAG.
     :type top_k: int
     """
 
     question: str
     workspace_id: str
+    session_id: str | None = None
     top_k: int = 3
 
 
 class Source(BaseModel):
     """
-    Схема источника (чанка документа).
+    Схема источника (фрагмента документа).
 
-    :param document_id: Уникальный идентификатор документа.
-    :type document_id: str
-    :param chunk_id: Идентификатор чанка внутри документа.
-    :type chunk_id: str
-    :param snippet: Чанк.
+    :param source_id: Идентификатор источника (документа).
+    :type source_id: str
+    :param document_name: Имя документа.
+    :type document_name: str
+    :param document_page: Страница в документе, на которой находится фрагмент.
+    :type document_page: int
+    :param snippet: Фрагмент.
     :type snippet: str
     """
 
-    document_id: str
-    chunk_id: str
+    source_id: str
+    document_name: str
+    document_page: int
     snippet: str
 
 
@@ -41,9 +56,35 @@ class ChatResponse(BaseModel):
 
     :param answer: Сгенерированный ответ на вопрос.
     :type answer: str
-    :param sources: Список источников (чанков), на которых основан ответ.
+    :param sources: Список источников (фрагментов), на которых основан ответ.
     :type sources: list[Source]
+    :param session_id: Идентификатор сессии.
+    :type session_id: str
     """
 
     answer: str
     sources: list[Source]
+    session_id: str
+
+
+class ChatSessionDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))] # noqa
+    workspace_id: str
+    created_at: Annotated[datetime, Field(default_factory=datetime.now)]
+
+
+class ChatRole(str, Enum):
+    user = "user"
+    assistant = "assistant"
+
+
+class ChatMessageDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))] # noqa
+    session_id: str
+    role: ChatRole
+    content: str
+    created_at: Annotated[datetime, Field(default_factory=datetime.now)]

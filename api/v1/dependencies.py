@@ -3,7 +3,11 @@ from typing import Annotated
 from fastapi import (
     Depends,
     UploadFile,
+    Request,
 )
+from sentence_transformers import SentenceTransformer
+from langchain.text_splitter import TextSplitter
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.exc import (
     UnsupportedFileTypeError,
@@ -11,9 +15,13 @@ from api.v1.exc import (
 )
 from domain.fhandler.utils import get_file_extension
 from domain.fhandler.service import DocumentProcessor
-import domain.fhandler.dependencies as fh_dependencies
+from domain.fhandler.schemas import File
 from domain.chat.service import ChatService
-import domain.chat.dependencies as chat_dependencies
+from domain.chat.repositories import (
+    ChatSessionRepository,
+    ChatMessageRepository,
+)
+from domain.database.dependencies import scoped_session_dependency
 from services import (
     RawStorage,
     VectorStore,
@@ -30,7 +38,7 @@ async def validate_upload_file(
     settings: Annotated[
         DocumentRestrictionSettings, Depends(lambda: document_restriction_settings)
     ],
-) -> bytes:
+) -> File:
     """
     Валидирует загружаемый файл по расширению и размеру.
 
@@ -38,8 +46,8 @@ async def validate_upload_file(
     :type file: UploadFile
     :param settings: Ограничения на типы и максимальный размер файла.
     :type settings: DocumentRestrictionSettings
-    :return: Полные байты файла, считанные чанками.
-    :rtype: bytes
+    :return: Полные байты файла и метаданные файла.
+    :rtype: File
     :raises UnsupportedFileTypeError: Если расширение файла не входит в разрешенный список.
     :raises FileTooLargeError: Если размер файла превышает максимально допустимый.
     """
@@ -51,102 +59,77 @@ async def validate_upload_file(
         )
     await file.seek(0)
 
-    max_upload_bytes: int = settings.max_upload_mb * 1024 * 1024
-    size: int = 0
-    chunks: list[bytes] = []
-    chunk_size: int = 1024 * 1024
+    if file.size > (settings.max_upload_mb * 1024 * 1024):
+        raise FileTooLargeError(
+            f"Размер файла превышает максимально допустимый размер {settings.max_upload_mb}MB"
+        )
 
-    while chunk := await file.read(chunk_size):
-        size += len(chunk)
-        if size > max_upload_bytes:
-            raise FileTooLargeError(
-                f"Размер файла превышает максимально допустимый размер {settings.max_upload_mb}MB"
-            )
-        chunks.append(chunk)
-
-    return b"".join(chunks)
+    return File(
+        content=await file.read(),
+        name=file.filename,
+        size=file.size,
+        extension=ext,
+        headers=file.headers,
+    )
 
 
-async def raw_storage_dependency(
-    raw_storage: Annotated[
-        RawStorage, Depends(lambda: fh_dependencies.get_raw_storage())
-    ],
-) -> RawStorage:
-    """
-    DI-зависимость для RawStorage.
-
-    :param raw_storage: Экземпляр RawStorage, полученный из get_raw_storage().
-    :type raw_storage: RawStorage
-    :return: Тот же переданный экземпляр RawStorage.
-    :rtype: RawStorage
-    """
-
-    return raw_storage
+async def raw_storage_dependency(request: Request) -> RawStorage:
+    return request.app.state.raw_storage
 
 
-async def vector_store_dependency(
-    vector_store: Annotated[
-        VectorStore, Depends(lambda: fh_dependencies.get_vector_store())
-    ],
-) -> VectorStore:
-    """
-    DI-зависимость для VectorStore.
-
-    :param vector_store: Экземпляр VectorStore, полученный из get_vector_store().
-    :type vector_store: VectorStore
-    :return: Тот же переданный экземпляр VectorStore.
-    :rtype: VectorStore
-    """
-
-    return vector_store
+async def vector_store_dependency(request: Request) -> VectorStore:
+    return request.app.state.vector_store
 
 
-async def metadata_repository_dependency(
-    metadata_repository: Annotated[
-        MetadataRepository, Depends(lambda: fh_dependencies.get_metadata_repository())
-    ],
-) -> MetadataRepository:
-    """
-    DI-зависимость для MetadataRepository.
+async def metadata_repository_dependency(request: Request) -> MetadataRepository:
+    return request.app.state.metadata_repository
 
-    :param metadata_repository: Экземпляр MetadataRepository, полученный из get_metadata_repository().
-    :type metadata_repository: MetadataRepository
-    :return: Тот же переданный экземпляр MetadataRepository.
-    :rtype: MetadataRepository
-    """
 
-    return metadata_repository
+async def embedding_model_dependency(request: Request) -> SentenceTransformer:
+    return request.app.state.embedding_model
+
+
+async def text_splitter_dependency(request: Request) -> TextSplitter:
+    return request.app.state.text_splitter
 
 
 async def document_processor_dependency(
-    document_processor: Annotated[
-        DocumentProcessor, Depends(lambda: fh_dependencies.get_document_processor())
-    ],
+    raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
+    vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
+    metadata_repository: Annotated[MetadataRepository, Depends(metadata_repository_dependency)],
+    embedding_model: Annotated[SentenceTransformer, Depends(embedding_model_dependency)],
+    text_splitter: Annotated[TextSplitter, Depends(text_splitter_dependency)],
 ) -> DocumentProcessor:
-    """
-    DI-зависимость для DocumentProcessor.
+    return DocumentProcessor(
+        raw_storage=raw_storage,
+        vector_store=vector_store,
+        metadata_repository=metadata_repository,
+        embedding_model=embedding_model,
+        text_splitter=text_splitter,
+    )
 
-    :param document_processor: Экземпляр DocumentProcessor, полученный из get_document_processor().
-    :type document_processor: DocumentProcessor
-    :return: Тот же переданный экземпляр DocumentProcessor.
-    :rtype: DocumentProcessor
-    """
 
-    return document_processor
+async def chat_session_repository_dependency(
+    session: Annotated[AsyncSession, Depends(scoped_session_dependency)],
+) -> ChatSessionRepository:
+    return ChatSessionRepository(session)
+
+
+async def chat_message_repository_dependency(
+    session: Annotated[AsyncSession, Depends(scoped_session_dependency)],
+) -> ChatMessageRepository:
+    return ChatMessageRepository(session)
 
 
 async def chat_service_dependency(
-    chat_service: Annotated[
-        ChatService, Depends(lambda: chat_dependencies.get_chat_service())
-    ],
-):
-    """
-    DI-зависимость для ChatService.
-
-    :param chat_service: Экземпляр ChatService, полученный из get_chat_service().
-    :type chat_service: ChatService
-    :return: Тот же переданный экземпляр ChatService.
-    :rtype: ChatService
-    """
-
-    return chat_service
+    vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
+    embedding_model: Annotated[SentenceTransformer, Depends(embedding_model_dependency)],
+    chat_session_repository: Annotated[ChatSessionRepository, Depends(chat_session_repository_dependency)],
+    chat_message_repository: Annotated[ChatMessageRepository, Depends(chat_message_repository_dependency)],
+) -> ChatService:
+    return ChatService(
+        vector_store=vector_store,
+        embedding_model=embedding_model,
+        chat_session_repository=chat_session_repository,
+        chat_message_repository=chat_message_repository,
+    )

@@ -1,7 +1,7 @@
 import os
 
 from services import RawStorage
-from config import storage_settings
+from config import stub_settings
 
 
 class FileRawStorage(RawStorage):
@@ -12,7 +12,7 @@ class FileRawStorage(RawStorage):
     def __init__(
         self,
         *,
-        directory: str = storage_settings.raw_storage_path,
+        directory: str = stub_settings.raw_storage_path,
     ):
         """
         Проверяет, что `directory` является путем к директории (оканчивается слешем),

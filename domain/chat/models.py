@@ -1,4 +1,4 @@
-from enum import Enum
+from uuid import UUID
 
 from sqlalchemy.orm import (
     Mapped,
@@ -12,6 +12,7 @@ from domain.database.mixins import (
     UUIDMixin,
     CreatedAtMixin,
 )
+from domain.chat.schemas import ChatRole
 
 
 class ChatSessionDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
@@ -25,15 +26,10 @@ class ChatSessionDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
     )
 
 
-class ChatRole(str, Enum):
-    user = "user"
-    assistant = "assistant"
-
-
 class ChatMessageDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
     __tablename__ = "chat_messages"
 
-    session_id: Mapped[int] = mapped_column(
+    session_id: Mapped[UUID] = mapped_column(
         sa.ForeignKey("chat_sessions.id", ondelete="CASCADE"),
         nullable=False,
     )

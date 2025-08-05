@@ -12,11 +12,12 @@ from fastapi import (
 )
 
 from api.v1.dependencies import (
-    document_processor_dependency,
     validate_upload_file,
+    document_processor_dependency,
     metadata_repository_dependency,
 )
 from domain.fhandler.service import DocumentProcessor
+from domain.fhandler.schemas import File
 from domain.schemas import DocumentMeta
 from services import MetadataRepository
 
@@ -26,10 +27,11 @@ router = APIRouter(prefix="/documents")
 
 @router.post("/upload", status_code=http_status.HTTP_202_ACCEPTED)
 async def upload_file(
-    file_bytes: Annotated[bytes, Depends(validate_upload_file)],
+    file: Annotated[File, Depends(validate_upload_file)],
     bg_tasks: BackgroundTasks,
-    document_processor: Annotated[
-        DocumentProcessor, Depends(document_processor_dependency)
+    service: Annotated[
+        DocumentProcessor,
+        Depends(document_processor_dependency),
     ],
     workspace_id: str,
 ) -> dict[str, Any]:
@@ -39,8 +41,8 @@ async def upload_file(
 
     document_id = str(uuid.uuid4())
     bg_tasks.add_task(
-        document_processor.process,
-        file_bytes=file_bytes,
+        service.process,
+        file=file,
         document_id=document_id,
         workspace_id=workspace_id,
     )
@@ -50,7 +52,8 @@ async def upload_file(
 @router.get("/")
 async def documents_list(
     metadata_repository: Annotated[
-        MetadataRepository, Depends(metadata_repository_dependency)
+        MetadataRepository,
+        Depends(metadata_repository_dependency),
     ],
     workspace_id: str,
 ) -> list[DocumentMeta]:

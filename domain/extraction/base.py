@@ -2,17 +2,24 @@ from abc import (
     ABC,
     abstractmethod,
 )
-from typing import IO
+from datetime import datetime
+from io import BytesIO
 
 from pypdf import (
     PdfReader,
-    DocumentInformation,
+    DocumentInformation as PdfMetadata,
 )
 from docx import Document as DocxReader
+from docx.opc.coreprops import CoreProperties as DocxMetadata
+import mammoth
+import weasyprint
 
-from domain.fhandler.schemas import ExtractedInfo
-from domain.fhandler.utils import parse_date
-from domain.fhandler.exc import ExtractError
+from domain.extraction.schemas import (
+    Page,
+    ExtractedInfo,
+)
+from domain.extraction.utils import parse_date
+from domain.extraction.exc import ExtractError
 
 
 class TextExtractor(ABC):
@@ -24,7 +31,7 @@ class TextExtractor(ABC):
     Внешний метод `extract()` оборачивает вызов в общий обработчик ошибок.
     """
 
-    def extract(self, document: IO[bytes]) -> ExtractedInfo:
+    def extract(self, document: BytesIO) -> ExtractedInfo:
         """
         Универсальный метод для извлечения текста и метаданных из переданного документа.
 
@@ -43,7 +50,7 @@ class TextExtractor(ABC):
             return info
 
     @abstractmethod
-    def _extract(self, document: IO[bytes]) -> ExtractedInfo:
+    def _extract(self, document: BytesIO) -> ExtractedInfo:
         """
         Абстрактный метод, реализуемый потомками для конкретного формата документа.
 
@@ -60,13 +67,17 @@ class PdfExtractor(TextExtractor):
     Извлекает текст и метаданные из PDF-документов с помощью библиотеки pypdf.
     """
 
-    def _extract(self, document: IO[bytes]) -> ExtractedInfo:
+    def _extract(self, document: BytesIO) -> ExtractedInfo:
         document = PdfReader(document)
-        metadata: DocumentInformation = document.metadata
-        text: str = "\n".join(page.extract_text() for page in document.pages)
+        metadata: PdfMetadata = document.metadata
+        pages: list[Page] = [
+            Page(page=page_num, text=page.extract_text())
+            for page_num, page in enumerate(document.pages)
+        ]
+
         return ExtractedInfo(
-            text=text,
-            document_page_count=len(document.pages),
+            pages=pages,
+            document_page_count=len(pages),
             author=metadata.author,
             creation_date=parse_date(metadata.creation_date_raw),
         )
@@ -77,13 +88,26 @@ class DocxExtractor(TextExtractor):
     Извлекает текст и метаданные из DOCX-документов с помощью python-docx.
     """
 
-    def _extract(self, document: IO[bytes]) -> ExtractedInfo:
-        document = DocxReader(document)
-        metadata = document.core_properties
-        text: str = "\n".join(paragraph.text for paragraph in document.paragraphs)
+    def _extract(self, document: BytesIO) -> ExtractedInfo:
+        docx_document = DocxReader(document)
+        metadata: DocxMetadata = docx_document.core_properties
+        author: str = metadata.author
+        creation_date: datetime = metadata.created
+
+        pdf_document = PdfReader(BytesIO(self._convert_to_pdf(document)))
+        pages: list[Page] = [
+            Page(page=page_num, text=page.extract_text())
+            for page_num, page in enumerate(pdf_document.pages)
+        ]
+
         return ExtractedInfo(
-            text=text,
-            document_page_count=len(document.paragraphs),
-            author=metadata.author,
-            creation_date=metadata.created,
+            pages=pages,
+            document_page_count=len(pages),
+            author=author,
+            creation_date=creation_date,
         )
+
+    @classmethod
+    def _convert_to_pdf(cls, document: BytesIO) -> bytes:
+        html = mammoth.convert_to_html(document).value
+        return weasyprint.HTML(string=html).write_pdf()

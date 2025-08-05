@@ -1,9 +1,9 @@
-from domain.fhandler.extractor import (
+from domain.extraction.base import (
     TextExtractor,
     PdfExtractor,
     DocxExtractor,
 )
-from domain.fhandler.exc import ExtractError
+from domain.extraction.exc import ExtractError
 
 
 class ExtractorFactory:

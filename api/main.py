@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from config import api_settings
 from api.exc_handlers import setup_exception_handlers
+from api.events import setup_event_handlers
 from api.v1 import router as v1_router
 
 
@@ -17,4 +18,5 @@ app = FastAPI(
 )
 
 setup_exception_handlers(app)
+setup_event_handlers(app)
 app.include_router(v1_router)

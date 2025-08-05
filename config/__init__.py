@@ -4,7 +4,7 @@ import sys
 from loguru import logger
 
 from config.api import APISettings
-from config.storage import StorageSettings
+from config.stub import StubSettings
 from config.document import DocumentRestrictionSettings
 from config.log import LogSettings
 from config.embedding import EmbeddingSettings
@@ -13,7 +13,7 @@ from config.database import DatabaseSettings
 
 
 api_settings = APISettings()
-storage_settings = StorageSettings()
+stub_settings = StubSettings()
 document_restriction_settings = DocumentRestrictionSettings()
 log_settings = LogSettings()
 embedding_settings = EmbeddingSettings()
@@ -40,14 +40,14 @@ logger.add(
 
 __all__ = [
     "APISettings",
-    "StorageSettings",
+    "StubSettings",
     "DocumentRestrictionSettings",
     "LogSettings",
     "EmbeddingSettings",
     "TextSplitterSettings",
     "DatabaseSettings",
     "api_settings",
-    "storage_settings",
+    "stub_settings",
     "document_restriction_settings",
     "log_settings",
     "embedding_settings",

@@ -1,4 +1,3 @@
-from io import BytesIO
 from datetime import datetime
 from typing import Any
 
@@ -7,16 +6,17 @@ from langchain.text_splitter import TextSplitter
 from sentence_transformers import SentenceTransformer
 
 from domain.schemas import (
+    VectorMetadata,
     Vector,
     DocumentMeta,
     DocumentStatus,
 )
-from domain.fhandler.extractor import (
+from domain.extraction.base import (
     TextExtractor,
     ExtractedInfo,
 )
-from domain.fhandler.factory import ExtractorFactory
-from domain.fhandler.utils import get_file_extension
+from domain.extraction.factory import ExtractorFactory
+from domain.fhandler.schemas import File
 from services import (
     RawStorage,
     VectorStore,
@@ -57,7 +57,7 @@ class DocumentProcessor:
 
     def process(
         self,
-        file_bytes: bytes,
+        file: File,
         document_id: str,
         workspace_id: str,
     ) -> None:
@@ -71,8 +71,8 @@ class DocumentProcessor:
             6. Загружает векторы в хранилище векторов.
             7. Сохраняет метаданные документа.
 
-        :param file_bytes: Файл в байтах.
-        :type file_bytes: bytes
+        :param file: Полные байты файла и метаданные файла.
+        :type file: File
         :param document_id: ID документа.
         :type document_id: str
         :param workspace_id: Идентификатор рабочего пространства.
@@ -81,41 +81,31 @@ class DocumentProcessor:
 
         context_logger = logger.bind(document_id=document_id, workspace_id=workspace_id)
 
-        ingested_at: datetime = datetime.now()
-        file = BytesIO(file_bytes)
-        file_extension: str = get_file_extension(file_bytes)
-        file_size_bytes: int = len(file_bytes)
-        document_type: str = file_extension.lstrip(".").upper()
-        raw_storage_path: str = f"{workspace_id}/{document_id}{file_extension}"
         metadata_kwargs: dict[str, Any] = {
             "document_id": document_id,
             "workspace_id": workspace_id,
-            "document_type": document_type,
-            "raw_storage_path": raw_storage_path,
-            "file_size_bytes": file_size_bytes,
-            "ingested_at": ingested_at,
+            "document_type": file.extension.lstrip(".").upper(),
+            "raw_storage_path": f"{workspace_id}/{document_id}{file.extension}",
+            "file_size_bytes": file.size,
+            "ingested_at": datetime.now(),
             "status": DocumentStatus.success,
         }
 
         try:
             context_logger.info(
                 "Сохранение необработанного документа",
-                raw_storage_path=raw_storage_path,
+                raw_storage_path=metadata_kwargs["raw_storage_path"],
             )
-            self.raw_storage.save(file_bytes, raw_storage_path)
+            self.raw_storage.save(file.content, metadata_kwargs["raw_storage_path"])
 
             context_logger.info(
                 "Извлечение текста и метаданных из документа",
-                document_type=document_type,
-                file_size_bytes=file_size_bytes,
+                document_type=metadata_kwargs["document_type"],
+                file_size_bytes=file.size,
             )
-            extractor: TextExtractor = ExtractorFactory().get_extractor(file_extension)
-            document_info: ExtractedInfo = extractor.extract(file)
-            metadata_kwargs.update(
-                document_info.model_dump(
-                    include={"document_page_count", "author", "creation_date"}
-                )
-            )
+            extractor: TextExtractor = ExtractorFactory().get_extractor(file.extension)
+            document_info: ExtractedInfo = extractor.extract(file.file)
+            metadata_kwargs.update(document_info.model_dump(include={"document_page_count", "author", "creation_date"}))
 
             context_logger.info("Определение основного языка документа")
             metadata_kwargs["detected_language"] = langdetect.detect(document_info.text)
@@ -124,17 +114,13 @@ class DocumentProcessor:
             chunks: list[str] = self.text_splitter.split_text(document_info.text)
 
             context_logger.info("Создание эмбеддингов для каждого чанка, векторизация")
-            vectors: list[Vector] = self._vectorize_chunks(
-                chunks, document_id, workspace_id
-            )
+            vectors: list[Vector] = self._vectorize_chunks(chunks, document_id, workspace_id, file.name)
 
             context_logger.info("Сохранение векторов")
             self.vector_store.upsert(vectors)
         except Exception as e:
             error_message: str = str(e)
-            context_logger.error(
-                "Не удалось обработать документ", error_message=error_message
-            )
+            context_logger.error("Не удалось обработать документ", error_message=error_message)
             metadata_kwargs["error_message"] = error_message
             metadata_kwargs["status"] = DocumentStatus.failed
 
@@ -142,24 +128,27 @@ class DocumentProcessor:
             context_logger.info("Сохранение метаданных документа")
             self.metadata_repository.save(DocumentMeta(**metadata_kwargs))
         except Exception as e:
-            context_logger.error(
-                "Не удалось сохранить метаданные документа", error_message=str(e)
-            )
+            context_logger.error("Не удалось сохранить метаданные документа", error_message=str(e))
 
     def _vectorize_chunks(
-        self, chunks: list[str], document_id: str, workspace_id: str
+        self,
+        chunks: list[str],
+        document_id: str,
+        workspace_id: str,
+        document_name: str,
     ) -> list[Vector]:
         embeddings = self.embedding_model.encode(chunks, show_progress_bar=False)
         return [
             Vector(
                 id=f"{document_id}-{i}",
                 values=embedding.tolist(),  # noqa
-                metadata={
-                    "document_id": document_id,
-                    "workspace_id": workspace_id,
-                    "chunk_index": i,
-                    "text": chunk,
-                },
+                metadata=VectorMetadata(
+                    document_id=document_id,
+                    workspace_id=workspace_id,
+                    document_name=document_name,
+                    chunk_index=i,
+                    text=chunk,
+                ),
             )
             for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))
         ]

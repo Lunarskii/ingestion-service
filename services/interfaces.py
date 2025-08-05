@@ -38,12 +38,12 @@ class VectorStore(Protocol):
         """
         ...
 
-    def search(self, vector: Vector, top_k: int, workspace_id: str) -> list[Vector]:
+    def search(self, vector: list[float], top_k: int, workspace_id: str) -> list[Vector]:
         """
         Выполняет поиск наиболее похожих векторов в заданном рабочем пространстве.
 
         :param vector: Вектор-запрос, для которого ищутся ближайшие по сходству вектора.
-        :type vector: Vector
+        :type vector: list[float]
         :param top_k: Максимальное количество возвращаемых результатов.
         :type top_k: int
         :param workspace_id: Идентификатор рабочего пространства для сегрегации индекса.

@@ -1,8 +1,8 @@
-"""create_chat_sessions_and_chat_messages_tables
+"""create chat sessions and chat messages table
 
-Revision ID: adcc18df2991
+Revision ID: 300bf1a46e3c
 Revises:
-Create Date: 2025-07-31 18:22:26.927723
+Create Date: 2025-08-01 14:57:09.022297
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "adcc18df2991"
+revision: str = "300bf1a46e3c"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
