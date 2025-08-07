@@ -3,6 +3,8 @@ from io import BytesIO
 
 from pydantic import BaseModel
 
+from domain.fhandler.utils import get_mime_type
+
 
 class File(BaseModel):
     content: bytes
@@ -14,3 +16,7 @@ class File(BaseModel):
     @property
     def file(self) -> BytesIO:
         return BytesIO(self.content)
+
+    @property
+    def type(self) -> str:
+        return get_mime_type(self.content)

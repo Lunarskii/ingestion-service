@@ -19,7 +19,7 @@ from domain.extraction.schemas import (
     ExtractedInfo,
 )
 from domain.extraction.utils import parse_date
-from domain.extraction.exc import ExtractError
+from domain.extraction.exc import ExtractionError
 
 
 class TextExtractor(ABC):
@@ -45,7 +45,7 @@ class TextExtractor(ABC):
         try:
             info: ExtractedInfo = self._extract(document)
         except Exception as e:
-            raise ExtractError(str(e))
+            raise ExtractionError(str(e))
         else:
             return info
 
@@ -71,7 +71,7 @@ class PdfExtractor(TextExtractor):
         document = PdfReader(document)
         metadata: PdfMetadata = document.metadata
         pages: list[Page] = [
-            Page(page=page_num, text=page.extract_text())
+            Page(num=page_num, text=page.extract_text())
             for page_num, page in enumerate(document.pages)
         ]
 
@@ -96,7 +96,7 @@ class DocxExtractor(TextExtractor):
 
         pdf_document = PdfReader(BytesIO(self._convert_to_pdf(document)))
         pages: list[Page] = [
-            Page(page=page_num, text=page.extract_text())
+            Page(num=page_num, text=page.extract_text())
             for page_num, page in enumerate(pdf_document.pages)
         ]
 

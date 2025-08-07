@@ -22,7 +22,7 @@ class BaseAlchemyRepository[M: BaseDAO, S: BaseModel](ABC):
         await self.session.commit()
         return self.schema_type.model_validate(instance)
 
-    async def get(self, id: int) -> S | None:
+    async def get(self, id: int | str) -> S | None:
         instance = await self.session.get(self.model_type, id)
         if instance is None:
             return None
@@ -33,7 +33,7 @@ class BaseAlchemyRepository[M: BaseDAO, S: BaseModel](ABC):
         instances = await self.session.scalars(stmt)
         return list(map(self.schema_type.model_validate, instances))
 
-    async def update(self, id: int, **data: Any) -> S | None:
+    async def update(self, id: int | str, **data: Any) -> S | None:
         instance = await self.session.get(self.model_type, id)
         if instance is None:
             return None
@@ -41,7 +41,7 @@ class BaseAlchemyRepository[M: BaseDAO, S: BaseModel](ABC):
         await self.session.commit()
         return self.schema_type.model_validate(instance)
 
-    async def delete(self, id: int) -> S | None:
+    async def delete(self, id: int | str) -> S | None:
         instance = await self.session.get(self.model_type, id)
         if instance is None:
             return None

@@ -1,4 +1,5 @@
 from uuid import UUID
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import (
     Mapped,
@@ -15,10 +16,18 @@ from domain.database.mixins import (
 from domain.chat.schemas import ChatRole
 
 
+if TYPE_CHECKING:
+    from domain.workspace.models import WorkspaceDAO
+
+
 class ChatSessionDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
     __tablename__ = "chat_sessions"
 
-    workspace_id: Mapped[str] = mapped_column(nullable=False)
+    workspace_id: Mapped[UUID] = mapped_column(
+        sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    workspace: Mapped["WorkspaceDAO"] = relationship(back_populates="sessions")
 
     messages: Mapped[list["ChatMessageDAO"]] = relationship(
         back_populates="session",

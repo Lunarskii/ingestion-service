@@ -6,9 +6,10 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
-from config import database_settings
+from config import settings
 from domain.database.models import BaseDAO
 from domain.chat import models as chat_models
+from domain.workspace import models as workspace_models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -31,7 +32,7 @@ target_metadata = BaseDAO.metadata
 # ... etc.
 current_url = config.get_main_option("sqlalchemy.url")
 if not current_url or current_url == "driver://user:pass@localhost/dbname":
-    config.set_main_option("sqlalchemy.url", database_settings.url)
+    config.set_main_option("sqlalchemy.url", settings.db.url)
 
 
 def run_migrations_offline() -> None:

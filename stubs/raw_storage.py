@@ -1,7 +1,7 @@
 import os
 
 from services import RawStorage
-from config import stub_settings
+from config import settings
 
 
 class FileRawStorage(RawStorage):
@@ -12,7 +12,7 @@ class FileRawStorage(RawStorage):
     def __init__(
         self,
         *,
-        directory: str = stub_settings.raw_storage_path,
+        directory: str = settings.stub.raw_storage_path,
     ):
         """
         Проверяет, что `directory` является путем к директории (оканчивается слешем),
@@ -38,8 +38,17 @@ class FileRawStorage(RawStorage):
         :type path: str
         """
 
-        relative_path: str = path.lstrip("/\\")
-        full_path: str = os.path.join(self.directory, relative_path)
+        full_path: str = os.path.join(self.directory, path.lstrip("/"))
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, "wb") as file:
             file.write(file_bytes)
+
+    def get(self, path: str) -> bytes:
+        full_path: str = os.path.join(self.directory, path.lstrip("/"))
+        with open(full_path, "rb") as file:
+            return file.read()
+
+    def delete(self, path: str) -> None:
+        full_path: str = os.path.join(self.directory, path.lstrip("/"))
+        if os.path.isfile(full_path):
+            os.remove(full_path)

@@ -9,15 +9,15 @@ from sqlalchemy.ext.asyncio import (
     async_scoped_session,
 )
 
-from config import database_settings
+from config import settings
 
 
 def get_async_engine(**kwargs: Any) -> AsyncEngine:
     return create_async_engine(
-        url=database_settings.url,
-        echo=database_settings.echo,
-        echo_pool=database_settings.echo_pool,
-        pool_pre_ping=database_settings.pool_pre_ping,
+        url=settings.db.url,
+        echo=settings.db.echo,
+        echo_pool=settings.db.echo_pool,
+        pool_pre_ping=settings.db.pool_pre_ping,
         **kwargs,
     )
 
@@ -28,9 +28,9 @@ def get_async_session_factory(
 ) -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(
         bind=engine,
-        autoflush=database_settings.auto_flush,
-        autocommit=database_settings.auto_commit,
-        expire_on_commit=database_settings.expire_on_commit,
+        autoflush=settings.db.auto_flush,
+        autocommit=settings.db.auto_commit,
+        expire_on_commit=settings.db.expire_on_commit,
         **kwargs,
     )
 

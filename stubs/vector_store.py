@@ -9,7 +9,7 @@ from services.exc import (
     VectorStoreDocumentsNotFound,
     VectorStoreMissingData,
 )
-from config import stub_settings
+from config import settings
 
 
 class JSONVectorStore(VectorStore):
@@ -20,7 +20,7 @@ class JSONVectorStore(VectorStore):
     def __init__(
         self,
         *,
-        directory: str = stub_settings.index_path,
+        directory: str = settings.stub.index_path,
     ):
         """
         Проверяет, что `directory` является путем к директории (оканчивается слешем),
@@ -40,12 +40,9 @@ class JSONVectorStore(VectorStore):
         """
         Сохраняет или обновляет список векторов.
 
-        Требует, чтобы в метаданных вектора были `document_id` и `workspace_id`.
-
         :param vectors: Список векторов для индексации.
         :type vectors: list[Vector]
         :raises VectorStoreMissingData: Если список `vectors` пуст.
-        :raises VectorStoreMissingMetadata: Если отсутствует `document_id` или `workspace_id`.
         """
 
         if not vectors:

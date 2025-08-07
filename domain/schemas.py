@@ -59,8 +59,8 @@ class DocumentMeta(BaseModel):
     :type document_id: str
     :param workspace_id: Идентификатор рабочего пространства.
     :type workspace_id: str
-    :param document_type: Тип документа (PDF, DOCX и т.п.).
-    :type document_type: str
+    :param media_type: MIME-тип документа, например 'application/pdf'
+    :type media_type: str
     :param detected_language: Определённый язык содержимого.
     :type detected_language: str | None
     :param document_page_count: Количество страниц.
@@ -83,7 +83,8 @@ class DocumentMeta(BaseModel):
 
     document_id: str
     workspace_id: str
-    document_type: str
+    document_name: str
+    media_type: str
     detected_language: str | None = None
     document_page_count: int | None = None
     author: str | None = None

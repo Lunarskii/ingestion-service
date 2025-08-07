@@ -16,6 +16,7 @@ from domain.extraction.base import (
     ExtractedInfo,
 )
 from domain.extraction.factory import ExtractorFactory
+from domain.extraction.schemas import Page
 from domain.fhandler.schemas import File
 from services import (
     RawStorage,
@@ -84,7 +85,8 @@ class DocumentProcessor:
         metadata_kwargs: dict[str, Any] = {
             "document_id": document_id,
             "workspace_id": workspace_id,
-            "document_type": file.extension.lstrip(".").upper(),
+            "document_name": file.name,
+            "media_type": file.type,
             "raw_storage_path": f"{workspace_id}/{document_id}{file.extension}",
             "file_size_bytes": file.size,
             "ingested_at": datetime.now(),
@@ -100,7 +102,7 @@ class DocumentProcessor:
 
             context_logger.info(
                 "Извлечение текста и метаданных из документа",
-                document_type=metadata_kwargs["document_type"],
+                media_type=metadata_kwargs["media_type"],
                 file_size_bytes=file.size,
             )
             extractor: TextExtractor = ExtractorFactory().get_extractor(file.extension)
@@ -108,10 +110,11 @@ class DocumentProcessor:
             metadata_kwargs.update(document_info.model_dump(include={"document_page_count", "author", "creation_date"}))
 
             context_logger.info("Определение основного языка документа")
-            metadata_kwargs["detected_language"] = langdetect.detect(document_info.text)
+            if document_info.pages:
+                metadata_kwargs["detected_language"] = langdetect.detect(document_info.pages[0].text)
 
             context_logger.info("Разбиение текста на чанки")
-            chunks: list[str] = self.text_splitter.split_text(document_info.text)
+            chunks: list[Page] = self._split_text(document_info.pages)
 
             context_logger.info("Создание эмбеддингов для каждого чанка, векторизация")
             vectors: list[Vector] = self._vectorize_chunks(chunks, document_id, workspace_id, file.name)
@@ -130,14 +133,25 @@ class DocumentProcessor:
         except Exception as e:
             context_logger.error("Не удалось сохранить метаданные документа", error_message=str(e))
 
+    def _split_text(self, pages: list[Page]) -> list[Page]:
+        chunks: list[Page] = []
+        for page in pages:
+            page_chunks: list[str] = self.text_splitter.split_text(page.text)
+            for chunk in page_chunks:
+                chunks.append(Page(num=page.num, text=chunk))
+        return chunks
+
     def _vectorize_chunks(
         self,
-        chunks: list[str],
+        chunks: list[Page],
         document_id: str,
         workspace_id: str,
         document_name: str,
     ) -> list[Vector]:
-        embeddings = self.embedding_model.encode(chunks, show_progress_bar=False)
+        embeddings = self.embedding_model.encode(
+            [chunk.text for chunk in chunks],
+            show_progress_bar=False
+        )
         return [
             Vector(
                 id=f"{document_id}-{i}",
@@ -146,8 +160,9 @@ class DocumentProcessor:
                     document_id=document_id,
                     workspace_id=workspace_id,
                     document_name=document_name,
+                    document_page=chunk.num,
                     chunk_index=i,
-                    text=chunk,
+                    text=chunk.text,
                 ),
             )
             for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))

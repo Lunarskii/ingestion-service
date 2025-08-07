@@ -1,20 +1,20 @@
 from fastapi import FastAPI
 
-from config import api_settings
+from config import settings
 from api.exc_handlers import setup_exception_handlers
 from api.events import setup_event_handlers
 from api.v1 import router as v1_router
 
 
 app = FastAPI(
-    title=api_settings.title,
-    description=api_settings.description,
-    version=api_settings.version,
-    openapi_url=api_settings.openapi_url,
-    openapi_prefix=api_settings.openapi_prefix,
-    docs_url=api_settings.docs_url,
-    redoc_url=api_settings.redoc_url,
-    root_path=api_settings.root_path,
+    title=settings.api.title,
+    description=settings.api.description,
+    version=settings.api.version,
+    openapi_url=settings.api.openapi_url,
+    openapi_prefix=settings.api.openapi_prefix,
+    docs_url=settings.api.docs_url,
+    redoc_url=settings.api.redoc_url,
+    root_path=settings.api.root_path,
 )
 
 setup_exception_handlers(app)

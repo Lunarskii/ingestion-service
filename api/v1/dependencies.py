@@ -21,6 +21,8 @@ from domain.chat.repositories import (
     ChatSessionRepository,
     ChatMessageRepository,
 )
+from domain.workspace.service import WorkspaceService
+from domain.workspace.repositories import WorkspaceRepository
 from domain.database.dependencies import scoped_session_dependency
 from services import (
     RawStorage,
@@ -28,16 +30,14 @@ from services import (
     MetadataRepository,
 )
 from config import (
-    DocumentRestrictionSettings,
-    document_restriction_settings,
+    Settings,
+    settings as _settings,
 )
 
 
 async def validate_upload_file(
     file: UploadFile,
-    settings: Annotated[
-        DocumentRestrictionSettings, Depends(lambda: document_restriction_settings)
-    ],
+    settings: Annotated[Settings, Depends(lambda: _settings)],
 ) -> File:
     """
     Валидирует загружаемый файл по расширению и размеру.
@@ -53,15 +53,15 @@ async def validate_upload_file(
     """
 
     ext: str = get_file_extension(await file.read(8192))
-    if ext not in settings.allowed_extensions:
+    if ext not in settings.document_restriction.allowed_extensions:
         raise UnsupportedFileTypeError(
-            f"Неподдерживаемый формат {ext!r}. Поддерживаются: {settings.allowed_extensions}"
+            f"Неподдерживаемый формат {ext!r}. Поддерживаются: {settings.document_restriction.allowed_extensions}"
         )
     await file.seek(0)
 
-    if file.size > (settings.max_upload_mb * 1024 * 1024):
+    if file.size > (settings.document_restriction.max_upload_mb * 1024 * 1024):
         raise FileTooLargeError(
-            f"Размер файла превышает максимально допустимый размер {settings.max_upload_mb}MB"
+            f"Размер файла превышает максимально допустимый размер {settings.document_restriction.max_upload_mb}MB"
         )
 
     return File(
@@ -132,4 +132,18 @@ async def chat_service_dependency(
         embedding_model=embedding_model,
         chat_session_repository=chat_session_repository,
         chat_message_repository=chat_message_repository,
+    )
+
+
+async def workspace_repository_dependency(
+    session: Annotated[AsyncSession, Depends(scoped_session_dependency)],
+) -> WorkspaceRepository:
+    return WorkspaceRepository(session)
+
+
+async def workspace_service_dependency(
+    workspace_repository: Annotated[WorkspaceRepository, Depends(workspace_repository_dependency)],
+) -> WorkspaceService:
+    return WorkspaceService(
+        workspace_repository=workspace_repository,
     )

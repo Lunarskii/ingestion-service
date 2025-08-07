@@ -3,7 +3,7 @@ from domain.extraction.base import (
     PdfExtractor,
     DocxExtractor,
 )
-from domain.extraction.exc import ExtractError
+from domain.extraction.exc import ExtractionError
 
 
 class ExtractorFactory:
@@ -36,5 +36,5 @@ class ExtractorFactory:
             extension = extension[1:]
         extractor_cls: type[TextExtractor] = cls._map.get(extension)
         if not extractor_cls:
-            raise ExtractError(f"Нет экстрактора для расширения '{extension}'")
+            raise ExtractionError(f"Нет экстрактора для расширения '{extension}'")
         return extractor_cls()

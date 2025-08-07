@@ -13,10 +13,8 @@ from stubs import (
     JSONVectorStore,
     SQLiteMetadataRepository,
 )
-from config import (
-    embedding_settings,
-    text_splitter_settings,
-)
+from infrastructure.storage.minio import MinIORawStorage
+from config import settings
 
 
 if TYPE_CHECKING:
@@ -33,21 +31,35 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
             )
         )
 
+    if settings.minio.is_configured:
+        raw_storage_coro = __init_object(
+            MinIORawStorage,
+            endpoint=settings.minio.endpoint,
+            bucket_name=settings.minio.bucket,
+            access_key=settings.minio.access_key,
+            secret_key=settings.minio.secret_key,
+            session_token=settings.minio.session_token,
+            secure=settings.minio.secure,
+            region=settings.minio.region,
+        )
+    else:
+        raw_storage_coro = __init_object(FileRawStorage)
+
     tasks: list[Coroutine] = [
-        __init_object(FileRawStorage),
+        raw_storage_coro,
         __init_object(JSONVectorStore),
         __init_object(SQLiteMetadataRepository),
         __init_object(
             SentenceTransformer,
-            model_name_or_path=embedding_settings.model_name,
-            device=embedding_settings.device,
-            cache_folder=embedding_settings.cache_folder,
-            token=embedding_settings.token,
+            model_name_or_path=settings.embedding_model.model_name,
+            device=settings.embedding_model.device,
+            cache_folder=settings.embedding_model.cache_folder,
+            token=settings.embedding_model.token,
         ),
         __init_object(
             RecursiveCharacterTextSplitter,
-            chunk_size=text_splitter_settings.chunk_size,
-            chunk_overlap=text_splitter_settings.chunk_overlap,
+            chunk_size=settings.text_splitter.chunk_size,
+            chunk_overlap=settings.text_splitter.chunk_overlap,
         ),
     ]
 

@@ -1,3 +1,5 @@
+from sqlalchemy import select
+
 from domain.database.repositories import BaseAlchemyRepository
 from domain.chat.models import (
     ChatSessionDAO,
@@ -7,8 +9,6 @@ from domain.chat.schemas import (
     ChatSessionDTO,
     ChatMessageDTO,
 )
-
-from sqlalchemy import select
 
 
 class ChatSessionRepository(BaseAlchemyRepository[ChatSessionDAO, ChatSessionDTO]):

@@ -1,57 +1,29 @@
-from typing import Any
-import sys
-
-from loguru import logger
-
-from config.api import APISettings
-from config.stub import StubSettings
-from config.document import DocumentRestrictionSettings
-from config.log import LogSettings
-from config.embedding import EmbeddingSettings
-from config.splitter import TextSplitterSettings
-from config.database import DatabaseSettings
-
-
-api_settings = APISettings()
-stub_settings = StubSettings()
-document_restriction_settings = DocumentRestrictionSettings()
-log_settings = LogSettings()
-embedding_settings = EmbeddingSettings()
-text_splitter_settings = TextSplitterSettings()
-database_settings = DatabaseSettings()
-
-__logger_kwargs: dict[str, Any] = {
-    "level": log_settings.level,
-    "format": log_settings.format,
-    "serialize": log_settings.serialize,
-}
-logger.remove()
-logger.add(
-    sys.stdout,
-    **__logger_kwargs,
+from config.settings import (
+    APISettings as _APISettings,
+    DatabaseSettings as _DatabaseSettings,
+    DocumentRestrictionSettings as _DocumentRestrictionSettings,
+    EmbeddingModelSettings as _EmbeddingModelSettings,
+    TextSplitterSettings as _TextSplitterSettings,
+    StubSettings as _StubSettings,
+    MinIOSettings as _MinIOSettings,
 )
-logger.add(
-    "logs/app_{time:YYYY-MM-DD}.log",
-    rotation=log_settings.rotation,
-    retention=log_settings.retention,
-    compression=log_settings.compression,
-    **__logger_kwargs,
-)
+from config.logging import logger
+
+
+class Settings:
+    api = _APISettings()
+    db = _DatabaseSettings()
+    document_restriction = _DocumentRestrictionSettings()
+    embedding_model = _EmbeddingModelSettings()
+    text_splitter = _TextSplitterSettings()
+    stub = _StubSettings()
+    minio = _MinIOSettings()
+
+
+settings = Settings()
 
 __all__ = [
-    "APISettings",
-    "StubSettings",
-    "DocumentRestrictionSettings",
-    "LogSettings",
-    "EmbeddingSettings",
-    "TextSplitterSettings",
-    "DatabaseSettings",
-    "api_settings",
-    "stub_settings",
-    "document_restriction_settings",
-    "log_settings",
-    "embedding_settings",
-    "text_splitter_settings",
-    "database_settings",
+    "Settings",
+    "settings",
     "logger",
 ]

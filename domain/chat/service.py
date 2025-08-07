@@ -12,6 +12,11 @@ from domain.chat.repositories import (
     ChatSessionRepository,
     ChatMessageRepository,
 )
+from domain.chat.exc import (
+    ChatError,
+    ChatSessionCreationError,
+    ChatMessageCreationError,
+)
 from domain.schemas import Vector
 from stubs import llm_stub
 from services import VectorStore
@@ -19,10 +24,7 @@ from services.exc import VectorStoreDocumentsNotFound
 from config import logger
 
 
-# TODO что будет, если куда либо придет недействительный session_id?
-# TODO написать исключение ChatSessionError
-
-
+# TODO обновить доку
 class ChatService:
     """
     Управляет RAG-логикой для ответов на вопросы.
@@ -51,17 +53,8 @@ class ChatService:
         """
 
         if not request.session_id:
-            try:
-                session = await self._create_new_chat_session(request.workspace_id)
-            except Exception as e:
-                logger.error(
-                    "Не удалось создать новую сессию чата",
-                    workspace_id=request.workspace_id,
-                    error_message=str(e),
-                )
-                return None
-            else:
-                request.session_id = session.id
+            session = await self.create_session(request.workspace_id)
+            request.session_id = session.id
 
         context_logger = logger.bind(workspace_id=request.workspace_id, session_id=request.session_id)
 
@@ -96,25 +89,25 @@ class ChatService:
             context_logger.info("Получение ответа от LLM")
             answer: str = llm_stub.generate(prompt)
 
-            user_message = ChatMessageDTO(
+            context_logger.info("Сохранение сообщений в базе данных")
+            await self.create_message(
+                workspace_id=request.workspace_id,
                 session_id=request.session_id,
                 role=ChatRole.user,
                 content=request.question,
             )
-            assistant_message = ChatMessageDTO(
+            await self.create_message(
+                workspace_id=request.workspace_id,
                 session_id=request.session_id,
                 role=ChatRole.assistant,
                 content=answer,
             )
-
-            context_logger.info("Сохранение сообщений в базе данных")
-            await self.chat_message_repository.create(**user_message.model_dump())
-            await self.chat_message_repository.create(**assistant_message.model_dump())
         except VectorStoreDocumentsNotFound as e:
-            context_logger.error("Не удалось обработать запрос к чату", error_message=e.message)
+            context_logger.error(ChatError.message, error_message=e.message)
             raise VectorStoreDocumentsNotFound(e.message)
         except Exception as e:
-            context_logger.error("Не удалось обработать запрос к чату", error_message=str(e))
+            context_logger.error(ChatError.message, error_message=str(e))
+            raise ChatError()
         else:
             return ChatResponse(
                 answer=answer,
@@ -147,6 +140,47 @@ class ChatService:
             ],
         )
 
-    async def _create_new_chat_session(self, workspace_id: str) -> ChatSessionDTO:
-        session = ChatSessionDTO(workspace_id=workspace_id)
-        return await self.chat_session_repository.create(**session.model_dump())
+    async def create_session(self, workspace_id: str) -> ChatSessionDTO:
+        try:
+            session = ChatSessionDTO(workspace_id=workspace_id)
+            session = await self.chat_session_repository.create(**session.model_dump())
+        except Exception as e:
+            logger.error(
+                ChatSessionCreationError.message,
+                workspace_id=workspace_id,
+                error_message=str(e),
+            )
+            raise ChatSessionCreationError()
+        else:
+            return session
+
+    async def create_message(
+        self,
+        workspace_id: str,
+        session_id: str,
+        role: ChatRole,
+        content: str,
+    ) -> ChatMessageDTO:
+        try:
+            message = ChatMessageDTO(
+                session_id=session_id,
+                role=role,
+                content=content,
+            )
+            message = await self.chat_message_repository.create(**message.model_dump())
+        except Exception as e:
+            logger.error(
+                ChatMessageCreationError.message,
+                workspace_id=workspace_id,
+                session_id=session_id,
+                error_message=str(e),
+            )
+            raise ChatMessageCreationError()
+        else:
+            return message
+
+    async def chats(self, workspace_id: str) -> list[ChatSessionDTO]:
+        return await self.chat_session_repository.get_n(workspace_id=workspace_id)
+
+    async def messages(self, session_id: str) -> list[ChatMessageDTO]:
+        return await self.chat_message_repository.chat_history(session_id=session_id)

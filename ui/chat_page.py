@@ -73,8 +73,12 @@ def render_answer_sources(sources):
         return
 
     with st.expander("Источники"):
-        for source in sources:
-            st.info(f"**Chunk (ID: {source['chunk_id']}):**" f"\n\n" f"{source['snippet']}")
+        for i, source in enumerate(sources, start=1):
+            st.markdown(
+                f"Источник {i}: [{source['document_name']}]"
+                f"({BACKEND_URL}/v1/documents/{source['source_id']}/download) "
+                f"(стр. {source['document_page']})"
+            )
 
 
 def render_llm_chat_input(prompt: str, workspace_id: str, session_id: str):

@@ -7,7 +7,7 @@ from pydantic import (
 
 
 class Page(BaseModel):
-    page: int
+    num: int
     text: str
 
 

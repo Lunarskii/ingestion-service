@@ -5,16 +5,8 @@ from fastapi import (
     Depends,
 )
 
-from api.v1.dependencies import (
-    chat_service_dependency,
-    chat_session_repository_dependency,
-    chat_message_repository_dependency,
-)
+from api.v1.dependencies import chat_service_dependency
 from domain.chat.service import ChatService
-from domain.chat.repositories import (
-    ChatSessionRepository,
-    ChatMessageRepository,
-)
 from domain.chat.schemas import (
     ChatRequest,
     ChatResponse,
@@ -24,6 +16,14 @@ from domain.chat.schemas import (
 
 
 router = APIRouter(prefix="/chat")
+
+
+@router.get("")
+async def chats(
+    workspace_id: str,
+    service: Annotated[ChatService, Depends(chat_service_dependency)],
+) -> list[ChatSessionDTO]:
+    return await service.chats(workspace_id)
 
 
 @router.post("/ask")
@@ -42,14 +42,6 @@ async def ask_llm(
 @router.get("/{session_id}/messages")
 async def chat_history(
     session_id: str,
-    repository: Annotated[ChatMessageRepository, Depends(chat_message_repository_dependency)],
+    service: Annotated[ChatService, Depends(chat_service_dependency)],
 ) -> list[ChatMessageDTO]:
-    return await repository.chat_history(session_id)
-
-
-@router.get("/")
-async def sessions_list(
-    workspace_id: str,
-    repository: Annotated[ChatSessionRepository, Depends(chat_session_repository_dependency)],
-) -> list[ChatSessionDTO]:
-    return await repository.get_n(workspace_id=workspace_id)
+    return await service.messages(session_id)

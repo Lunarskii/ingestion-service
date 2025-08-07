@@ -1,4 +1,7 @@
-from typing import Protocol
+from typing import (
+    Protocol,
+    Any,
+)
 
 from domain.schemas import (
     Vector,
@@ -21,6 +24,10 @@ class RawStorage(Protocol):
         :type path: str
         """
         ...
+
+    def get(self, path: str) -> bytes: ...
+
+    def delete(self, path: str) -> None: ...
 
 
 class VectorStore(Protocol):
@@ -68,12 +75,12 @@ class MetadataRepository(Protocol):
         """
         ...
 
-    def get(self, workspace_id: str) -> list[DocumentMeta]:
+    def get(self, **data: Any) -> list[DocumentMeta]:
         """
-        Извлекает все сохраненные метаданные документов для данного рабочего пространства.
+        Извлекает все сохраненные метаданные документов для заданного фильтра.
 
-        :param workspace_id: Идентификатор workspace, по которому фильтруются документы.
-        :type workspace_id: str
+        :param data: Словарь аргументов, по которому фильтруются документы.
+        :type data: Any
         :return: Список объектов `DocumentMeta`.
         :rtype: list[DocumentMeta]
         """

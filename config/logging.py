@@ -1,13 +1,18 @@
-from typing import Annotated
+from typing import (
+    Annotated,
+    Any,
+)
+import sys
 
 from pydantic import Field
 from pydantic_settings import (
     BaseSettings,
     SettingsConfigDict,
 )
+from loguru import logger
 
 
-class LogSettings(BaseSettings):
+class LoggingSettings(BaseSettings):
     """
     Настройки логирования
     """
@@ -24,3 +29,24 @@ class LogSettings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+
+settings = LoggingSettings()
+
+__logger_kwargs: dict[str, Any] = {
+    "level": settings.level,
+    "format": settings.format,
+    "serialize": settings.serialize,
+}
+logger.remove()
+logger.add(
+    sys.stdout,
+    **__logger_kwargs,
+)
+logger.add(
+    "logs/app_{time:YYYY-MM-DD}.log",
+    rotation=settings.rotation,
+    retention=settings.retention,
+    compression=settings.compression,
+    **__logger_kwargs,
+)

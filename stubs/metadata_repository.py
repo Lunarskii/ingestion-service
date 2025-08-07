@@ -1,12 +1,16 @@
 from datetime import datetime
 import os
 import sqlite3
+from typing import (
+    Any,
+    Union,
+)
 import typing
 import types
 
 from domain.schemas import DocumentMeta
 from services import MetadataRepository
-from config import stub_settings
+from config import settings
 
 
 class SQLiteMetadataRepository(MetadataRepository):
@@ -20,7 +24,7 @@ class SQLiteMetadataRepository(MetadataRepository):
     def __init__(
         self,
         *,
-        sqlite_url: str = stub_settings.sqlite_url,
+        sqlite_url: str = settings.stub.sqlite_url,
         table_name: str = "document_metadata",
     ):
         """
@@ -59,20 +63,26 @@ class SQLiteMetadataRepository(MetadataRepository):
         )
         self.db_connection.commit()
 
-    def get(self, workspace_id: str) -> list[DocumentMeta]:
+    def get(self, **data: Any) -> list[DocumentMeta]:
         """
-        Возвращает все записи `DocumentMeta` для заданного workspace_id.
+        Возвращает все записи `DocumentMeta` для заданного фильтра.
 
-        :param workspace_id: Идентификатор рабочего пространства.
-        :type workspace_id: str
+        :param data: Набор фильтров.
+        :type data: Any
         :return: Список объектов DocumentMeta.
         :rtype: list[DocumentMeta]
         """
 
+        if data:
+            clauses: list[str] = [f"{col} = ?" for col in data.keys()]
+            sql: str = f"SELECT * FROM {self.table_name} WHERE " + " AND ".join(clauses)
+            params = tuple(data.values())
+        else:
+            sql: str = f"SELECT * FROM {self.table_name}"
+            params: tuple = ()
+
         cursor = self.db_connection.cursor()
-        cursor.execute(
-            f"SELECT * FROM {self.table_name} WHERE workspace_id = ?", (workspace_id,)
-        )
+        cursor.execute(sql, params)
         rows = cursor.fetchall()
         columns = [description[0] for description in cursor.description]
         return [DocumentMeta(**dict(zip(columns, row))) for row in rows]
@@ -96,7 +106,7 @@ class SQLiteMetadataRepository(MetadataRepository):
         self.db_connection.commit()
 
     @classmethod
-    def _convert_type_to_sqlite_type(cls, type_: typing.Any) -> str:
+    def _convert_type_to_sqlite_type(cls, type_: Any) -> str:
         """
         Конвертация Python-типов в соответствующие SQLite-типизации.
 
@@ -118,7 +128,7 @@ class SQLiteMetadataRepository(MetadataRepository):
 
         origin = typing.get_origin(type_)
 
-        if origin in (typing.Union, types.UnionType):
+        if origin in (Union, types.UnionType):
             args = [arg for arg in typing.get_args(type_) if arg is not type(None)]
             if len(args) == 1:
                 return cls._convert_type_to_sqlite_type(args[0])

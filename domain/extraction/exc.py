@@ -1,6 +1,6 @@
 from exceptions.base import ApplicationError
 
 
-class ExtractError(ApplicationError):
+class ExtractionError(ApplicationError):
     message = "Не удалось извлечь текст из документа"
-    error_code = "extract_error"
+    error_code = "text_extraction_error"
