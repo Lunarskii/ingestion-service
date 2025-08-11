@@ -103,9 +103,12 @@ def main() -> None:
     if not workspace_id:
         return
 
+    sessions: list[dict] = get_sessions(workspace_id)
+
     session_id: str | None = st.session_state.get("session_id")
-    if not session_id:
+    if not session_id or session_id not in (session.get("id") for session in sessions):
         st.session_state.session_id = None
+        session_id = None
 
     with st.sidebar:
         if st.button("Начать новый диалог"):
@@ -113,9 +116,8 @@ def main() -> None:
             st.rerun()
 
         st.header("Чаты")
-        chats: list[str] = [session.get("id") for session in get_sessions(workspace_id)]
         with st.container():
-            for chat in chats:
+            for chat in (session.get("id") for session in sessions):
                 if st.button(chat):
                     st.session_state.session_id = chat
                     st.rerun()

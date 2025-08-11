@@ -8,7 +8,7 @@ from typing import (
 import typing
 import types
 
-from domain.schemas import DocumentMeta
+from domain.document.schemas import DocumentMeta
 from services import MetadataRepository
 from config import settings
 
@@ -74,7 +74,7 @@ class SQLiteMetadataRepository(MetadataRepository):
         """
 
         if data:
-            clauses: list[str] = [f"{col} = ?" for col in data.keys()]
+            clauses: list[str] = [f"{column} = ?" for column in data.keys()]
             sql: str = f"SELECT * FROM {self.table_name} WHERE " + " AND ".join(clauses)
             params = tuple(data.values())
         else:
@@ -86,6 +86,19 @@ class SQLiteMetadataRepository(MetadataRepository):
         rows = cursor.fetchall()
         columns = [description[0] for description in cursor.description]
         return [DocumentMeta(**dict(zip(columns, row))) for row in rows]
+
+    def delete(self, **data: Any) -> None:
+        if data:
+            clauses: list[str] = [f"{column} = ?" for column in data.keys()]
+            sql: str = f"DELETE FROM {self.table_name} WHERE " + " AND ".join(clauses)
+            params = tuple(data.values())
+        else:
+            sql: str = f"DELETE FROM {self.table_name}"
+            params: tuple = ()
+
+        cursor = self.db_connection.cursor()
+        cursor.execute(sql, params)
+        self.db_connection.commit()
 
     def _create_table(self):
         """

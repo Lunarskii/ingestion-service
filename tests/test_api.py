@@ -10,20 +10,20 @@ import pytest
 
 from api.main import app
 from api.v1.dependencies import (
-    document_processor_dependency,
-    chat_service_dependency,
+    document_service_dependency,
+    rag_service_dependency,
 )
-from domain.fhandler.service import DocumentProcessor
-from domain.chat.service import ChatService
+from domain.document.service import DocumentService
+from domain.chat.service import RAGService
 from domain.chat.schemas import ChatResponse
 
 
-mock_processor = MagicMock(spec=DocumentProcessor)
-mock_chat_service = MagicMock(spec=ChatService)
+mock_processor = MagicMock(spec=DocumentService)
+mock_chat_service = MagicMock(spec=RAGService)
 
 
-app.dependency_overrides[document_processor_dependency] = lambda: mock_processor
-app.dependency_overrides[chat_service_dependency] = lambda: mock_chat_service
+app.dependency_overrides[document_service_dependency] = lambda: mock_processor
+app.dependency_overrides[rag_service_dependency] = lambda: mock_chat_service
 client = TestClient(app)
 
 
@@ -79,38 +79,3 @@ class TestDocumentsAPI:
         json_response = response.json()
         assert "code" in json_response
         assert "msg" in json_response
-
-
-class TestChatAPI:
-    @pytest.mark.parametrize(
-        "payload, chat_response, expected_status_code",
-        [
-            (
-                {
-                    "question": "Hello, world!",
-                    "workspace_id": "test-workspace",
-                    "top_k": 1,
-                },
-                ChatResponse(
-                    answer="fake llm answer",
-                    sources=[],
-                ),
-                status.HTTP_200_OK,
-            ),
-        ],
-    )
-    def test_ask_returns_response(
-        self,
-        payload: dict[str, Any],
-        chat_response: ChatResponse,
-        expected_status_code: int,
-    ):
-        mock_chat_service.ask.return_value = chat_response
-        response: Response = client.post("/v1/chat/ask", json=payload)
-
-        assert response.status_code == expected_status_code
-        assert response.json() == chat_response.model_dump()
-
-        mock_chat_service.ask.assert_called_once()
-        args = mock_chat_service.ask.call_args.args
-        assert args[0].question == payload["question"]

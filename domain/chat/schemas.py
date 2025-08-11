@@ -12,7 +12,7 @@ from pydantic import (
 
 class ChatRequest(BaseModel):
     """
-    Схема запроса к ChatService.
+    Схема запроса к RAGService.
 
     :param question: Текст вопроса пользователя.
     :type question: str

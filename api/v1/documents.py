@@ -15,13 +15,14 @@ from fastapi.responses import StreamingResponse
 
 from api.v1.dependencies import (
     validate_upload_file,
-    document_processor_dependency,
+    document_service_dependency,
     metadata_repository_dependency,
     raw_storage_dependency,
 )
-from domain.fhandler.service import DocumentProcessor
-from domain.fhandler.schemas import File
-from domain.schemas import DocumentMeta
+from api.v1.utils import build_content_disposition
+from api.v1.exc import DocumentNotFoundError
+from domain.document.service import DocumentService
+from domain.document.schemas import File, DocumentMeta
 from services import (
     MetadataRepository,
     RawStorage,
@@ -31,7 +32,7 @@ from services import (
 router = APIRouter(prefix="/documents")
 
 
-@router.get("")
+@router.get("", status_code=status.HTTP_200_OK)
 async def documents(
     metadata_repository: Annotated[
         MetadataRepository,
@@ -51,8 +52,8 @@ async def upload_file(
     file: Annotated[File, Depends(validate_upload_file)],
     bg_tasks: BackgroundTasks,
     service: Annotated[
-        DocumentProcessor,
-        Depends(document_processor_dependency),
+        DocumentService,
+        Depends(document_service_dependency),
     ],
     workspace_id: str,
 ) -> dict[str, Any]:
@@ -70,7 +71,7 @@ async def upload_file(
     return {"document_id": document_id}
 
 
-@router.get("/{document_id}/download")
+@router.get("/{document_id}/download", status_code=status.HTTP_200_OK)
 async def download_file(
     document_id: str,
     metadata_repository: Annotated[
@@ -78,17 +79,20 @@ async def download_file(
         Depends(metadata_repository_dependency),
     ],
     raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
-):
+) -> StreamingResponse:
     metadata: list[DocumentMeta] = metadata_repository.get(document_id=document_id)
-    if metadata:
-        metadata0: DocumentMeta = metadata[0]
-        file_bytes: bytes = raw_storage.get(metadata0.raw_storage_path)
-        return StreamingResponse(
-            BytesIO(file_bytes),
-            media_type=metadata0.media_type,
-            headers={
-                "Content-Disposition": f'inline; filename="{metadata0.document_name}"'
-            }
-        )
-    else:
-        ...
+    if not metadata:
+        raise DocumentNotFoundError()
+
+    metadata0: DocumentMeta = metadata[0]
+    file_bytes: bytes = raw_storage.get(metadata0.raw_storage_path)
+    headers: dict[str, str] = {
+        "Content-Disposition": build_content_disposition(metadata0.document_name),
+        "Content-Length": str(len(file_bytes)),
+    }
+
+    return StreamingResponse(
+        BytesIO(file_bytes),
+        media_type=metadata0.media_type,
+        headers=headers,
+    )

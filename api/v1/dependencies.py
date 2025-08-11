@@ -13,10 +13,14 @@ from api.v1.exc import (
     UnsupportedFileTypeError,
     FileTooLargeError,
 )
-from domain.fhandler.utils import get_file_extension
-from domain.fhandler.service import DocumentProcessor
-from domain.fhandler.schemas import File
-from domain.chat.service import ChatService
+from domain.document.utils import get_file_extension
+from domain.document.service import DocumentService
+from domain.document.schemas import File
+from domain.chat.service import (
+    ChatSessionService,
+    ChatMessageService,
+    RAGService,
+)
 from domain.chat.repositories import (
     ChatSessionRepository,
     ChatMessageRepository,
@@ -93,14 +97,14 @@ async def text_splitter_dependency(request: Request) -> TextSplitter:
     return request.app.state.text_splitter
 
 
-async def document_processor_dependency(
+async def document_service_dependency(
     raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
     vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
     metadata_repository: Annotated[MetadataRepository, Depends(metadata_repository_dependency)],
     embedding_model: Annotated[SentenceTransformer, Depends(embedding_model_dependency)],
     text_splitter: Annotated[TextSplitter, Depends(text_splitter_dependency)],
-) -> DocumentProcessor:
-    return DocumentProcessor(
+) -> DocumentService:
+    return DocumentService(
         raw_storage=raw_storage,
         vector_store=vector_store,
         metadata_repository=metadata_repository,
@@ -115,23 +119,41 @@ async def chat_session_repository_dependency(
     return ChatSessionRepository(session)
 
 
+async def chat_session_service_dependency(
+    repository: Annotated[
+        ChatSessionRepository,
+        Depends(chat_session_repository_dependency),
+    ],
+) -> ChatSessionService:
+    return ChatSessionService(repository=repository)
+
+
 async def chat_message_repository_dependency(
     session: Annotated[AsyncSession, Depends(scoped_session_dependency)],
 ) -> ChatMessageRepository:
     return ChatMessageRepository(session)
 
 
-async def chat_service_dependency(
+async def chat_message_service_dependency(
+    repository: Annotated[
+        ChatMessageRepository,
+        Depends(chat_message_repository_dependency),
+    ],
+) -> ChatMessageService:
+    return ChatMessageService(repository=repository)
+
+
+async def rag_service_dependency(
     vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
     embedding_model: Annotated[SentenceTransformer, Depends(embedding_model_dependency)],
-    chat_session_repository: Annotated[ChatSessionRepository, Depends(chat_session_repository_dependency)],
-    chat_message_repository: Annotated[ChatMessageRepository, Depends(chat_message_repository_dependency)],
-) -> ChatService:
-    return ChatService(
+    chat_session_service: Annotated[ChatSessionService, Depends(chat_session_service_dependency)],
+    chat_message_service: Annotated[ChatMessageService, Depends(chat_message_service_dependency)],
+) -> RAGService:
+    return RAGService(
         vector_store=vector_store,
         embedding_model=embedding_model,
-        chat_session_repository=chat_session_repository,
-        chat_message_repository=chat_message_repository,
+        session_service=chat_session_service,
+        message_service=chat_message_service,
     )
 
 
@@ -142,8 +164,8 @@ async def workspace_repository_dependency(
 
 
 async def workspace_service_dependency(
-    workspace_repository: Annotated[WorkspaceRepository, Depends(workspace_repository_dependency)],
+    repository: Annotated[WorkspaceRepository, Depends(workspace_repository_dependency)],
 ) -> WorkspaceService:
     return WorkspaceService(
-        workspace_repository=workspace_repository,
+        repository=repository,
     )

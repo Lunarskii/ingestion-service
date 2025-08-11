@@ -53,37 +53,42 @@ def get_documents(workspace_id: str) -> Any:
 
 
 def main() -> None:
-    workspace_id: str = st.session_state["workspace_id"]
+    workspace_id: str = st.session_state.get("workspace_id")
     if not workspace_id:
         return
 
-    with st.sidebar:
+    st.header("Документы", divider=True)
 
+    documents: list[dict] = get_documents(workspace_id)
+
+    refresh_btn, add_btn, remove_btn, _ = st.columns([0.035, 0.035, 0.035, 0.895])
+    if refresh_btn.button("", icon=":material/refresh:"):
+        st.rerun()
+    if add_btn.button("", icon=":material/add:"):
         def on_change_uploaded_file():
             if file := st.session_state["uploaded_file"]:
                 with st.spinner("Добавление документа в очередь на обработку..."):
-                    _: Any = upload_file(file, workspace_id)
+                    upload_file(file, workspace_id)
 
-        st.header("Файлы")
         st.file_uploader(
             "Загрузить документ",
             type=["pdf", "docx"],
             key="uploaded_file",
             on_change=on_change_uploaded_file,
+            width=256,
         )
+    if remove_btn.button("", icon=":material/remove:"):
+        pass
 
-    st.header("Документы", divider=True)
-    if docs := get_documents(workspace_id):
+    if documents:
         st.dataframe(
-            docs,
+            documents,
             use_container_width=True,
             hide_index=True,
             column_config={"workspace_id": None},
         )
     else:
         st.text("В этом пространстве пока нет документов.")
-    if st.button("Обновить"):
-        st.rerun()
 
 
 if __name__ == "__main__":

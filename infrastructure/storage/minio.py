@@ -33,7 +33,10 @@ class MinIORawStorage(RawStorage):
             credentials=credentials,
             cert_check=cert_check,
         )
+
         self.bucket_name = bucket_name
+        if not self.client.bucket_exists(self.bucket_name):
+            self.client.make_bucket(self.bucket_name)
 
     def save(self, file_bytes: bytes, path: str) -> None:
         self.client.put_object(
@@ -68,10 +71,11 @@ class MinIORawStorage(RawStorage):
                     ),
                 )
             )
-            self.client.remove_objects(
+            errors = self.client.remove_objects(
                 bucket_name=self.bucket_name,
                 delete_object_list=delete_object_list,
             )
+            for _ in errors: ...
         else:
             self.client.remove_object(
                 bucket_name=self.bucket_name,

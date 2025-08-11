@@ -14,16 +14,16 @@ from tests.mock_utils import (
     call_args,
     assert_called_once_with,
 )
-from domain.fhandler.service import DocumentProcessor
-from domain.chat.service import ChatService
+from domain.document.service import DocumentService
+from domain.chat.service import RAGService
 from domain.chat.schemas import (
     ChatRequest,
     ChatResponse,
 )
 from domain.schemas import (
     Vector,
-    DocumentMeta,
 )
+from domain.document.schemas import DocumentMeta
 from services.exc import VectorStoreDocumentsNotFound
 from stubs import JSONVectorStore
 
@@ -48,7 +48,7 @@ class TestDocumentProcessor:
         chunks: list[str] = ValueGenerator.chunks(1)
         text_splitter = DummyTextSplitter(chunks)
 
-        document_processor = DocumentProcessor(
+        document_processor = DocumentService(
             raw_storage=mock_raw_storage,  # noqa
             vector_store=mock_vector_store,  # noqa
             metadata_repository=mock_metadata_repository,  # noqa
@@ -188,7 +188,7 @@ class TestChatService:
         mock_vector_store.search.return_value = retrieved_vectors
         dummy_embedding_model = DummyEmbeddingModel(embedding)
         mocker.patch("stubs.llm_stub.generate", return_value=llm_answer)
-        service = ChatService(
+        service = RAGService(
             vector_store=mock_vector_store,  # noqa
             embedding_model=dummy_embedding_model,  # noqa
         )
@@ -216,7 +216,7 @@ class TestChatService:
     def test_ask_raises_for_empty_workspace(self, chat_request, embedding):
         vector_store = JSONVectorStore()
         dummy_embedding_model = DummyEmbeddingModel(embedding)
-        service = ChatService(vector_store=vector_store, embedding_model=dummy_embedding_model)  # noqa
+        service = RAGService(vector_store=vector_store, embedding_model=dummy_embedding_model)  # noqa
         with pytest.raises(VectorStoreDocumentsNotFound) as exc:
             service.ask(chat_request)
         assert_any_exception(VectorStoreDocumentsNotFound, exc)

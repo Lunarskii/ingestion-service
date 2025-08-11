@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from services import RawStorage
 from config import settings
@@ -50,5 +51,7 @@ class FileRawStorage(RawStorage):
 
     def delete(self, path: str) -> None:
         full_path: str = os.path.join(self.directory, path.lstrip("/"))
-        if os.path.isfile(full_path):
+        if os.path.isdir(full_path):
+            shutil.rmtree(full_path)
+        elif os.path.isfile(full_path):
             os.remove(full_path)

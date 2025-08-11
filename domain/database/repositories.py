@@ -28,7 +28,7 @@ class BaseAlchemyRepository[M: BaseDAO, S: BaseModel](ABC):
             return None
         return self.schema_type.model_validate(instance)
 
-    async def get_n(self, n: int | None = None, **data: Any):
+    async def get_n(self, n: int | None = None, **data: Any) -> list[S]:
         stmt = select(self.model_type).filter_by(**data).limit(n)
         instances = await self.session.scalars(stmt)
         return list(map(self.schema_type.model_validate, instances))

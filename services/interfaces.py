@@ -5,8 +5,8 @@ from typing import (
 
 from domain.schemas import (
     Vector,
-    DocumentMeta,
 )
+from domain.document.schemas import DocumentMeta
 
 
 class RawStorage(Protocol):
@@ -60,6 +60,8 @@ class VectorStore(Protocol):
         """
         ...
 
+    def delete(self, workspace_id: str | None = None, document_id: str | None = None): ...
+
 
 class MetadataRepository(Protocol):
     """
@@ -85,3 +87,5 @@ class MetadataRepository(Protocol):
         :rtype: list[DocumentMeta]
         """
         ...
+
+    def delete(self, **data: Any) -> None: ...

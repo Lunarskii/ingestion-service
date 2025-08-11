@@ -16,8 +16,8 @@ from stubs import (
 )
 from domain.schemas import (
     Vector,
-    DocumentMeta,
 )
+from domain.document.schemas import DocumentMeta
 from services.exc import (
     VectorStoreMissingMetadata,
     VectorStoreDocumentsNotFound,

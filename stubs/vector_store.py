@@ -1,14 +1,11 @@
 import os
 import json
 import math
+import shutil
 from typing import Any
 
 from domain.schemas import Vector
 from services import VectorStore
-from services.exc import (
-    VectorStoreDocumentsNotFound,
-    VectorStoreMissingData,
-)
 from config import settings
 
 
@@ -42,11 +39,10 @@ class JSONVectorStore(VectorStore):
 
         :param vectors: Список векторов для индексации.
         :type vectors: list[Vector]
-        :raises VectorStoreMissingData: Если список `vectors` пуст.
         """
 
         if not vectors:
-            raise VectorStoreMissingData()
+            return
 
         full_path: str = os.path.join(
             self.directory,
@@ -69,15 +65,15 @@ class JSONVectorStore(VectorStore):
         :type workspace_id: str
         :return: Список из не более `top_k` объектов `Vector`, упорядоченных по убыванию сходства.
         :rtype: list[Vector]
-        :raises VectorStoreDocumentsNotFound: Если нет файлов в папке `workspace_id`.
         """
 
         base_path: str = os.path.join(self.directory, f"{workspace_id}/")
+
+        if not os.path.isdir(base_path):
+            return []
+
         similarities: list[tuple[Vector, float]] = []
-
-        if not os.path.isdir(base_path) or not (docs_list := os.listdir(base_path)):
-            raise VectorStoreDocumentsNotFound()
-
+        docs_list: list[str] = os.listdir(base_path)
         for filename in docs_list:
             if filename.endswith(".json"):
                 filename = f"{base_path}/{filename}"
@@ -94,6 +90,19 @@ class JSONVectorStore(VectorStore):
 
         similarities.sort(key=lambda x: x[1], reverse=True)
         return [vec for vec, _ in similarities[:top_k]]
+
+    def delete(self, workspace_id: str | None = None, document_id: str | None = None):
+        if workspace_id:
+            workspace_id = workspace_id.lstrip("/")
+            if document_id:
+                document_id = document_id.lstrip("/")
+                full_path: str = os.path.join(self.directory, f"{workspace_id}/{document_id}.json")
+                if os.path.isfile(full_path):
+                    os.remove(full_path)
+            else:
+                full_path: str = os.path.join(self.directory, workspace_id)
+                if os.path.isdir(full_path):
+                    shutil.rmtree(full_path)
 
     @classmethod
     def _cosine_similarity(cls, vec1: list[float], vec2: list[float]) -> float:

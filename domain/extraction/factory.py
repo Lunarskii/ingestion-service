@@ -32,8 +32,7 @@ class ExtractorFactory:
         :raises ExtractError: Если нет зарегистрированного экстрактора для переданного расширения.
         """
 
-        if extension.startswith("."):
-            extension = extension[1:]
+        extension = extension.lstrip(".")
         extractor_cls: type[TextExtractor] = cls._map.get(extension)
         if not extractor_cls:
             raise ExtractionError(f"Нет экстрактора для расширения '{extension}'")

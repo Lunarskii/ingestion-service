@@ -8,16 +8,13 @@ from sentence_transformers import SentenceTransformer
 from domain.schemas import (
     VectorMetadata,
     Vector,
-    DocumentMeta,
-    DocumentStatus,
 )
-from domain.extraction.base import (
-    TextExtractor,
+from domain.extraction import (
+    extract as extract_from_document,
+    Page,
     ExtractedInfo,
 )
-from domain.extraction.factory import ExtractorFactory
-from domain.extraction.schemas import Page
-from domain.fhandler.schemas import File
+from domain.document.schemas import File, DocumentStatus, DocumentMeta
 from services import (
     RawStorage,
     VectorStore,
@@ -26,7 +23,7 @@ from services import (
 from config import logger
 
 
-class DocumentProcessor:
+class DocumentService:
     """
     Управляет всем процессом обработки документов.
 
@@ -105,9 +102,16 @@ class DocumentProcessor:
                 media_type=metadata_kwargs["media_type"],
                 file_size_bytes=file.size,
             )
-            extractor: TextExtractor = ExtractorFactory().get_extractor(file.extension)
-            document_info: ExtractedInfo = extractor.extract(file.file)
-            metadata_kwargs.update(document_info.model_dump(include={"document_page_count", "author", "creation_date"}))
+            document_info: ExtractedInfo = extract_from_document(file)
+            metadata_kwargs.update(
+                document_info.model_dump(
+                    include={
+                        "document_page_count",
+                        "author",
+                        "creation_date",
+                    }
+                )
+            )
 
             context_logger.info("Определение основного языка документа")
             if document_info.pages:
@@ -148,10 +152,7 @@ class DocumentProcessor:
         workspace_id: str,
         document_name: str,
     ) -> list[Vector]:
-        embeddings = self.embedding_model.encode(
-            [chunk.text for chunk in chunks],
-            show_progress_bar=False
-        )
+        embeddings = self.embedding_model.encode([chunk.text for chunk in chunks], show_progress_bar=False)
         return [
             Vector(
                 id=f"{document_id}-{i}",

@@ -12,8 +12,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.pagesizes import A4
 
-from domain.fhandler.service import DocumentProcessor
-from domain.chat.service import ChatService
+from domain.document.service import DocumentService
+from domain.document.schemas import File
+from domain.chat.service import RAGService
 from services import (
     RawStorage,
     VectorStore,
@@ -179,11 +180,13 @@ def tmp_document(tmp_path) -> Any:
         1: (ValueGenerator.docx, ".docx"),
     }
 
-    def _make(target_bytes: int = 1_000_000) -> tuple:
-        path = tmp_path / f"document_{target_bytes}.document"
+    def _make(target_bytes: int = 1_000_000) -> tuple[bytes, str, str]:
         func, file_extension = _map[random.randint(0, len(_map) - 1)]
+        path = tmp_path / f"document_{target_bytes}{file_extension}"
         func(path, target_bytes)
-        return path, file_extension
+        with open(path, "rb") as file:
+            file_bytes: bytes = file.read()
+        return file_bytes, str(path), file_extension
 
     return _make
 
@@ -193,16 +196,6 @@ def assert_any_exception(exctype, excinfo) -> None:
     assert excinfo.value.message == exctype.message
     assert excinfo.value.error_code == exctype.error_code
     assert excinfo.value.status_code == exctype.status_code
-
-
-@pytest.fixture
-def document_id() -> str:
-    return ValueGenerator.uuid()
-
-
-@pytest.fixture
-def workspace_id() -> str:
-    return ValueGenerator.uuid()
 
 
 @pytest.fixture
@@ -231,14 +224,24 @@ def mock_text_splitter(mocker) -> MagicMock:
 
 
 @pytest.fixture
-def document_processor(
+def mock_document_service(mocker) -> MagicMock:
+    return mocker.create_autospec(DocumentService, instance=True)
+
+
+@pytest.fixture
+def mock_file_scheme(mocker) -> MagicMock:
+    return mocker.create_autospec(File, instance=True)
+
+
+@pytest.fixture
+def document_service(
     mock_raw_storage: MagicMock,
     mock_vector_store: MagicMock,
     mock_metadata_repository: MagicMock,
     mock_embedding_model: MagicMock,
     mock_text_splitter: MagicMock,
-) -> DocumentProcessor:
-    return DocumentProcessor(
+) -> DocumentService:
+    return DocumentService(
         raw_storage=mock_raw_storage,  # noqa
         vector_store=mock_vector_store,  # noqa
         metadata_repository=mock_metadata_repository,  # noqa
@@ -251,8 +254,8 @@ def document_processor(
 def chat_service(
     mock_vector_store: MagicMock,
     mock_embedding_model: MagicMock,
-) -> ChatService:
-    return ChatService(
+) -> RAGService:
+    return RAGService(
         vector_store=mock_vector_store,  # noqa
         embedding_model=mock_embedding_model,  # noqa
     )
