@@ -31,6 +31,6 @@ class Vector(BaseModel):
     :type metadata: VectorMetadata
     """
 
-    id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # noqa
+    id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # type: ignore
     values: list[float]
     metadata: VectorMetadata

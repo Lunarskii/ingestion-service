@@ -32,7 +32,7 @@ class ChatSessionService:
     ):
         self.repository = repository
 
-    async def create(self, workspace_id: str):
+    async def create(self, workspace_id: str) -> ChatSessionDTO:
         try:
             session = ChatSessionDTO(workspace_id=workspace_id)
             session = await self.repository.create(**session.model_dump())
@@ -70,7 +70,6 @@ class ChatMessageService:
 
     async def create(
         self,
-        workspace_id: str,
         session_id: str,
         role: ChatRole,
         content: str,
@@ -85,7 +84,6 @@ class ChatMessageService:
         except Exception as e:
             logger.error(
                 ChatMessageCreationError.message,
-                workspace_id=workspace_id,
                 session_id=session_id,
                 error_message=str(e),
             )
@@ -186,13 +184,11 @@ class RAGService:
 
         context_logger.info("Сохранение сообщений в базе данных")
         await self.message_service.create(
-            workspace_id=request.workspace_id,
             session_id=request.session_id,
             role=ChatRole.user,
             content=request.question,
         )
         await self.message_service.create(
-            workspace_id=request.workspace_id,
             session_id=request.session_id,
             role=ChatRole.assistant,
             content=answer,

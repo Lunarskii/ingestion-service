@@ -13,11 +13,6 @@ from api.v1.dependencies import (
     chat_message_service_dependency,
     rag_service_dependency,
 )
-from domain.chat.service import (
-    ChatSessionService,
-    ChatMessageService,
-    RAGService,
-)
 from domain.chat.schemas import (
     ChatRequest,
     ChatResponse,
@@ -27,17 +22,6 @@ from domain.chat.schemas import (
 )
 
 
-mock_chat_session_service = MagicMock(spec=ChatSessionService)
-mock_chat_message_service = MagicMock(spec=ChatMessageService)
-mock_rag_service = MagicMock(spec=RAGService)
-
-app.dependency_overrides[chat_session_service_dependency] = lambda: mock_chat_session_service # noqa
-app.dependency_overrides[chat_message_service_dependency] = lambda: mock_chat_message_service # noqa
-app.dependency_overrides[rag_service_dependency] = lambda: mock_rag_service # noqa
-
-client = TestClient(app)
-
-
 class TestChatAPI:
     @pytest.fixture
     def chat_api_url(self) -> str:
@@ -45,17 +29,22 @@ class TestChatAPI:
 
     def test_chats_returns_list(
         self,
+        mock_chat_session_service: MagicMock,
         chat_api_url: str,
         workspace_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_200_OK,
     ):
+        app.dependency_overrides.clear() # noqa
+        app.dependency_overrides[chat_session_service_dependency] = lambda: mock_chat_session_service # noqa
+        client = TestClient(app)
+
         list_sessions: list[ChatSessionDTO] = [
             ChatSessionDTO(workspace_id=workspace_id)
             for _ in range(ValueGenerator.integer(2))
         ]
         mock_chat_session_service.sessions.return_value = list_sessions
         response: Response = client.get(
-            f"{chat_api_url}/chats",
+            chat_api_url,
             params={"workspace_id": workspace_id},
         )
 
@@ -86,11 +75,16 @@ class TestChatAPI:
     )
     def test_ask_returns_response(
         self,
+        mock_rag_service: MagicMock,
         chat_api_url: str,
         chat_request: ChatRequest,
         chat_response: ChatResponse,
         expected_status_code: int = status.HTTP_200_OK,
     ):
+        app.dependency_overrides.clear() # noqa
+        app.dependency_overrides[rag_service_dependency] = lambda: mock_rag_service # noqa
+        client = TestClient(app)
+
         mock_rag_service.ask.return_value = chat_response
         response: Response = client.post(
             f"{chat_api_url}/ask",
@@ -102,15 +96,20 @@ class TestChatAPI:
 
         assert_called_once_with(
             mock_rag_service.ask,
-            question=chat_request,
+            request=chat_request,
         )
 
     def test_chat_history_returns_list(
         self,
+        mock_chat_message_service: MagicMock,
         chat_api_url: str,
         session_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_200_OK,
     ):
+        app.dependency_overrides.clear() # noqa
+        app.dependency_overrides[chat_message_service_dependency] = lambda: mock_chat_message_service # noqa
+        client = TestClient(app)
+
         list_messages: list[ChatMessageDTO] = [
             ChatMessageDTO(session_id=session_id, role=ChatRole.user, content=ValueGenerator.text())
             for _ in range(ValueGenerator.integer(2))

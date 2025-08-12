@@ -38,6 +38,7 @@ pytest-mock = "^3.14.1"
 ruff = "^0.12.2"
 pytest-cov = "^6.2.1"
 reportlab = "^4.4.3"
+pytest-asyncio = "^1.1.0"
 
 [build-system]
 requires = ["poetry-core"]

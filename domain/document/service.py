@@ -14,7 +14,11 @@ from domain.extraction import (
     Page,
     ExtractedInfo,
 )
-from domain.document.schemas import File, DocumentStatus, DocumentMeta
+from domain.document.schemas import (
+    File,
+    DocumentStatus,
+    DocumentMeta,
+)
 from services import (
     RawStorage,
     VectorStore,
@@ -156,7 +160,7 @@ class DocumentService:
         return [
             Vector(
                 id=f"{document_id}-{i}",
-                values=embedding.tolist(),  # noqa
+                values=embedding.tolist(),
                 metadata=VectorMetadata(
                     document_id=document_id,
                     workspace_id=workspace_id,

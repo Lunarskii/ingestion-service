@@ -76,8 +76,8 @@ class TestDocumentsAPI:
 
     def test_upload_file_success(
         self,
-        mock_document_service,
-        mock_file_scheme,
+        mock_document_service: MagicMock,
+        mock_file_scheme: MagicMock,
         tmp_document: Any,
         documents_api_url: str,
         workspace_id: str = ValueGenerator.uuid(),
@@ -151,12 +151,13 @@ class TestDocumentsAPI:
 
     def test_download_file_not_found(
         self,
-        mock_metadata_repository,
-        mock_raw_storage,
+        mock_metadata_repository: MagicMock,
+        mock_raw_storage: MagicMock,
         documents_api_url: str,
         document_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_404_NOT_FOUND,
     ):
+        app.dependency_overrides.clear() # noqa
         app.dependency_overrides[metadata_repository_dependency] = lambda: mock_metadata_repository # noqa
         app.dependency_overrides[raw_storage_dependency] = lambda: mock_raw_storage  # noqa
         client = TestClient(app)
@@ -176,12 +177,13 @@ class TestDocumentsAPI:
 
     def test_download_file_success(
         self,
-        mock_metadata_repository,
-        mock_raw_storage,
+        mock_metadata_repository: MagicMock,
+        mock_raw_storage: MagicMock,
         documents_api_url: str,
         document_id=ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_200_OK,
     ):
+        app.dependency_overrides.clear() # noqa
         app.dependency_overrides[metadata_repository_dependency] = lambda: mock_metadata_repository # noqa
         app.dependency_overrides[raw_storage_dependency] = lambda: mock_raw_storage  # noqa
         client = TestClient(app)

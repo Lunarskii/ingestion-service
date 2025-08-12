@@ -65,12 +65,12 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
 
     raw_storage, vector_store, metadata_repository, embedding_model, text_splitter = await asyncio.gather(*tasks)
 
-    app.state.raw_storage = raw_storage
-    app.state.vector_store = vector_store
-    app.state.metadata_repository = metadata_repository
-    app.state.embedding_model = embedding_model
-    app.state.text_splitter = text_splitter
+    app.state.raw_storage = raw_storage  # type: ignore[attr-defined]
+    app.state.vector_store = vector_store  # type: ignore[attr-defined]
+    app.state.metadata_repository = metadata_repository  # type: ignore[attr-defined]
+    app.state.embedding_model = embedding_model  # type: ignore[attr-defined]
+    app.state.text_splitter = text_splitter  # type: ignore[attr-defined]
 
 
 def setup_event_handlers(app: "FastAPI") -> None:
-    app.add_event_handler("startup", lambda: asyncio.create_task(on_startup_event_handler(app)))
+    app.add_event_handler("startup", partial(on_startup_event_handler, app))

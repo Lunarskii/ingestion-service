@@ -1,5 +1,9 @@
 from unittest.mock import MagicMock
 from typing import Any
+from datetime import (
+    datetime,
+    timedelta,
+)
 import random
 import uuid
 import string
@@ -13,14 +17,31 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.pagesizes import A4
 
 from domain.document.service import DocumentService
-from domain.document.schemas import File
-from domain.chat.service import RAGService
+from domain.document.schemas import (
+    File,
+    DocumentMeta,
+    DocumentStatus,
+)
+from domain.chat.service import (
+    ChatSessionService,
+    ChatMessageService,
+    RAGService,
+)
+from domain.chat.repositories import (
+    ChatSessionRepository,
+    ChatMessageRepository,
+)
+from domain.workspace.service import WorkspaceService
+from domain.workspace.repositories import WorkspaceRepository
 from services import (
     RawStorage,
     VectorStore,
     MetadataRepository,
 )
-from domain.schemas import Vector
+from domain.schemas import (
+    VectorMetadata,
+    Vector,
+)
 
 
 class ValueGenerator:
@@ -72,27 +93,31 @@ class ValueGenerator:
         return str(uuid.uuid4())
 
     @classmethod
+    def datetime(
+        cls,
+        start: datetime = datetime(2020, 1, 1, 0, 0, 0),
+        end: datetime = datetime(2025, 1, 1, 0, 0, 0),
+    ):
+        delta = end - start
+        random_seconds = random.randint(0, int(delta.total_seconds()))
+        return start + timedelta(seconds=random_seconds)
+
+    @classmethod
     def path(cls, sub_directories: int = 0) -> str:
         return f"{'/'.join([cls.word() for _ in range(sub_directories + 1)])}/"
 
     @classmethod
-    def vector(
-        cls,
-        n_values: int = 384,
-        document_id: bool = True,
-        workspace_id: bool = True,
-        chunk_index: bool = True,
-    ) -> Vector:
-        metadata: dict[str, Any] = {}
-        if document_id:
-            metadata["document_id"] = cls.uuid()
-        if workspace_id:
-            metadata["workspace_id"] = cls.uuid()
-        if chunk_index:
-            metadata["chunk_index"] = cls.integer()
+    def vector(cls, n_values: int = 384) -> Vector:
         return Vector(
             values=cls.float_list(-1, 1, n_values, {0}),
-            metadata=metadata,
+            metadata=VectorMetadata(
+                document_id=cls.uuid(),
+                workspace_id=cls.uuid(),
+                document_name=cls.text(),
+                document_page=cls.integer(),
+                chunk_index=cls.integer(),
+                text=cls.text(),
+            ),
         )
 
     @classmethod
@@ -106,6 +131,23 @@ class ValueGenerator:
     @classmethod
     def chunks(cls, n_values: int) -> list[str]:
         return [cls.word() for _ in range(n_values)]
+
+    @classmethod
+    def document_metadata(cls) -> DocumentMeta:
+        return DocumentMeta(
+            document_id=cls.uuid(),
+            workspace_id=cls.uuid(),
+            document_name=cls.text(),
+            media_type="application/pdf",
+            detected_language="en",
+            document_page_count=cls.integer(),
+            author=cls.text(),
+            creation_date=cls.datetime(),
+            raw_storage_path=f"{cls.path()}{cls.word()}.pdf",
+            file_size_bytes=cls.integer(),
+            ingested_at=cls.datetime(),
+            status=DocumentStatus.success,
+        )
 
     @classmethod
     def pdf(
@@ -234,28 +276,35 @@ def mock_file_scheme(mocker) -> MagicMock:
 
 
 @pytest.fixture
-def document_service(
-    mock_raw_storage: MagicMock,
-    mock_vector_store: MagicMock,
-    mock_metadata_repository: MagicMock,
-    mock_embedding_model: MagicMock,
-    mock_text_splitter: MagicMock,
-) -> DocumentService:
-    return DocumentService(
-        raw_storage=mock_raw_storage,  # noqa
-        vector_store=mock_vector_store,  # noqa
-        metadata_repository=mock_metadata_repository,  # noqa
-        embedding_model=mock_embedding_model,  # noqa
-        text_splitter=mock_text_splitter,  # noqa
-    )
+def mock_chat_session_service(mocker) -> MagicMock:
+    return mocker.create_autospec(ChatSessionService, instance=True)
 
 
 @pytest.fixture
-def chat_service(
-    mock_vector_store: MagicMock,
-    mock_embedding_model: MagicMock,
-) -> RAGService:
-    return RAGService(
-        vector_store=mock_vector_store,  # noqa
-        embedding_model=mock_embedding_model,  # noqa
-    )
+def mock_chat_session_repository(mocker) -> MagicMock:
+    return mocker.create_autospec(ChatSessionRepository, instance=True)
+
+
+@pytest.fixture
+def mock_chat_message_service(mocker) -> MagicMock:
+    return mocker.create_autospec(ChatMessageService, instance=True)
+
+
+@pytest.fixture
+def mock_chat_message_repository(mocker) -> MagicMock:
+    return mocker.create_autospec(ChatMessageRepository, instance=True)
+
+
+@pytest.fixture
+def mock_rag_service(mocker) -> MagicMock:
+    return mocker.create_autospec(RAGService, instance=True)
+
+
+@pytest.fixture
+def mock_workspace_repository(mocker) -> MagicMock:
+    return mocker.create_autospec(WorkspaceRepository, instance=True)
+
+
+@pytest.fixture
+def mock_workspace_service(mocker) -> MagicMock:
+    return mocker.create_autospec(WorkspaceService, instance=True)
