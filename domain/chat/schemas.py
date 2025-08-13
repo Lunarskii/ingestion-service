@@ -15,14 +15,14 @@ class ChatRequest(BaseModel):
     """
     Схема запроса к RAGService.
 
-    :param question: Текст вопроса пользователя.
-    :type question: str
-    :param workspace_id: Идентификатор рабочего пространства.
-    :type workspace_id: str
-    :param session_id: Идентификатор сессии.
-    :type session_id: str | None
-    :param top_k: Количество релевантных источников (фрагментов) для поиска в RAG.
-    :type top_k: int
+    :ivar question: Текст вопроса пользователя.
+    :vartype question: str
+    :ivar workspace_id: Идентификатор рабочего пространства.
+    :vartype workspace_id: str
+    :ivar session_id: Идентификатор сессии.
+    :vartype session_id: str | None
+    :ivar top_k: Количество релевантных источников (фрагментов) для поиска в RAG.
+    :vartype top_k: int
     """
 
     question: str
@@ -35,14 +35,14 @@ class Source(BaseModel):
     """
     Схема источника (фрагмента документа).
 
-    :param source_id: Идентификатор источника (документа).
-    :type source_id: str
-    :param document_name: Имя документа.
-    :type document_name: str
-    :param document_page: Страница в документе, на которой находится фрагмент.
-    :type document_page: int
-    :param snippet: Фрагмент.
-    :type snippet: str
+    :ivar source_id: Идентификатор источника (документа).
+    :vartype source_id: str
+    :ivar document_name: Имя документа.
+    :vartype document_name: str
+    :ivar document_page: Страница в документе, на которой находится фрагмент.
+    :vartype document_page: int
+    :ivar snippet: Фрагмент.
+    :vartype snippet: str
     """
 
     source_id: str
@@ -55,12 +55,12 @@ class ChatResponse(BaseModel):
     """
     Схема ответа от ChatService.
 
-    :param answer: Сгенерированный ответ на вопрос.
-    :type answer: str
-    :param sources: Список источников (фрагментов), на которых основан ответ.
-    :type sources: list[Source]
-    :param session_id: Идентификатор сессии.
-    :type session_id: str
+    :ivar answer: Сгенерированный ответ на вопрос.
+    :vartype answer: str
+    :ivar sources: Список источников (фрагментов), на которых основан ответ.
+    :vartype sources: list[Source]
+    :ivar session_id: Идентификатор сессии.
+    :vartype session_id: str
     """
 
     answer: str
@@ -69,6 +69,17 @@ class ChatResponse(BaseModel):
 
 
 class ChatSessionDTO(BaseModel):
+    """
+    DTO (Data Transfer Object) для представления чат-сессии.
+
+    :ivar id: Идентификатор сессии (UUID в строковом виде).
+    :vartype id: str
+    :ivar workspace_id: Идентификатор рабочего пространства, к которому относится сессия.
+    :vartype workspace_id: str
+    :ivar created_at: Время создания сессии.
+    :vartype created_at: datetime
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # type: ignore
@@ -87,11 +98,35 @@ class ChatSessionDTO(BaseModel):
 
 
 class ChatRole(str, Enum):
+    """
+    Перечисление ролей участников чата.
+
+    :cvar user: Пользователь.
+    :vartype user: str
+    :cvar assistant: Ассистент/LLM
+    :vartype assistant: str
+    """
+
     user = "user"
     assistant = "assistant"
 
 
 class ChatMessageDTO(BaseModel):
+    """
+    DTO (Data Transfer Object) для представления сообщения чата.
+
+    :ivar id: Идентификатор сообщения (UUID в строковом виде).
+    :vartype id: str
+    :ivar session_id: Идентификатор чат-сессии, к которой относится сообщение.
+    :vartype session_id: str
+    :ivar role: Роль автора (:class:`ChatRole`).
+    :vartype role: ChatRole
+    :ivar content: Текст сообщения.
+    :vartype content: str
+    :ivar created_at: Время создания сообщения.
+    :vartype created_at: datetime
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # type: ignore

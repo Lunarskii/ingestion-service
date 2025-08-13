@@ -41,7 +41,7 @@ async def documents(
     workspace_id: str,
 ) -> list[DocumentMeta]:
     """
-    Возвращает список метаданных документов в заданном пространстве.
+    Возвращает список метаданных документов в заданном рабочем пространстве.
     """
 
     return metadata_repository.get(workspace_id=workspace_id)
@@ -58,7 +58,8 @@ async def upload_file(
     workspace_id: str,
 ) -> dict[str, Any]:
     """
-    Принимает документ для обработки, немедленно возвращает ID документа и выполняет обработку в фоновом режиме.
+    Принимает файл для обработки и запускает обработку в фоновом режиме.
+    Немедленно возвращает сгенерированный идентификатор документа.
     """
 
     document_id = str(uuid.uuid4())
@@ -80,6 +81,10 @@ async def download_file(
     ],
     raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
 ) -> StreamingResponse:
+    """
+    Возвращает бинарный файл для скачивания по идентификатору документа в виде потоковой передачи.
+    """
+
     metadata: list[DocumentMeta] = metadata_repository.get(document_id=document_id)
     if not metadata:
         raise DocumentNotFoundError()

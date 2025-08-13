@@ -45,11 +45,28 @@ class FileRawStorage(RawStorage):
             file.write(file_bytes)
 
     def get(self, path: str) -> bytes:
+        """
+        Возвращает бинарные данные файла по указанному пути.
+
+        :param path: Относительный путь внутри корня директории.
+        :type path: str
+        :return: Содержимое файла в виде байтов.
+        :rtype: bytes
+        """
+
         full_path: str = os.path.join(self.directory, path.lstrip("/"))
         with open(full_path, "rb") as file:
             return file.read()
 
     def delete(self, path: str) -> None:
+        """
+        Удаляет файл или директорию внутри корня хранилища.
+
+        :param path: Относительный путь внутри корня директории. Если путь указывает на директорию,
+                     будет рекурсивно удалена вся директория.
+        :type path: str
+        """
+
         full_path: str = os.path.join(self.directory, path.lstrip("/"))
         if os.path.isdir(full_path):
             shutil.rmtree(full_path)

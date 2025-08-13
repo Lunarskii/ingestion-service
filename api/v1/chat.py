@@ -32,6 +32,10 @@ async def chats(
     workspace_id: str,
     service: Annotated[ChatSessionService, Depends(chat_session_service_dependency)],
 ) -> list[ChatSessionDTO]:
+    """
+    Возвращает список чат-сессий для заданного рабочего пространства.
+    """
+
     return await service.sessions(workspace_id)
 
 
@@ -41,8 +45,7 @@ async def ask_llm(
     service: Annotated[RAGService, Depends(rag_service_dependency)],
 ) -> ChatResponse:
     """
-    Принимает вопрос пользователя и ID рабочего пространства, находит релевантные документы в векторном
-    хранилище и генерирует ответ на основе найденного контекста.
+    Принимает вопрос пользователя, выполняет RAG-процесс и возвращает ответ с источниками.
     """
 
     return await service.ask(question)
@@ -53,4 +56,8 @@ async def chat_history(
     session_id: str,
     service: Annotated[ChatMessageService, Depends(chat_message_service_dependency)],
 ) -> list[ChatMessageDTO]:
+    """
+    Возвращает историю сообщений указанной чат-сессии в хронологическом порядке.
+    """
+
     return await service.messages(session_id)

@@ -21,6 +21,19 @@ if TYPE_CHECKING:
 
 
 class ChatSessionDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
+    """
+    DAO (ORM) модель, представляющая сессию чата.
+
+    :cvar __tablename__: Название таблицы в базе данных.
+    :vartype __tablename__: str
+    :ivar workspace_id: Внешний ключ рабочего пространства, которому принадлежит сессия.
+    :vartype workspace_id: UUID
+    :ivar workspace: Объект рабочего пространства (relationship).
+    :vartype workspace: WorkspaceDAO
+    :ivar messages: Список связанных сообщений (relationship).
+    :vartype messages: list[ChatMessageDAO]
+    """
+
     __tablename__ = "chat_sessions"
 
     workspace_id: Mapped[UUID] = mapped_column(
@@ -36,6 +49,21 @@ class ChatSessionDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
 
 
 class ChatMessageDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
+    """
+    DAO (ORM) модель, представляющая сообщение внутри чат-сессии.
+
+    :cvar __tablename__: Название таблицы в базе данных.
+    :vartype __tablename__: str
+    :ivar session_id: Внешний ключ чат-сессии.
+    :vartype session_id: UUID
+    :ivar session: Объект сессии (relationship).
+    :vartype session: ChatSessionDAO
+    :ivar role: Роль автора сообщения (enum ``ChatRole``).
+    :vartype role: ChatRole
+    :ivar content: Текст сообщения.
+    :vartype content: str
+    """
+
     __tablename__ = "chat_messages"
 
     session_id: Mapped[UUID] = mapped_column(

@@ -33,7 +33,9 @@ def upgrade() -> None:
         "chat_messages",
         sa.Column("id", sa.Uuid(as_uuid=False), nullable=False),
         sa.Column("session_id", sa.Uuid(as_uuid=False), nullable=False),
-        sa.Column("role", sa.Enum("user", "assistant", name="chat_role"), nullable=False),
+        sa.Column(
+            "role", sa.Enum("user", "assistant", name="chat_role"), nullable=False
+        ),
         sa.Column("content", sa.String(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(

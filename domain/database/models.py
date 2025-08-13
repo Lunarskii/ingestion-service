@@ -11,6 +11,13 @@ import sqlalchemy as sa
 
 
 class BaseModel(AsyncAttrs, DeclarativeBase):
+    """
+    Базовый класс для declarative моделей SQLAlchemy с асинхронными атрибутами.
+
+    Описывает базовую карту типов ``type_annotation_map`` и ``metadata`` с общей
+    стратегией именования ограничений/индексов/ключей.
+    """
+
     __abstract__ = True
     type_annotation_map = {
         int: sa.BigInteger,
@@ -28,10 +35,23 @@ class BaseModel(AsyncAttrs, DeclarativeBase):
     )
 
     def update(self, **data: Any) -> Self:
+        """
+        Обновляет поля модели значениями из keyword аргументов.
+
+        :param data: Набор keyword аргументов для обновления атрибутов модели.
+        :type data: Any
+        :return: Экземпляр модели (self) после обновления.
+        :rtype: Self
+        """
+
         for key, value in data.items():
             setattr(self, key, value)
         return self
 
 
 class BaseDAO(BaseModel):
+    """
+    Абстрактный базовый класс для DAO (Data Access Object) моделей.
+    """
+
     __abstract__ = True

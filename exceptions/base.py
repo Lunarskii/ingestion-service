@@ -58,9 +58,10 @@ class ErrorResponse(BaseModel):
     """
     Структура JSON-ответа для ошибок.
 
-    Поля:
-      - msg: человекочитаемое сообщение.
-      - code: машинный код ошибки.
+    :ivar msg: Человеко-читаемое сообщение.
+    :vartype msg: str
+    :ivar code: Машинный код ошибки.
+    :vartype code: str
     """
 
     msg: str

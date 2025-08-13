@@ -58,6 +58,7 @@ def main() -> None:
     if refresh_btn.button("", icon=":material/refresh:"):
         st.rerun()
     if add_btn.button("", icon=":material/add:"):
+
         @st.dialog("Создать рабочее пространство")
         def create_workspace_dialog():
             new_workspace_name: str | None = st.text_input(
@@ -93,10 +94,14 @@ def main() -> None:
             hide_index=True,
         )
 
-        select_box_workspace_name_index: int | None = st.session_state.get("select_box_workspace_name_index")
+        select_box_workspace_name_index: int | None = st.session_state.get(
+            "select_box_workspace_name_index"
+        )
 
         def on_change_workspace_name():
-            workspace_name: str | None = st.session_state.get("select_box_workspace_name")
+            workspace_name: str | None = st.session_state.get(
+                "select_box_workspace_name"
+            )
             if not workspace_name:
                 return
 

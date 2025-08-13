@@ -25,9 +25,25 @@ class RawStorage(Protocol):
         """
         ...
 
-    def get(self, path: str) -> bytes: ...
+    def get(self, path: str) -> bytes:
+        """
+        Возвращает бинарные данные файла по указанному пути.
 
-    def delete(self, path: str) -> None: ...
+        :param path: Логический или файловый путь к файлу.
+        :type path: str
+        :return: Содержимое файла в виде байтов.
+        :rtype: bytes
+        """
+        ...
+
+    def delete(self, path: str) -> None:
+        """
+        Удаляет файл или префикс (директорию) по указанному пути.
+
+        :param path: Путь к файлу или префикс (например, директория) для удаления.
+        :type path: str
+        """
+        ...
 
 
 class VectorStore(Protocol):
@@ -45,7 +61,9 @@ class VectorStore(Protocol):
         """
         ...
 
-    def search(self, vector: list[float], top_k: int, workspace_id: str) -> list[Vector]:
+    def search(
+        self, vector: list[float], top_k: int, workspace_id: str
+    ) -> list[Vector]:
         """
         Выполняет поиск наиболее похожих векторов в заданном рабочем пространстве.
 
@@ -60,7 +78,19 @@ class VectorStore(Protocol):
         """
         ...
 
-    def delete(self, workspace_id: str | None = None, document_id: str | None = None): ...
+    def delete(self, workspace_id: str, document_id: str | None = None):
+        """
+        Удаляет векторы по workspace_id или конкретному документу (document_id).
+
+        Если указан только ``workspace_id``, удаляется весь индекс пространства.
+        Если указан также и ``document_id``, удаляется конкретный файл индекса в пространстве.
+
+        :param workspace_id: Идентификатор рабочего пространства.
+        :type workspace_id: str | None
+        :param document_id: Идентификатор документа (опционально).
+        :type document_id: str | None
+        """
+        ...
 
 
 class MetadataRepository(Protocol):
@@ -81,11 +111,18 @@ class MetadataRepository(Protocol):
         """
         Извлекает все сохраненные метаданные документов для заданного фильтра.
 
-        :param data: Словарь аргументов, по которому фильтруются документы.
-        :type data: Any
+        :param data: Набор keyword аргументов, по которым фильтруются документы.
+        :type data: dict[str, Any]
         :return: Список объектов `DocumentMeta`.
         :rtype: list[DocumentMeta]
         """
         ...
 
-    def delete(self, **data: Any) -> None: ...
+    def delete(self, **data: Any) -> None:
+        """
+        Удаляет записи метаданных по заданному фильтру или все записи, если фильтр пуст.
+
+        :param data: Набор keyword аргументов для фильтрации записей, которые требуется удалить.
+        :type data: dict[str, Any]
+        """
+        ...

@@ -44,8 +44,10 @@ class TestDocumentsAPI:
         workspace_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_200_OK,
     ):
-        app.dependency_overrides.clear() # noqa
-        app.dependency_overrides[metadata_repository_dependency] = lambda: mock_metadata_repository  # noqa
+        app.dependency_overrides.clear()  # noqa
+        app.dependency_overrides[metadata_repository_dependency] = (
+            lambda: mock_metadata_repository
+        )  # noqa
         client = TestClient(app)
 
         list_metadata: list[DocumentMeta] = [
@@ -84,9 +86,11 @@ class TestDocumentsAPI:
         expected_status_code: int = status.HTTP_202_ACCEPTED,
     ):
         mock_document_service.process = AsyncMock(return_value=None)
-        app.dependency_overrides.clear() # noqa
-        app.dependency_overrides[document_service_dependency] = lambda: mock_document_service  # noqa
-        app.dependency_overrides[validate_upload_file] = lambda: mock_file_scheme # noqa
+        app.dependency_overrides.clear()  # noqa
+        app.dependency_overrides[document_service_dependency] = (
+            lambda: mock_document_service
+        )  # noqa
+        app.dependency_overrides[validate_upload_file] = lambda: mock_file_scheme  # noqa
         client = TestClient(app)
 
         file_bytes, _, _ = tmp_document()
@@ -113,7 +117,7 @@ class TestDocumentsAPI:
         workspace_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
     ):
-        app.dependency_overrides.clear() # noqa
+        app.dependency_overrides.clear()  # noqa
         client = TestClient(app)
 
         response: Response = client.post(
@@ -134,7 +138,7 @@ class TestDocumentsAPI:
         workspace_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
     ):
-        app.dependency_overrides.clear() # noqa
+        app.dependency_overrides.clear()  # noqa
         client = TestClient(app)
 
         file_bytes, path, file_extension = tmp_document(30_000_000)
@@ -157,8 +161,10 @@ class TestDocumentsAPI:
         document_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_404_NOT_FOUND,
     ):
-        app.dependency_overrides.clear() # noqa
-        app.dependency_overrides[metadata_repository_dependency] = lambda: mock_metadata_repository # noqa
+        app.dependency_overrides.clear()  # noqa
+        app.dependency_overrides[metadata_repository_dependency] = (
+            lambda: mock_metadata_repository
+        )  # noqa
         app.dependency_overrides[raw_storage_dependency] = lambda: mock_raw_storage  # noqa
         client = TestClient(app)
 
@@ -183,8 +189,10 @@ class TestDocumentsAPI:
         document_id=ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_200_OK,
     ):
-        app.dependency_overrides.clear() # noqa
-        app.dependency_overrides[metadata_repository_dependency] = lambda: mock_metadata_repository # noqa
+        app.dependency_overrides.clear()  # noqa
+        app.dependency_overrides[metadata_repository_dependency] = (
+            lambda: mock_metadata_repository
+        )  # noqa
         app.dependency_overrides[raw_storage_dependency] = lambda: mock_raw_storage  # noqa
         client = TestClient(app)
 

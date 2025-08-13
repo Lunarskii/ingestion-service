@@ -15,13 +15,34 @@ from config import logger
 
 
 class WorkspaceService:
+    """
+    Сервис для управления рабочими пространствами.
+    """
+
     def __init__(
         self,
         repository: WorkspaceRepository,
     ):
+        """
+        :param repository: Репозиторий для работы с пространством.
+        :type repository: WorkspaceRepository
+        """
+
         self.repository = repository
 
     async def create(self, name: str) -> WorkspaceDTO:
+        """
+        Создаёт новое рабочее пространство с заданным именем.
+
+        :param name: Уникальное имя для создаваемого пространства.
+        :type name: str
+        :return: Созданное пространство в виде DTO.
+        :rtype: WorkspaceDTO
+        :raises WorkspaceRetrievalError: Если произошла ошибка при проверке существующих пространств.
+        :raises WorkspaceAlreadyExistsError: Если пространство с таким именем уже существует.
+        :raises WorkspaceCreationError: В случае ошибки при создании пространства.
+        """
+
         context_logger = logger.bind(name=name)
 
         try:
@@ -56,6 +77,20 @@ class WorkspaceService:
         vector_store: VectorStore,
         metadata_repository: MetadataRepository,
     ) -> None:
+        """
+        Удаляет пространство и все связанные с ним данные.
+
+        :param workspace_id: Идентификатор пространства для удаления.
+        :type workspace_id: str
+        :param raw_storage: Сервис для управления сырыми файлами.
+        :type raw_storage: RawStorage
+        :param vector_store: Сервис векторного хранилища.
+        :type vector_store: VectorStore
+        :param metadata_repository: Репозиторий метаданных.
+        :type metadata_repository: MetadataRepository
+        :raises WorkspaceDeletionError: В случае любой ошибки при удалении.
+        """
+
         context_logger = logger.bind(workspace_id=workspace_id)
 
         try:
@@ -74,6 +109,14 @@ class WorkspaceService:
             raise WorkspaceDeletionError()
 
     async def workspaces(self) -> list[WorkspaceDTO]:
+        """
+        Возвращает список всех рабочих пространств.
+
+        :return: Список DTO рабочих пространств.
+        :rtype: list[WorkspaceDTO]
+        :raises WorkspaceRetrievalError: В случае ошибки при получении списка.
+        """
+
         try:
             logger.info("Получение списка пространств")
             workspaces: list[WorkspaceDTO] = await self.repository.get_n()

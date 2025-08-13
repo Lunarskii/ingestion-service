@@ -31,8 +31,10 @@ class TestWorkspacesAPI:
         workspaces_api_url: str,
         expected_status_code: int = status.HTTP_200_OK,
     ):
-        app.dependency_overrides.clear() # noqa
-        app.dependency_overrides[workspace_service_dependency] = lambda: mock_workspace_service # noqa
+        app.dependency_overrides.clear()  # noqa
+        app.dependency_overrides[workspace_service_dependency] = (
+            lambda: mock_workspace_service
+        )  # noqa
         client = TestClient(app)
 
         list_workspaces: list[WorkspaceDTO] = [
@@ -43,7 +45,9 @@ class TestWorkspacesAPI:
         response: Response = client.get(workspaces_api_url)
 
         assert response.status_code == expected_status_code
-        assert response.json() == [workspace.model_dump() for workspace in list_workspaces]
+        assert response.json() == [
+            workspace.model_dump() for workspace in list_workspaces
+        ]
 
         assert_called_once_with(mock_workspace_service.workspaces)
 
@@ -53,8 +57,10 @@ class TestWorkspacesAPI:
         workspaces_api_url: str,
         expected_status_code: int = status.HTTP_201_CREATED,
     ):
-        app.dependency_overrides.clear() # noqa
-        app.dependency_overrides[workspace_service_dependency] = lambda: mock_workspace_service # noqa
+        app.dependency_overrides.clear()  # noqa
+        app.dependency_overrides[workspace_service_dependency] = (
+            lambda: mock_workspace_service
+        )  # noqa
         client = TestClient(app)
 
         workspace: WorkspaceDTO = WorkspaceDTO(name=ValueGenerator.text())
@@ -82,12 +88,16 @@ class TestWorkspacesAPI:
         workspace_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_204_NO_CONTENT,
     ):
-        app.dependency_overrides.clear() # noqa
+        app.dependency_overrides.clear()  # noqa
         mock_workspace_service.delete = AsyncMock(return_value=None)
-        app.dependency_overrides[workspace_service_dependency] = lambda: mock_workspace_service # noqa
-        app.dependency_overrides[raw_storage_dependency] = lambda: mock_raw_storage # noqa
-        app.dependency_overrides[vector_store_dependency] = lambda: mock_vector_store # noqa
-        app.dependency_overrides[metadata_repository_dependency] = lambda: mock_metadata_repository # noqa
+        app.dependency_overrides[workspace_service_dependency] = (
+            lambda: mock_workspace_service
+        )  # noqa
+        app.dependency_overrides[raw_storage_dependency] = lambda: mock_raw_storage  # noqa
+        app.dependency_overrides[vector_store_dependency] = lambda: mock_vector_store  # noqa
+        app.dependency_overrides[metadata_repository_dependency] = (
+            lambda: mock_metadata_repository
+        )  # noqa
         client = TestClient(app)
 
         response: Response = client.delete(f"{workspaces_api_url}/{workspace_id}")

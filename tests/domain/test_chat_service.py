@@ -46,9 +46,13 @@ class TestChatSessionService:
         expected_schema = ChatSessionDTO(workspace_id=workspace_id)
 
         mock_chat_session_repository.create = AsyncMock(return_value=expected_schema)
-        chat_session_service = ChatSessionService(repository=mock_chat_session_repository)
+        chat_session_service = ChatSessionService(
+            repository=mock_chat_session_repository
+        )
 
-        schema: ChatSessionDTO = await chat_session_service.create(workspace_id=workspace_id)
+        schema: ChatSessionDTO = await chat_session_service.create(
+            workspace_id=workspace_id
+        )
         assert schema == expected_schema
 
         assert_called_once_with(
@@ -62,8 +66,12 @@ class TestChatSessionService:
         mock_chat_session_repository: MagicMock,
         workspace_id: str = ValueGenerator.uuid(),
     ):
-        mock_chat_session_repository.create = AsyncMock(side_effect=Exception("database error"))
-        chat_session_service = ChatSessionService(repository=mock_chat_session_repository)
+        mock_chat_session_repository.create = AsyncMock(
+            side_effect=Exception("database error")
+        )
+        chat_session_service = ChatSessionService(
+            repository=mock_chat_session_repository
+        )
 
         with pytest.raises(ChatSessionCreationError):
             await chat_session_service.create(workspace_id=workspace_id)
@@ -85,9 +93,13 @@ class TestChatSessionService:
         ]
 
         mock_chat_session_repository.get_n = AsyncMock(return_value=expected_schemas)
-        chat_session_service = ChatSessionService(repository=mock_chat_session_repository)
+        chat_session_service = ChatSessionService(
+            repository=mock_chat_session_repository
+        )
 
-        schemas: list[ChatSessionDTO] = await chat_session_service.sessions(workspace_id=workspace_id)
+        schemas: list[ChatSessionDTO] = await chat_session_service.sessions(
+            workspace_id=workspace_id
+        )
         assert schemas == expected_schemas
 
         assert_called_once_with(
@@ -101,8 +113,12 @@ class TestChatSessionService:
         mock_chat_session_repository: MagicMock,
         workspace_id: str = ValueGenerator.uuid(),
     ):
-        mock_chat_session_repository.get_n = AsyncMock(side_effect=Exception("database error"))
-        chat_session_service = ChatSessionService(repository=mock_chat_session_repository)
+        mock_chat_session_repository.get_n = AsyncMock(
+            side_effect=Exception("database error")
+        )
+        chat_session_service = ChatSessionService(
+            repository=mock_chat_session_repository
+        )
 
         with pytest.raises(ChatSessionRetrivalError):
             await chat_session_service.sessions(workspace_id=workspace_id)
@@ -129,7 +145,9 @@ class TestChatMessageService:
         )
 
         mock_chat_message_repository.create = AsyncMock(return_value=expected_schema)
-        chat_message_service = ChatMessageService(repository=mock_chat_message_repository)
+        chat_message_service = ChatMessageService(
+            repository=mock_chat_message_repository
+        )
 
         schema: ChatMessageDTO = await chat_message_service.create(
             session_id=session_id,
@@ -153,8 +171,12 @@ class TestChatMessageService:
         role: ChatRole = ChatRole.user,
         content: str = ValueGenerator.text(),
     ):
-        mock_chat_message_repository.create = AsyncMock(side_effect=Exception("database error"))
-        chat_message_service = ChatMessageService(repository=mock_chat_message_repository)
+        mock_chat_message_repository.create = AsyncMock(
+            side_effect=Exception("database error")
+        )
+        chat_message_service = ChatMessageService(
+            repository=mock_chat_message_repository
+        )
 
         with pytest.raises(ChatMessageCreationError):
             await chat_message_service.create(
@@ -185,15 +207,20 @@ class TestChatMessageService:
             for _ in range(ValueGenerator.integer(2))
         ]
 
-        mock_chat_message_repository.chat_history = AsyncMock(return_value=expected_schemas)
-        chat_message_service = ChatMessageService(repository=mock_chat_message_repository)
+        mock_chat_message_repository.chat_history = AsyncMock(
+            return_value=expected_schemas
+        )
+        chat_message_service = ChatMessageService(
+            repository=mock_chat_message_repository
+        )
 
-        schemas: list[ChatMessageDTO] = await chat_message_service.messages(session_id=session_id)
+        schemas: list[ChatMessageDTO] = await chat_message_service.messages(
+            session_id=session_id
+        )
         assert schemas == expected_schemas
 
         assert_called_once_with(
-            mock_chat_message_repository.chat_history,
-            session_id=session_id
+            mock_chat_message_repository.chat_history, session_id=session_id
         )
 
     @pytest.mark.asyncio
@@ -202,15 +229,18 @@ class TestChatMessageService:
         mock_chat_message_repository: MagicMock,
         session_id: str = ValueGenerator.uuid(),
     ):
-        mock_chat_message_repository.chat_history = AsyncMock(side_effect=Exception("database error"))
-        chat_message_service = ChatMessageService(repository=mock_chat_message_repository)
+        mock_chat_message_repository.chat_history = AsyncMock(
+            side_effect=Exception("database error")
+        )
+        chat_message_service = ChatMessageService(
+            repository=mock_chat_message_repository
+        )
 
         with pytest.raises(ChatMessageRetrievalError):
             await chat_message_service.messages(session_id=session_id)
 
         assert_called_once_with(
-            mock_chat_message_repository.chat_history,
-            session_id=session_id
+            mock_chat_message_repository.chat_history, session_id=session_id
         )
 
     @pytest.mark.asyncio
@@ -229,8 +259,12 @@ class TestChatMessageService:
             for _ in range(ValueGenerator.integer(2))
         ]
 
-        mock_chat_message_repository.fetch_recent_messages = AsyncMock(return_value=expected_schemas)
-        chat_message_service = ChatMessageService(repository=mock_chat_message_repository)
+        mock_chat_message_repository.fetch_recent_messages = AsyncMock(
+            return_value=expected_schemas
+        )
+        chat_message_service = ChatMessageService(
+            repository=mock_chat_message_repository
+        )
 
         schemas: list[ChatMessageDTO] = await chat_message_service.recent_messages(
             session_id=session_id,
@@ -251,8 +285,12 @@ class TestChatMessageService:
         session_id: str = ValueGenerator.uuid(),
         n: int = ValueGenerator.integer(),
     ):
-        mock_chat_message_repository.fetch_recent_messages = AsyncMock(side_effect=Exception("database error"))
-        chat_message_service = ChatMessageService(repository=mock_chat_message_repository)
+        mock_chat_message_repository.fetch_recent_messages = AsyncMock(
+            side_effect=Exception("database error")
+        )
+        chat_message_service = ChatMessageService(
+            repository=mock_chat_message_repository
+        )
 
         with pytest.raises(ChatMessageRetrievalError):
             await chat_message_service.recent_messages(
@@ -297,7 +335,9 @@ class TestRAGService:
     ):
         workspace_id: str = chat_request.workspace_id
         if chat_request.session_id:
-            session = ChatSessionDTO(id=chat_request.session_id, workspace_id=workspace_id)
+            session = ChatSessionDTO(
+                id=chat_request.session_id, workspace_id=workspace_id
+            )
         else:
             session = ChatSessionDTO(workspace_id=workspace_id)
         vector: list[float] = ValueGenerator.float_vector()
@@ -310,7 +350,6 @@ class TestRAGService:
                     workspace_id=workspace_id,
                     document_name=ValueGenerator.text(),
                     document_page=ValueGenerator.integer(),
-                    chunk_index=ValueGenerator.integer(),
                     text=ValueGenerator.text(),
                 ),
             )
@@ -344,16 +383,22 @@ class TestRAGService:
         mock_embedding_model.encode.return_value = mock_vector
         mock_vector_store.search.return_value = vectors
         mock_chat_message_service.recent_messages.return_value = messages
-        mock_llm_generate_function = create_autospec(llm_stub.generate, return_value=llm_answer, spec_set=True)
-        monkeypatch.setattr("domain.chat.service.llm_stub.generate", mock_llm_generate_function)
+        mock_llm_generate_function = create_autospec(
+            llm_stub.generate, return_value=llm_answer, spec_set=True
+        )
+        monkeypatch.setattr(
+            "domain.chat.service.llm_stub.generate", mock_llm_generate_function
+        )
 
         rag_service = RAGService(
-            vector_store=mock_vector_store, # noqa
-            embedding_model=mock_embedding_model, # noqa
-            session_service=mock_chat_session_service, # noqa
-            message_service=mock_chat_message_service, # noqa
+            vector_store=mock_vector_store,  # noqa
+            embedding_model=mock_embedding_model,  # noqa
+            session_service=mock_chat_session_service,  # noqa
+            message_service=mock_chat_message_service,  # noqa
         )
-        ask_response: ChatResponse = await rag_service.ask(request=chat_request.model_copy())
+        ask_response: ChatResponse = await rag_service.ask(
+            request=chat_request.model_copy()
+        )
 
         assert ask_response == expected_ask_response
 
@@ -385,8 +430,14 @@ class TestRAGService:
 
         mock_chat_message_service.create.assert_has_calls(
             [
-                call(session_id=session.id, role=ChatRole.user, content=chat_request.question),
-                call(session_id=session.id, role=ChatRole.assistant, content=llm_answer),
+                call(
+                    session_id=session.id,
+                    role=ChatRole.user,
+                    content=chat_request.question,
+                ),
+                call(
+                    session_id=session.id, role=ChatRole.assistant, content=llm_answer
+                ),
             ]
         )
 
@@ -408,10 +459,10 @@ class TestRAGService:
         mock_embedding_model.encode = MagicMock(side_effect=Exception("rag error"))
 
         rag_service = RAGService(
-            vector_store=mock_vector_store, # noqa
-            embedding_model=mock_embedding_model, # noqa
-            session_service=mock_chat_session_service, # noqa
-            message_service=mock_chat_message_service, # noqa
+            vector_store=mock_vector_store,  # noqa
+            embedding_model=mock_embedding_model,  # noqa
+            session_service=mock_chat_session_service,  # noqa
+            message_service=mock_chat_message_service,  # noqa
         )
 
         with pytest.raises(RAGError):

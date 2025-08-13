@@ -88,6 +88,13 @@ class SQLiteMetadataRepository(MetadataRepository):
         return [DocumentMeta(**dict(zip(columns, row))) for row in rows]
 
     def delete(self, **data: Any) -> None:
+        """
+        Удаляет записи :class:`DocumentMeta` по фильтру или все записи, если фильтр пуст.
+
+        :param data: Набор keyword аргументов для фильтрации записей.
+        :type data: dict[str, Any]
+        """
+
         if data:
             clauses: list[str] = [f"{column} = ?" for column in data.keys()]
             sql: str = f"DELETE FROM {self.table_name} WHERE " + " AND ".join(clauses)

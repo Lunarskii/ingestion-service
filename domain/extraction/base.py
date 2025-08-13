@@ -36,8 +36,8 @@ class TextExtractor(ABC):
         Универсальный метод для извлечения текста и метаданных из переданного документа.
 
         :param document: Файлоподобный объект с байтами документа.
-        :type document: IO[bytes]
-        :return: Объект `ExtractedInfo`, включающий в себя текст и метаданные документа.
+        :type document: BytesIO
+        :return: Схема ``ExtractedInfo``, включающая в себя текст и метаданные документа.
         :rtype: ExtractedInfo
         :raises ExtractError: В случае любой ошибки при разборе документа
         """
@@ -55,8 +55,8 @@ class TextExtractor(ABC):
         Абстрактный метод, реализуемый потомками для конкретного формата документа.
 
         :param document: Файлоподобный объект с байтами документа.
-        :type document: IO[bytes]
-        :return: Объект `ExtractedInfo`, включающий в себя текст и метаданные документа.
+        :type document: BytesIO
+        :return: Схема ``ExtractedInfo``, включающая в себя текст и метаданные документа.
         :rtype: ExtractedInfo
         """
         ...
@@ -64,7 +64,7 @@ class TextExtractor(ABC):
 
 class PdfExtractor(TextExtractor):
     """
-    Извлекает текст и метаданные из PDF-документов с помощью библиотеки pypdf.
+    Извлекает текст и метаданные из PDF-документов с помощью библиотеки ``pypdf``.
     """
 
     def _extract(self, document: BytesIO) -> ExtractedInfo:
@@ -85,7 +85,7 @@ class PdfExtractor(TextExtractor):
 
 class DocxExtractor(TextExtractor):
     """
-    Извлекает текст и метаданные из DOCX-документов с помощью python-docx.
+    Извлекает текст и метаданные из DOCX-документов с помощью библиотеки ``python-docx``.
     """
 
     def _extract(self, document: BytesIO) -> ExtractedInfo:

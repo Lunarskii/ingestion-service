@@ -22,7 +22,7 @@ class TestJSONVectorStore:
     )
     def test_init_raises_for_non_directory_path(self, tmp_path, directory):
         directory: str = f"{tmp_path}/{directory}"
-        with pytest.raises(ValueError) as exc:
+        with pytest.raises(ValueError):
             JSONVectorStore(directory=directory)
 
     @pytest.mark.parametrize(
@@ -46,7 +46,9 @@ class TestJSONVectorStore:
         vector_store = JSONVectorStore(directory=directory)
         vector_store.upsert(vectors)
 
-        with open(os.path.join(directory, f"{workspace_id}/{document_id}.json")) as file:
+        with open(
+            os.path.join(directory, f"{workspace_id}/{document_id}.json")
+        ) as file:
             content: list = json.load(file)
             for v1, v2 in zip(content, vectors):
                 assert v1["id"] == v2.id
@@ -65,7 +67,6 @@ class TestJSONVectorStore:
             workspace_id=workspace_id,
             document_name=ValueGenerator.text(),
             document_page=ValueGenerator.integer(),
-            chunk_index=ValueGenerator.integer(),
             text=ValueGenerator.text(),
         )
         vectors1: list[Vector] = [
@@ -85,7 +86,9 @@ class TestJSONVectorStore:
 
         top_k: int = 2
         expected_vectors: list[Vector] = list(vectors1)
-        retrieved_vectors: list[Vector] = vector_store.search([0.1, 0.3, 0.6], top_k, workspace_id)
+        retrieved_vectors: list[Vector] = vector_store.search(
+            [0.1, 0.3, 0.6], top_k, workspace_id
+        )
         assert retrieved_vectors == expected_vectors
 
     def test_search_empty_directory(self, tmp_path):
@@ -113,7 +116,6 @@ class TestJSONVectorStore:
 
         with pytest.raises(FileNotFoundError):
             open(full_path, "r")
-
 
     def test_delete_vectors_directory_from_correct_location(self, tmp_path):
         vectors: list[Vector] = ValueGenerator.vectors()

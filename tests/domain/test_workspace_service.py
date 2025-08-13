@@ -64,7 +64,9 @@ class TestWorkspaceService:
         name: str = ValueGenerator.text(),
     ):
         # case1
-        mock_workspace_repository.get_by_name = AsyncMock(side_effect=Exception("database error"))
+        mock_workspace_repository.get_by_name = AsyncMock(
+            side_effect=Exception("database error")
+        )
         workspace_service = WorkspaceService(repository=mock_workspace_repository)
 
         with pytest.raises(WorkspaceRetrievalError):
@@ -72,7 +74,9 @@ class TestWorkspaceService:
 
         # case2
         mock_workspace_repository.get_by_name = AsyncMock(return_value=None)
-        mock_workspace_repository.create = AsyncMock(side_effect=Exception("database error"))
+        mock_workspace_repository.create = AsyncMock(
+            side_effect=Exception("database error")
+        )
         workspace_service = WorkspaceService(repository=mock_workspace_repository)
 
         with pytest.raises(WorkspaceCreationError):
@@ -95,9 +99,9 @@ class TestWorkspaceService:
 
         await workspace_service.delete(
             workspace_id=workspace_id,
-            raw_storage=mock_raw_storage, # noqa
-            vector_store=mock_vector_store, # noqa
-            metadata_repository=mock_metadata_repository, # noqa
+            raw_storage=mock_raw_storage,  # noqa
+            vector_store=mock_vector_store,  # noqa
+            metadata_repository=mock_metadata_repository,  # noqa
         )
 
         assert_called_once_with(
@@ -129,15 +133,17 @@ class TestWorkspaceService:
         mock_metadata_repository: MagicMock,
         workspace_id: str = ValueGenerator.uuid(),
     ):
-        mock_workspace_repository.delete = AsyncMock(side_effect=Exception("database error"))
+        mock_workspace_repository.delete = AsyncMock(
+            side_effect=Exception("database error")
+        )
         workspace_service = WorkspaceService(repository=mock_workspace_repository)
 
         with pytest.raises(WorkspaceDeletionError):
             await workspace_service.delete(
                 workspace_id=workspace_id,
-                raw_storage=mock_raw_storage, # noqa
-                vector_store=mock_vector_store, # noqa
-                metadata_repository=mock_metadata_repository, # noqa
+                raw_storage=mock_raw_storage,  # noqa
+                vector_store=mock_vector_store,  # noqa
+                metadata_repository=mock_metadata_repository,  # noqa
             )
 
     @pytest.mark.asyncio
@@ -165,7 +171,9 @@ class TestWorkspaceService:
         self,
         mock_workspace_repository: MagicMock,
     ):
-        mock_workspace_repository.get_n = AsyncMock(side_effect=Exception("database error"))
+        mock_workspace_repository.get_n = AsyncMock(
+            side_effect=Exception("database error")
+        )
         workspace_service = WorkspaceService(repository=mock_workspace_repository)
 
         with pytest.raises(WorkspaceRetrievalError):

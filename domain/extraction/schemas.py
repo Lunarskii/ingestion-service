@@ -7,19 +7,26 @@ from pydantic import (
 
 
 class Page(BaseModel):
+    """
+    Страница документа
+
+    :param num: Номер страницы.
+    :type num: int
+    :param text: Текст, содержащийся на странице.
+    :type text: str
+    """
+
     num: int
     text: str
 
 
-# TODO обновить доку
 class ExtractedInfo(BaseModel):
     """
-    Схема ответа от TextExtractor.extract().
     Информация, извлечённая из документа.
     Содержит текст документа и его метаданные.
 
-    :param text: Весь извлечённый текст.
-    :type text: str
+    :param pages: Весь извлечённый постранично текст.
+    :type pages: list[Page]
     :param document_page_count: Количество страниц в документе, если доступно.
     :type document_page_count: int | None
     :param author: Автор документа, если доступно.

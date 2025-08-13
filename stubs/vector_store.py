@@ -51,9 +51,11 @@ class JSONVectorStore(VectorStore):
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         data: list[dict[str, Any]] = [vector.model_dump() for vector in vectors]
         with open(full_path, "w") as file:
-            json.dump(data, file, ensure_ascii=False, indent=4)
+            json.dump(data, file, ensure_ascii=False, indent=4)  # type: ignore[arg-type]
 
-    def search(self, vector: list[float], top_k: int, workspace_id: str) -> list[Vector]:
+    def search(
+        self, vector: list[float], top_k: int, workspace_id: str
+    ) -> list[Vector]:
         """
         Ищет ближайшие по косинусному сходству векторы в JSON-индексе.
 
@@ -91,12 +93,23 @@ class JSONVectorStore(VectorStore):
         similarities.sort(key=lambda x: x[1], reverse=True)
         return [vec for vec, _ in similarities[:top_k]]
 
-    def delete(self, workspace_id: str | None = None, document_id: str | None = None):
+    def delete(self, workspace_id: str, document_id: str | None = None):
+        """
+        Удаляет файл(-ы) индекса: конкретный документ или все пространство.
+
+        :param workspace_id: Идентификатор пространства.
+        :type workspace_id: str | None
+        :param document_id: Идентификатор документа. Если указан, удаляется конкретный файл документа.
+        :type document_id: str | None
+        """
+
         if workspace_id:
             workspace_id = workspace_id.lstrip("/")
             if document_id:
                 document_id = document_id.lstrip("/")
-                full_path: str = os.path.join(self.directory, f"{workspace_id}/{document_id}.json")
+                full_path: str = os.path.join(
+                    self.directory, f"{workspace_id}/{document_id}.json"
+                )
                 if os.path.isfile(full_path):
                     os.remove(full_path)
             else:

@@ -30,6 +30,10 @@ router = APIRouter(prefix="/workspaces")
 async def workspaces(
     service: Annotated[WorkspaceService, Depends(workspace_service_dependency)],
 ) -> list[WorkspaceDTO]:
+    """
+    Возвращает список всех рабочих пространств.
+    """
+
     return await service.workspaces()
 
 
@@ -38,6 +42,10 @@ async def create_workspace(
     name: str,
     service: Annotated[WorkspaceService, Depends(workspace_service_dependency)],
 ) -> WorkspaceDTO:
+    """
+    Создаёт новое рабочее пространство с заданным именем.
+    """
+
     return await service.create(name=name)
 
 
@@ -48,8 +56,14 @@ async def delete_workspace(
     service: Annotated[WorkspaceService, Depends(workspace_service_dependency)],
     raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
     vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
-    metadata_repository: Annotated[MetadataRepository, Depends(metadata_repository_dependency)],
+    metadata_repository: Annotated[
+        MetadataRepository, Depends(metadata_repository_dependency)
+    ],
 ) -> None:
+    """
+    Запускает фоновую задачу по удалению рабочего пространства и всех связанных данных.
+    """
+
     bg_tasks.add_task(
         service.delete,
         workspace_id=workspace_id,

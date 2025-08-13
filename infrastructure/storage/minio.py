@@ -9,6 +9,10 @@ from services import RawStorage
 
 
 class MinIORawStorage(RawStorage):
+    """
+    Реализация интерфейса :class:`RawStorage` на базе MinIO/S3-совместимого хранилища.
+    """
+
     def __init__(
         self,
         endpoint: str,
@@ -22,6 +26,34 @@ class MinIORawStorage(RawStorage):
         credentials: Provider | None = None,
         cert_check: bool = True,
     ):
+        """
+        Инициализация MinIO-хранилища.
+
+        При инициализации создаёт MinIO-клиент и проверяет существование указанного
+        бакета; при отсутствии — пытается создать его.
+
+        :param endpoint: URL/хост MinIO-сервера (может включать порт), например ``localhost:9000``.
+        :type endpoint: str
+        :param bucket_name: Имя бакета, где будут храниться объекты.
+        :type bucket_name: str
+        :param access_key: Access key для аутентификации (логин).
+        :type access_key: str
+        :param secret_key: Secret key для аутентификации (пароль).
+        :type secret_key: str
+        :param session_token: Session token для временных учётных данных.
+        :type session_token: str | None
+        :param secure: Использовать HTTPS при соединении (True) или HTTP (False).
+        :type secure: bool
+        :param region: Регион бакета.
+        :type region: str | None
+        :param http_client: Кастомный urllib3.PoolManager для клиента.
+        :type http_client: urllib3.PoolManager | None
+        :param credentials: Поставщик учётных данных (Provider).
+        :type credentials: Provider | None
+        :param cert_check: Флаг проверки TLS-сертификата сервера.
+        :type cert_check: bool
+        """
+
         self.client = Minio(
             endpoint=endpoint,
             access_key=access_key,
@@ -39,6 +71,15 @@ class MinIORawStorage(RawStorage):
             self.client.make_bucket(self.bucket_name)
 
     def save(self, file_bytes: bytes, path: str) -> None:
+        """
+        Сохраняет бинарные данные в MinIO как объект по указанному пути.
+
+        :param file_bytes: Содержимое файла в виде байтов.
+        :type file_bytes: bytes
+        :param path: Путь/ключ объекта внутри бакета. Ведущие слэши будут отброшены.
+        :type path: str
+        """
+
         self.client.put_object(
             bucket_name=self.bucket_name,
             object_name=path.lstrip("/"),
@@ -47,6 +88,15 @@ class MinIORawStorage(RawStorage):
         )
 
     def get(self, path: str) -> bytes:
+        """
+        Получает объект из бакета и возвращает его содержимое в виде байтов.
+
+        :param path: Путь/ключ объекта внутри бакета. Ведущие слэши будут отброшены.
+        :type path: str
+        :returns: Содержимое объекта в виде ``bytes``.
+        :rtype: bytes
+        """
+
         response = self.client.get_object(
             bucket_name=self.bucket_name,
             object_name=path.lstrip("/"),
@@ -59,6 +109,16 @@ class MinIORawStorage(RawStorage):
                 response.release_conn()
 
     def delete(self, path: str) -> None:
+        """
+        Удаляет объект(ы) из бакета.
+
+        Если ``path`` заканчивается на ``/``, рассматривается как префикс - удаляются все объекты с данным
+        префиксом (рекурсивно). Иначе удаляется один объект по указанному пути.
+
+        :param path: Путь или префикс для удаления внутри бакета. Ведущие слэши будут отброшены.
+        :type path: str
+        """
+
         path = path.lstrip("/")
         if path.endswith("/"):
             delete_object_list = list(
@@ -75,7 +135,8 @@ class MinIORawStorage(RawStorage):
                 bucket_name=self.bucket_name,
                 delete_object_list=delete_object_list,
             )
-            for _ in errors: ...
+            for _ in errors:
+                ...
         else:
             self.client.remove_object(
                 bucket_name=self.bucket_name,

@@ -9,26 +9,40 @@ from pydantic import (
 
 
 class VectorMetadata(BaseModel):
+    """
+    Метаданные вектора.
+
+    :ivar document_id: Идентификатор документа.
+    :vartype document_id: str
+    :ivar workspace_id: Идентификатор пространства.
+    :vartype workspace_id: str
+    :ivar document_name: Имя документа.
+    :vartype document_name: str
+    :ivar document_page: Страница документа.
+    :vartype document_page: int
+    :ivar text: Текст на странице документа.
+    :vartype text: str
+    """
+
     model_config = ConfigDict(extra="allow")
 
     document_id: str
     workspace_id: str
     document_name: str
     document_page: int
-    chunk_index: int
     text: str
 
 
 class Vector(BaseModel):
     """
-    Модель векторного представления текстового фрагмента.
+    Схема векторного представления текстового фрагмента.
 
-    :param id: Уникальный идентификатор вектора (например, сочетание document_id и индекса фрагмента).
-    :type id: str
-    :param values: Список значений эмбеддинга.
-    :type values: list[float]
-    :param metadata: Дополнительные данные (document_id, chunk_id, текст и т.п.).
-    :type metadata: VectorMetadata
+    :ivar id: Уникальный идентификатор вектора (например, сочетание document_id и индекса фрагмента).
+    :vartype id: str
+    :ivar values: Список значений эмбеддинга.
+    :vartype values: list[float]
+    :ivar metadata: Дополнительные данные (document_id, chunk_id, текст и т.п.).
+    :vartype metadata: VectorMetadata
     """
 
     id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # type: ignore

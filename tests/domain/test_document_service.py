@@ -47,7 +47,10 @@ class TestDocumentService:
             size=len(file_bytes),
             extension=file_extension,
         )
-        pages: list[Page] = [Page(num=i, text=ValueGenerator.text()) for i in range(ValueGenerator.integer(1))]
+        pages: list[Page] = [
+            Page(num=i, text=ValueGenerator.text())
+            for i in range(ValueGenerator.integer(1))
+        ]
         extracted_info = ExtractedInfo(
             pages=pages,
             document_page_count=len(pages),
@@ -63,7 +66,6 @@ class TestDocumentService:
                     workspace_id=workspace_id,
                     document_name=file.name,
                     document_page=i,
-                    chunk_index=i,
                     text=chunks[0],
                 ),
             )
@@ -73,9 +75,15 @@ class TestDocumentService:
         mock_text_splitter.split_text.return_value = chunks
         mock_vector = MagicMock()
         mock_vector.tolist.return_value = vector
-        mock_embedding_model.encode.return_value = [mock_vector for _ in range(len(pages))]
-        mock_extract_function = create_autospec(extract_from_document, return_value=extracted_info, spec_set=True)
-        monkeypatch.setattr("domain.document.service.extract_from_document", mock_extract_function)
+        mock_embedding_model.encode.return_value = [
+            mock_vector for _ in range(len(pages))
+        ]
+        mock_extract_function = create_autospec(
+            extract_from_document, return_value=extracted_info, spec_set=True
+        )
+        monkeypatch.setattr(
+            "domain.document.service.extract_from_document", mock_extract_function
+        )
 
         document_service = DocumentService(
             raw_storage=mock_raw_storage,  # noqa
@@ -101,7 +109,9 @@ class TestDocumentService:
             file=file,
         )
 
-        mock_text_splitter.split_text.assert_has_calls([call(text=page.text) for page in pages])
+        mock_text_splitter.split_text.assert_has_calls(
+            [call(text=page.text) for page in pages]
+        )
 
         assert_called_once_with(
             mock_embedding_model.encode,
@@ -139,7 +149,9 @@ class TestDocumentService:
         )
 
         mock_raw_storage.save = MagicMock(side_effect=Exception("process error"))
-        mock_metadata_repository.save = MagicMock(side_effect=Exception("process error"))
+        mock_metadata_repository.save = MagicMock(
+            side_effect=Exception("process error")
+        )
 
         document_service = DocumentService(
             raw_storage=mock_raw_storage,  # noqa

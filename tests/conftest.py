@@ -59,9 +59,7 @@ class ValueGenerator:
         floats: list[float] = []
 
         def random_float():
-            return (
-                random.randrange(min_f, max_f + 1) * random.random()
-            )
+            return random.randrange(min_f, max_f + 1) * random.random()
 
         for _ in range(n_values):
             while (value := random_float()) in exclude:
@@ -115,7 +113,6 @@ class ValueGenerator:
                 workspace_id=cls.uuid(),
                 document_name=cls.text(),
                 document_page=cls.integer(),
-                chunk_index=cls.integer(),
                 text=cls.text(),
             ),
         )

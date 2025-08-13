@@ -22,6 +22,16 @@ if TYPE_CHECKING:
 
 
 async def on_startup_event_handler(app: "FastAPI") -> None:
+    """
+    Инициализирует внешние сервисы и сохраняет их в ``app.state``.
+
+    Инициализация выполняется параллельно через ``asyncio.to_thread`` + ``asyncio.gather``
+    для избежания блокировки основного ивент-лупа.
+
+    :param app: Экземпляр FastAPI, в котором будут установлены состояния.
+    :type app: FastAPI
+    """
+
     def __init_object(cls, *args, **kwargs) -> Coroutine:
         return asyncio.to_thread(
             partial(
@@ -63,7 +73,13 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
         ),
     ]
 
-    raw_storage, vector_store, metadata_repository, embedding_model, text_splitter = await asyncio.gather(*tasks)
+    (
+        raw_storage,
+        vector_store,
+        metadata_repository,
+        embedding_model,
+        text_splitter,
+    ) = await asyncio.gather(*tasks)
 
     app.state.raw_storage = raw_storage  # type: ignore[attr-defined]
     app.state.vector_store = vector_store  # type: ignore[attr-defined]
@@ -73,4 +89,11 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
 
 
 def setup_event_handlers(app: "FastAPI") -> None:
+    """
+    Регистрирует обработчики событий приложения.
+
+    В текущей реализации регистрируется только обработчик ``startup`` события,
+    который инициализирует внешние сервисы.
+    """
+
     app.add_event_handler("startup", partial(on_startup_event_handler, app))

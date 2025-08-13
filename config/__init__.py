@@ -11,6 +11,10 @@ from config.logging import logger
 
 
 class Settings:
+    """
+    Настройки приложения.
+    """
+
     api = _APISettings()
     db = _DatabaseSettings()
     document_restriction = _DocumentRestrictionSettings()

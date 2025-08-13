@@ -34,8 +34,10 @@ class TestChatAPI:
         workspace_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_200_OK,
     ):
-        app.dependency_overrides.clear() # noqa
-        app.dependency_overrides[chat_session_service_dependency] = lambda: mock_chat_session_service # noqa
+        app.dependency_overrides.clear()  # noqa
+        app.dependency_overrides[chat_session_service_dependency] = (
+            lambda: mock_chat_session_service
+        )  # noqa
         client = TestClient(app)
 
         list_sessions: list[ChatSessionDTO] = [
@@ -81,8 +83,8 @@ class TestChatAPI:
         chat_response: ChatResponse,
         expected_status_code: int = status.HTTP_200_OK,
     ):
-        app.dependency_overrides.clear() # noqa
-        app.dependency_overrides[rag_service_dependency] = lambda: mock_rag_service # noqa
+        app.dependency_overrides.clear()  # noqa
+        app.dependency_overrides[rag_service_dependency] = lambda: mock_rag_service  # noqa
         client = TestClient(app)
 
         mock_rag_service.ask.return_value = chat_response
@@ -106,12 +108,16 @@ class TestChatAPI:
         session_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_200_OK,
     ):
-        app.dependency_overrides.clear() # noqa
-        app.dependency_overrides[chat_message_service_dependency] = lambda: mock_chat_message_service # noqa
+        app.dependency_overrides.clear()  # noqa
+        app.dependency_overrides[chat_message_service_dependency] = (
+            lambda: mock_chat_message_service
+        )  # noqa
         client = TestClient(app)
 
         list_messages: list[ChatMessageDTO] = [
-            ChatMessageDTO(session_id=session_id, role=ChatRole.user, content=ValueGenerator.text())
+            ChatMessageDTO(
+                session_id=session_id, role=ChatRole.user, content=ValueGenerator.text()
+            )
             for _ in range(ValueGenerator.integer(2))
         ]
         mock_chat_message_service.messages.return_value = list_messages

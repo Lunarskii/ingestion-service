@@ -65,6 +65,7 @@ def main() -> None:
     if refresh_btn.button("", icon=":material/refresh:"):
         st.rerun()
     if add_btn.button("", icon=":material/add:"):
+
         def on_change_uploaded_file():
             if file := st.session_state["uploaded_file"]:
                 with st.spinner("Добавление документа в очередь на обработку..."):

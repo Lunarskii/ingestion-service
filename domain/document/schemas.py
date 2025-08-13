@@ -14,6 +14,21 @@ from domain.document.utils import get_mime_type
 
 
 class File(BaseModel):
+    """
+    Схема файла, используемая для передачи данных о загруженном файле.
+
+    :ivar content: Сырые байты файла.
+    :vartype content: bytes
+    :ivar name: Имя файла (включая расширение).
+    :vartype name: str
+    :ivar size: Размер файла в байтах.
+    :vartype size: int
+    :ivar extension: Расширение файла (начинается с точки), например ``.pdf``.
+    :vartype extension: str
+    :ivar headers: Дополнительные HTTP-заголовки, переданные при загрузке файла.
+    :vartype headers: dict[str, Any]
+    """
+
     content: bytes
     name: str
     size: int
@@ -22,19 +37,36 @@ class File(BaseModel):
 
     @property
     def file(self) -> BytesIO:
+        """
+        Байтовый поток с содержимым файла.
+        Возвращает :class:`BytesIO`, созданный из поля ``content``.
+
+        :return: Объект ``BytesIO`` с данными файла.
+        :rtype: BytesIO
+        """
+
         return BytesIO(self.content)
 
     @property
     def type(self) -> str:
+        """
+        Определяет MIME-тип файла по его содержимому.
+
+        :return: MIME-тип файла, например ``application/pdf``.
+        :rtype: str
+        """
+
         return get_mime_type(self.content)
 
 
 class DocumentStatus(str, Enum):
     """
-    Статусы обработки документа.
+    Перечисление статусов обработки документа.
 
-    - SUCCESS: Успешная обработка.
-    - FAILED: Обработка завершилась с ошибкой.
+    :cvar success: Успешно.
+    :vartype success: str
+    :cvar failed: Неуспешно.
+    :vartype failed: str
     """
 
     success: str = "SUCCESS"
@@ -45,30 +77,30 @@ class DocumentMeta(BaseModel):
     """
     Метаданные обработанного документа для сохранения в репозитории.
 
-    :param document_id: Уникальный идентификатор документа.
-    :type document_id: str
-    :param workspace_id: Идентификатор рабочего пространства.
-    :type workspace_id: str
-    :param media_type: MIME-тип документа, например 'application/pdf'
-    :type media_type: str
-    :param detected_language: Определённый язык содержимого.
-    :type detected_language: str | None
-    :param document_page_count: Количество страниц.
-    :type document_page_count: int | None
-    :param author: Автор документа.
-    :type author: str | None
-    :param creation_date: Дата создания документа.
-    :type creation_date: datetime
-    :param raw_storage_path: Путь в RawStorage, где лежит оригинальный файл.
-    :type raw_storage_path: str
-    :param file_size_bytes: Размер файла в байтах.
-    :type file_size_bytes: int
-    :param ingested_at: Время приёма/загрузки документа.
-    :type ingested_at: datetime
-    :param status: Статус обработки (DocumentStatus).
-    :type status: DocumentStatus
-    :param error_message: Текст ошибки, если статус FAILED.
-    :type error_message: str | None
+    :ivar document_id: Уникальный идентификатор документа.
+    :vartype document_id: str
+    :ivar workspace_id: Идентификатор рабочего пространства.
+    :vartype workspace_id: str
+    :ivar media_type: MIME-тип документа, например ``application/pdf``.
+    :vartype media_type: str
+    :ivar detected_language: Определённый язык содержимого.
+    :vartype detected_language: str | None
+    :ivar document_page_count: Количество страниц.
+    :vartype document_page_count: int | None
+    :ivar author: Автор документа.
+    :vartype author: str | None
+    :ivar creation_date: Дата создания документа.
+    :vartype creation_date: datetime
+    :ivar raw_storage_path: Путь в ``RawStorage``, где лежит оригинальный файл.
+    :vartype raw_storage_path: str
+    :ivar file_size_bytes: Размер файла в байтах.
+    :vartype file_size_bytes: int
+    :ivar ingested_at: Время приёма/загрузки документа.
+    :vartype ingested_at: datetime
+    :ivar status: Статус обработки (``DocumentStatus``).
+    :vartype status: DocumentStatus
+    :ivar error_message: Текст ошибки, если статус ``DocumentStatus.failed``.
+    :vartype error_message: str | None
     """
 
     model_config = ConfigDict(extra="allow")

@@ -29,18 +29,7 @@ from config import logger
 
 class DocumentService:
     """
-    Управляет всем процессом обработки документов.
-
-    :ivar raw_storage: Сервис для сохранения сырых файлов.
-    :type raw_storage: RawStorage
-    :ivar vector_store: Сервис векторного хранилища.
-    :type vector_store: VectorStore
-    :ivar metadata_repository: Сервис репозитория метаданных.
-    :type metadata_repository: MetadataRepository
-    :ivar embedding_model: Модель для эмбеддингов.
-    :type embedding_model: SentenceTransformer
-    :ivar text_splitter: Разделитель текста на чанки.
-    :type text_splitter: TextSplitter
+    Сервис, управляющий полным циклом обработки загруженных документов.
     """
 
     def __init__(
@@ -51,6 +40,19 @@ class DocumentService:
         embedding_model: SentenceTransformer,
         text_splitter: TextSplitter,
     ):
+        """
+        :param raw_storage: Экземпляр сервиса для сохранения сырых файлов.
+        :type raw_storage: RawStorage
+        :param vector_store: Экземпляр сервиса векторного хранилища.
+        :type vector_store: VectorStore
+        :param metadata_repository: Экземпляр репозитория метаданных.
+        :type metadata_repository: MetadataRepository
+        :param embedding_model: Модель для работы с эмбеддингами.
+        :type embedding_model: SentenceTransformer
+        :param text_splitter: Инструмент для разбиения текста на чанки.
+        :type text_splitter: TextSplitter
+        """
+
         self.raw_storage = raw_storage
         self.vector_store = vector_store
         self.metadata_repository = metadata_repository
@@ -64,20 +66,27 @@ class DocumentService:
         workspace_id: str,
     ) -> None:
         """
-        Выполняет полный цикл обработки загруженного документа:
-            1. Сохраняет исходный документ.
-            2. Извлекает текст и метаданные из документа в зависимости от его типа.
-            3. Определяет язык.
-            4. Разбивает текст на чанки.
-            5. Создает эмбеддинги для каждого чанка.
-            6. Загружает векторы в хранилище векторов.
-            7. Сохраняет метаданные документа.
+        Выполняет полный цикл обработки загруженного документа.
 
-        :param file: Полные байты файла и метаданные файла.
+        Метаданные документа сохраняются, если они присутствуют в результате извлечения.
+        В случае любой ошибки на этапе обработки в поле метаданных будет записано
+        ``status=DocumentStatus.failed`` и текст ошибки в ``error_message``.
+        Метод гарантирует попытку сохранить метаданные в любом случае (успех/ошибка обработки).
+
+        Пайплайн:
+            1. Сохранение исходного файла в ``RawStorage``.
+            2. Извлечение текста и метаданных с помощью ``TextExtractor``.
+            3. Определение языка документа (по тексту первой страницы).
+            4. Разбиение текста на чанки с помощью ``TextSplitter``.
+            5. Генерация эмбеддингов для каждого чанка.
+            6. Загрузка векторов в ``VectorStore``.
+            7. Сохранение метаданных в ``MetadataRepository``.
+
+        :param file: Объект файла, содержащий байты и метаданные (:class:`File`).
         :type file: File
-        :param document_id: ID документа.
+        :param document_id: Идентификатор документа (используется для ключей/путей хранения).
         :type document_id: str
-        :param workspace_id: Идентификатор рабочего пространства.
+        :param workspace_id: Идентификатор рабочего пространства (workspace).
         :type workspace_id: str
         """
 
@@ -119,19 +128,25 @@ class DocumentService:
 
             context_logger.info("Определение основного языка документа")
             if document_info.pages:
-                metadata_kwargs["detected_language"] = langdetect.detect(document_info.pages[0].text)
+                metadata_kwargs["detected_language"] = langdetect.detect(
+                    document_info.pages[0].text
+                )
 
             context_logger.info("Разбиение текста на чанки")
             chunks: list[Page] = self._split_text(document_info.pages)
 
             context_logger.info("Создание эмбеддингов для каждого чанка, векторизация")
-            vectors: list[Vector] = self._vectorize_chunks(chunks, document_id, workspace_id, file.name)
+            vectors: list[Vector] = self._vectorize_chunks(
+                chunks, document_id, workspace_id, file.name
+            )
 
             context_logger.info("Сохранение векторов")
             self.vector_store.upsert(vectors)
         except Exception as e:
             error_message: str = str(e)
-            context_logger.error("Не удалось обработать документ", error_message=error_message)
+            context_logger.error(
+                "Не удалось обработать документ", error_message=error_message
+            )
             metadata_kwargs["error_message"] = error_message
             metadata_kwargs["status"] = DocumentStatus.failed
 
@@ -139,7 +154,9 @@ class DocumentService:
             context_logger.info("Сохранение метаданных документа")
             self.metadata_repository.save(DocumentMeta(**metadata_kwargs))
         except Exception as e:
-            context_logger.error("Не удалось сохранить метаданные документа", error_message=str(e))
+            context_logger.error(
+                "Не удалось сохранить метаданные документа", error_message=str(e)
+            )
 
     def _split_text(self, pages: list[Page]) -> list[Page]:
         chunks: list[Page] = []
@@ -156,7 +173,9 @@ class DocumentService:
         workspace_id: str,
         document_name: str,
     ) -> list[Vector]:
-        embeddings = self.embedding_model.encode([chunk.text for chunk in chunks], show_progress_bar=False)
+        embeddings = self.embedding_model.encode(
+            [chunk.text for chunk in chunks], show_progress_bar=False
+        )
         return [
             Vector(
                 id=f"{document_id}-{i}",
@@ -166,7 +185,6 @@ class DocumentService:
                     workspace_id=workspace_id,
                     document_name=document_name,
                     document_page=chunk.num,
-                    chunk_index=i,
                     text=chunk.text,
                 ),
             )
