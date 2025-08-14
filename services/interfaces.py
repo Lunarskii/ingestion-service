@@ -78,7 +78,7 @@ class VectorStore(Protocol):
         """
         ...
 
-    def delete(self, workspace_id: str, document_id: str | None = None):
+    def delete(self, workspace_id: str, document_id: str | None = None) -> None:
         """
         Удаляет векторы по workspace_id или конкретному документу (document_id).
 

@@ -196,6 +196,93 @@
 
 Точные версии зависимостей закреплены в pyproject.toml. Обратитесь к этому файлу для получения точных версий.
 
+## ER-диаграмма таблиц
+```mermaid
+erDiagram
+    workspaces {
+        UUID id PK
+        string name
+        datetime created_at
+    }
+
+    chat_sessions {
+        UUID id PK
+        UUID workspace_id FK
+        datetime created_at
+    }
+
+    chat_messages {
+        UUID id PK
+        UUID session_id FK
+        enum role "user, assistant"
+        text content
+        datetime created_at
+    }
+
+    workspaces ||--o{ chat_sessions : "ON DELETE CASCADE"
+    chat_sessions ||--o{ chat_messages : "ON DELETE CASCADE"
+```
+
+## Схема работы чат-сессий
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant RAGService
+    participant ChatSessionService
+    participant ChatSessionRepository
+    participant ChatMessageService
+    participant ChatMessageRepository
+    participant EmbeddingModel
+    participant VectorStore
+    participant LLM as LLM (stub/client)
+    participant Database
+
+    Client->>API: POST /v1/chat/ask {question, workspace_id, top_k, session_id?}
+    API->>RAGService: ask(request)
+    
+    RAGService-->>ChatSessionService: create_session_if_not_exists(workspace_id)
+    ChatSessionService-->>ChatSessionRepository: create(workspace_id)
+    ChatSessionRepository-->>Database: INSERT chat_sessions (workspace_id)
+    Database-->>ChatSessionRepository: ChatSessionDTO
+    ChatSessionRepository-->>ChatSessionService: ChatSessionDTO
+    ChatSessionService-->>RAGService: session_id (created or existing)
+    
+    RAGService->>EmbeddingModel: encode(question)
+    EmbeddingModel->>RAGService: question_vector
+    RAGService->>VectorStore: search(question_vector, top_k, workspace_id)
+    VectorStore->>RAGService: retrieved_vectors (sources)
+    RAGService->>RAGService: generate_sources_from_vectors(retrieved_vectors)
+    
+    RAGService->>ChatMessageService: recent_messages(session_id, n=4)
+    ChatMessageService->>ChatMessageRepository: recent_messages(session_id, 4)
+    ChatMessageRepository->>Database: SELECT ... FROM chat_messages WHERE ...
+    Database->>ChatMessageRepository: list ChatMessageDTO
+    ChatMessageRepository->>ChatMessageService: list ChatMessageDTO
+    ChatMessageService->>RAGService: recent_messages
+    
+    RAGService->>RAGService: generate_prompt(sources, recent_messages, question)
+    RAGService->>LLM: generate(prompt)
+    LLM->>RAGService: answer
+    
+    RAGService->>ChatMessageService: create(session_id, role=user, content=question)
+    ChatMessageService->>ChatMessageRepository: create(session_id, user, question)
+    ChatMessageRepository->>Database: INSERT chat_messages (user)
+    Database->>ChatMessageRepository: ChatMessageDTO
+    ChatMessageRepository->>ChatMessageService: ChatMessageDTO
+    ChatMessageService-->>RAGService: ChatMessageDTO
+    
+    RAGService->>ChatMessageService: create(session_id, role=assistant, content=answer)
+    ChatMessageService->>ChatMessageRepository: create(session_id, assistant, answer)
+    ChatMessageRepository->>Database: INSERT chat_messages (assistant)
+    Database->>ChatMessageRepository: ChatMessageDTO
+    ChatMessageRepository->>ChatMessageService: ChatMessageDTO
+    ChatMessageService-->>RAGService: ChatMessageDTO
+    
+    RAGService->>API: ChatResponse(answer, sources, session_id)
+    API->>Client: 200 OK {answer, sources, session_id}
+```
+
 ## Как добавить "продуктивные" реализации
 
 **Пример: Добавление поддержки S3 для `RawStorage`**

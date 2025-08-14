@@ -67,7 +67,7 @@ async_session_factory: async_sessionmaker[AsyncSession] = get_async_session_fact
 )
 
 
-def get_async_scoped_session():
+def get_async_scoped_session() -> async_scoped_session[AsyncSession]:
     """
     Возвращает scoped (контекстно-зависимую) фабрику сессий для асинхронного контекста.
 
