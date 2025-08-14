@@ -55,6 +55,16 @@
 - **Ключевые модули**:
   - `infrastructure/storage/minio.py`: реализация интерфейса `RawStorage` на базе MinIO хранилища.
 
+### **`schemas` (Схемы / DTO)**
+- **Ответственность**:
+  - Определение `Pydantic`-моделей для DTO (Data Transfer Objects) и общих схем данных.
+  - Унификация контрактов данных между слоями.
+  - Упрощение преобразования ORM-моделей в DTO через `from_attributes`.
+  - Предоставление "сырого" дампа данных (`model_raw_dump`), минуя сериализацию `Pydantic`.
+- **Ключевые модули**:
+  - `schemas/base.py`: базовые классы `BaseSchema` и `BaseDTO` с общими настройками конфигурации Pydantic.
+  - `schemas/mixins.py`: набор mixin-классов (`UUIDMixin`, `CreatedAtMixin`, `UpdatedAtMixin`, `TimestampMixin`), добавляющих общие поля (идентификаторы, временные метки).
+
 ### **`services` (Абстракции / Интерфейсы)**
 - **Ответственность**:
   - Описание `Protocol`-интерфейсов для хранения (`RawStorage`, `VectorStore`, `MetadataRepository`) и других внешних сервисов.
