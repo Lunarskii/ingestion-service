@@ -89,7 +89,9 @@ class InterceptHandler(logging.Handler):
                 depth = i
                 break
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
 
 
 logging.basicConfig(handlers=[InterceptHandler()], level=logging.NOTSET, force=True)

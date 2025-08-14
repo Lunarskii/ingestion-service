@@ -92,4 +92,5 @@ class TimestampMixin(CreatedAtMixin, UpdatedAtMixin):
 
     Наследует поведение ``CreatedAtMixin`` и ``UpdatedAtMixin``.
     """
+
     ...
