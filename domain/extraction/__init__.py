@@ -11,7 +11,7 @@ from domain.extraction.schemas import (
     ExtractedInfo,
 )
 from domain.extraction.factory import ExtractorFactory
-from domain.extraction.exc import ExtractionError
+from domain.extraction.exceptions import ExtractionError
 
 
 if TYPE_CHECKING:

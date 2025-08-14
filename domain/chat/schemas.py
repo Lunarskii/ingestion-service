@@ -1,17 +1,16 @@
-from datetime import datetime
 from enum import Enum
-from typing import Annotated
-import uuid
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_serializer,
+from schemas.base import (
+    BaseSchema,
+    BaseDTO,
+)
+from schemas.mixins import (
+    UUIDMixin,
+    CreatedAtMixin,
 )
 
 
-class ChatRequest(BaseModel):
+class ChatRequest(BaseSchema):
     """
     Схема запроса к RAGService.
 
@@ -31,7 +30,7 @@ class ChatRequest(BaseModel):
     top_k: int = 3
 
 
-class Source(BaseModel):
+class Source(BaseSchema):
     """
     Схема источника (фрагмента документа).
 
@@ -51,7 +50,7 @@ class Source(BaseModel):
     snippet: str
 
 
-class ChatResponse(BaseModel):
+class ChatResponse(BaseSchema):
     """
     Схема ответа от ChatService.
 
@@ -68,7 +67,7 @@ class ChatResponse(BaseModel):
     session_id: str
 
 
-class ChatSessionDTO(BaseModel):
+class ChatSessionDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
     """
     DTO (Data Transfer Object) для представления чат-сессии.
 
@@ -80,21 +79,7 @@ class ChatSessionDTO(BaseModel):
     :vartype created_at: datetime
     """
 
-    model_config = ConfigDict(from_attributes=True)
-
-    id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # type: ignore
     workspace_id: str
-    created_at: Annotated[datetime, Field(default_factory=datetime.now)]
-
-    @field_serializer("created_at")
-    def datetime_to_str(self, value: datetime) -> str | None:
-        """
-        Сериализация datetime в строку формата YYYY-MM-DD HH:MM:SS.
-        """
-
-        if value is None:
-            return value
-        return datetime.strftime(value, "%Y-%m-%d %H:%M:%S")
 
 
 class ChatRole(str, Enum):
@@ -111,7 +96,7 @@ class ChatRole(str, Enum):
     assistant = "assistant"
 
 
-class ChatMessageDTO(BaseModel):
+class ChatMessageDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
     """
     DTO (Data Transfer Object) для представления сообщения чата.
 
@@ -127,20 +112,6 @@ class ChatMessageDTO(BaseModel):
     :vartype created_at: datetime
     """
 
-    model_config = ConfigDict(from_attributes=True)
-
-    id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # type: ignore
     session_id: str
     role: ChatRole
     content: str
-    created_at: Annotated[datetime, Field(default_factory=datetime.now)]
-
-    @field_serializer("created_at")
-    def datetime_to_str(self, value: datetime) -> str | None:
-        """
-        Сериализация datetime в строку формата YYYY-MM-DD HH:MM:SS.
-        """
-
-        if value is None:
-            return value
-        return datetime.strftime(value, "%Y-%m-%d %H:%M:%S")

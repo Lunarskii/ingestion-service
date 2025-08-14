@@ -1,5 +1,7 @@
 import streamlit as st
 
+from workspaces_page import get_workspaces
+
 
 def main() -> None:
     st.set_page_config(
@@ -7,19 +9,37 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
 
-    if workspace_name := st.session_state.get("workspace_name"):
-        with st.sidebar:
-            st.html(
-                f"""
-                <center>
-                    workspace:
-                    <span style='color: green; background-color: lightgreen; border-radius: 0.25em; padding: 0 0.3em; margin-left: 0.3em;'>
-                        {workspace_name}
-                    </span>
-                </center>
-                """
+    with st.sidebar:
+        if workspaces := get_workspaces():
+            select_box_workspace_name_index: int | None = st.session_state.get(
+                "select_box_workspace_name_index"
             )
-            st.divider()
+
+            def on_change_workspace_name():
+                workspace_name: str | None = st.session_state.get(
+                    "select_box_workspace_name"
+                )
+                if not workspace_name:
+                    return
+
+                for i, workspace in enumerate(workspaces):
+                    if workspace_name == workspace.get("name"):
+                        st.session_state.workspace_name = workspace_name
+                        st.session_state.workspace_id = workspace.get("id")
+                        st.session_state.select_box_workspace_name_index = i
+                        break
+
+            st.selectbox(
+                "Имя рабочего пространства (Workspace)",
+                (workspace.get("name") for workspace in workspaces),
+                index=select_box_workspace_name_index,
+                key="select_box_workspace_name",
+                on_change=on_change_workspace_name,
+                placeholder="Выбери пространство",
+                width=256,
+            )
+
+        st.divider()
 
     pg = st.navigation(
         [

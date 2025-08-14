@@ -14,7 +14,7 @@ def local_time() -> datetime:
     """
     Возвращает текущее локальное время.
 
-    :returns: Текущая локальная дата и время (без явного указания временной зоны).
+    :return: Текущая локальная дата и время (без явного указания временной зоны).
     :rtype: datetime
     """
 
@@ -25,7 +25,7 @@ def universal_time() -> datetime:
     """
     Возвращает текущую UTC-временную метку без информации о временной зоне.
 
-    :returns: Текущее UTC-время с обнулённой tzinfo (naive datetime).
+    :return: Текущее UTC-время с обнулённой tzinfo (naive datetime).
     :rtype: datetime
     """
 
@@ -37,7 +37,7 @@ class IDMixin:
     Mixin для целочисленного первичного ключа.
 
     :ivar id: Целочисленный первичный ключ.
-    :type id: int
+    :vartype id: int
     """
 
     __abstract__ = True
@@ -54,7 +54,7 @@ class UUIDMixin:
     Mixin для UUID-первичного ключа.
 
     :ivar id: UUID-первичный ключ.
-    :type id: UUID
+    :vartype id: UUID
     """
 
     __abstract__ = True
@@ -71,7 +71,7 @@ class CreatedAtMixin:
     Mixin, добавляющий поле ``created_at`` с временем создания записи.
 
     :ivar created_at: Время создания записи. По умолчанию используется ``universal_time``.
-    :type created_at: datetime
+    :vartype created_at: datetime
     """
 
     __abstract__ = True
@@ -88,7 +88,7 @@ class UpdatedAtMixin:
 
     :ivar updated_at: Время последнего обновления записи. По умолчанию используется ``universal_time``
         и автоматически обновляется при изменении записи.
-    :type updated_at: datetime
+    :vartype updated_at: datetime
     """
 
     __abstract__ = True

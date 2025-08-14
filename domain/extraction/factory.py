@@ -3,7 +3,7 @@ from domain.extraction.base import (
     PdfExtractor,
     DocxExtractor,
 )
-from domain.extraction.exc import ExtractionError
+from domain.extraction.exceptions import ExtractionError
 
 
 class ExtractorFactory:

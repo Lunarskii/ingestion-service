@@ -1,12 +1,11 @@
 from datetime import datetime
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-)
+from pydantic import ConfigDict
+
+from schemas.base import BaseSchema
 
 
-class Page(BaseModel):
+class Page(BaseSchema):
     """
     Страница документа
 
@@ -20,7 +19,7 @@ class Page(BaseModel):
     text: str
 
 
-class ExtractedInfo(BaseModel):
+class ExtractedInfo(BaseSchema):
     """
     Информация, извлечённая из документа.
     Содержит текст документа и его метаданные.

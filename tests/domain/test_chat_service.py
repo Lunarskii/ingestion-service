@@ -22,7 +22,7 @@ from domain.chat.schemas import (
     ChatRole,
     ChatMessageDTO,
 )
-from domain.chat.exc import (
+from domain.chat.exceptions import (
     ChatSessionCreationError,
     ChatSessionRetrivalError,
     ChatMessageCreationError,

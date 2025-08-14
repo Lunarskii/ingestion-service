@@ -9,7 +9,7 @@ from tests.conftest import ValueGenerator
 from tests.mock_utils import assert_called_once_with
 from domain.workspace.service import WorkspaceService
 from domain.workspace.schemas import WorkspaceDTO
-from domain.workspace.exc import (
+from domain.workspace.exceptions import (
     WorkspaceCreationError,
     WorkspaceRetrievalError,
     WorkspaceDeletionError,

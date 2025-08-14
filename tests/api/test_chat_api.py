@@ -35,9 +35,9 @@ class TestChatAPI:
         expected_status_code: int = status.HTTP_200_OK,
     ):
         app.dependency_overrides.clear()  # noqa
-        app.dependency_overrides[chat_session_service_dependency] = (
+        app.dependency_overrides[chat_session_service_dependency] = (  # noqa
             lambda: mock_chat_session_service
-        )  # noqa
+        )
         client = TestClient(app)
 
         list_sessions: list[ChatSessionDTO] = [

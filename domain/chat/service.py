@@ -12,7 +12,7 @@ from domain.chat.repositories import (
     ChatSessionRepository,
     ChatMessageRepository,
 )
-from domain.chat.exc import (
+from domain.chat.exceptions import (
     RAGError,
     ChatSessionCreationError,
     ChatSessionRetrivalError,
@@ -54,7 +54,7 @@ class ChatSessionService:
 
         try:
             session = ChatSessionDTO(workspace_id=workspace_id)
-            session = await self.repository.create(**session.model_dump())
+            session = await self.repository.create(**session.model_raw_dump())
         except Exception as e:
             logger.error(
                 ChatSessionCreationError.message,
@@ -134,7 +134,7 @@ class ChatMessageService:
                 role=role,
                 content=content,
             )
-            message = await self.repository.create(**message.model_dump())
+            message = await self.repository.create(**message.model_raw_dump())
         except Exception as e:
             logger.error(
                 ChatMessageCreationError.message,

@@ -42,6 +42,7 @@ COPY config ./config
 COPY domain ./domain
 COPY exceptions ./exceptions
 COPY infrastructure ./infrastructure
+COPY schemas ./schemas
 COPY services ./services
 COPY stubs ./stubs
 COPY --from=builder /app/.venv .venv

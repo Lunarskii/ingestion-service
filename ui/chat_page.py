@@ -14,7 +14,9 @@ if not BACKEND_URL:
     raise RuntimeError("Переменная окружения BACKEND_URL не установлена")
 
 
-def ask_question(question: str, workspace_id: str, session_id: str | None) -> Any:
+def ask_question(
+    question: str, top_k: int, workspace_id: str, session_id: str | None
+) -> Any:
     try:
         response: Response = requests.post(
             f"{BACKEND_URL}/v1/chat/ask",
@@ -22,8 +24,8 @@ def ask_question(question: str, workspace_id: str, session_id: str | None) -> An
                 "question": question,
                 "workspace_id": workspace_id,
                 "session_id": session_id,
-                "top_k": 3,
-            },  # TODO откуда получить top_k?
+                "top_k": top_k,
+            },
             timeout=30,
         )
         response.raise_for_status()
@@ -81,9 +83,11 @@ def render_answer_sources(sources):
             )
 
 
-def render_llm_chat_input(prompt: str, workspace_id: str, session_id: str):
+def render_llm_chat_input(
+    prompt: str, top_k: int, workspace_id: str, session_id: str | None
+):
     with st.spinner("Думаю...", show_time=True):
-        response = ask_question(prompt, workspace_id, session_id)
+        response = ask_question(prompt, top_k, workspace_id, session_id)
 
         if response:
             session_id: str | None = response.get("session_id")
@@ -111,12 +115,22 @@ def main() -> None:
         session_id = None
 
     with st.sidebar:
-        if st.button("Начать новый диалог"):
-            st.session_state.session_id = None
-            st.rerun()
-
-        st.header("Чаты")
         with st.container():
+            top_k: int = st.number_input(
+                "Количество источников",
+                value=3,
+                min_value=1,
+                max_value=10,
+                help="Количество источников, на основе которых будет составлен контекст",
+            )
+            st.session_state.top_k = top_k
+            if st.button("Начать новый диалог"):
+                st.session_state.session_id = None
+                st.rerun()
+            st.divider()
+
+        with st.container():
+            st.text("Чаты")
             for chat in (session.get("id") for session in sessions):
                 if st.button(chat):
                     st.session_state.session_id = chat
@@ -126,9 +140,9 @@ def main() -> None:
     render_chat_history(chat_history)
 
     if prompt := st.chat_input("Спросите что-нибудь"):
-        st.session_state.prompt = prompt
         st.chat_message("user").text(prompt)
-        render_llm_chat_input(prompt, workspace_id, session_id)
+        top_k: int | None = st.session_state.get("top_k")
+        render_llm_chat_input(prompt, top_k, workspace_id, session_id)
 
 
 if __name__ == "__main__":

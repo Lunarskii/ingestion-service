@@ -1,14 +1,10 @@
-from typing import Annotated
-import uuid
+from pydantic import ConfigDict
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-)
+from schemas.base import BaseSchema
+from schemas.mixins import UUIDMixin
 
 
-class VectorMetadata(BaseModel):
+class VectorMetadata(BaseSchema):
     """
     Метаданные вектора.
 
@@ -33,7 +29,7 @@ class VectorMetadata(BaseModel):
     text: str
 
 
-class Vector(BaseModel):
+class Vector(BaseSchema, UUIDMixin):
     """
     Схема векторного представления текстового фрагмента.
 
@@ -45,6 +41,5 @@ class Vector(BaseModel):
     :vartype metadata: VectorMetadata
     """
 
-    id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # type: ignore
     values: list[float]
     metadata: VectorMetadata

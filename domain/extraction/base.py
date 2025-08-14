@@ -19,7 +19,7 @@ from domain.extraction.schemas import (
     ExtractedInfo,
 )
 from domain.extraction.utils import parse_date
-from domain.extraction.exc import ExtractionError
+from domain.extraction.exceptions import ExtractionError
 
 
 class TextExtractor(ABC):

@@ -26,10 +26,7 @@ def upload_file(file: UploadedFile, workspace_id: str) -> Any:
         response.raise_for_status()
     except HTTPError:
         response_json = response.json()
-        st.error(
-            f"Произошла ошибка при загрузке файла: {response_json['msg']}; "
-            f"Код ошибки: '{response_json['code']}'"
-        )
+        st.error(response_json["msg"])
     else:
         response_json = response.json()
         st.success(

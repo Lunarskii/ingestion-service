@@ -21,7 +21,7 @@ from api.v1.dependencies import (
     raw_storage_dependency,
     validate_upload_file,
 )
-from api.v1.exc import (
+from api.v1.exceptions import (
     UnsupportedFileTypeError,
     FileTooLargeError,
     DocumentNotFoundError,

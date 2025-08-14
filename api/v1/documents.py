@@ -20,7 +20,7 @@ from api.v1.dependencies import (
     raw_storage_dependency,
 )
 from api.v1.utils import build_content_disposition
-from api.v1.exc import DocumentNotFoundError
+from api.v1.exceptions import DocumentNotFoundError
 from domain.document.service import DocumentService
 from domain.document.schemas import File, DocumentMeta
 from services import (

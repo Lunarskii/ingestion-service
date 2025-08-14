@@ -3,12 +3,12 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
 
 from domain.database.models import BaseDAO
+from schemas.base import BaseDTO
 
 
-class BaseAlchemyRepository[M: BaseDAO, S: BaseModel](ABC):
+class BaseAlchemyRepository[M: BaseDAO, S: BaseDTO](ABC):
     """
     Базовый асинхронный репозиторий для работы с SQLAlchemy моделями.
 

@@ -1,6 +1,6 @@
 from domain.workspace.repositories import WorkspaceRepository
 from domain.workspace.schemas import WorkspaceDTO
-from domain.workspace.exc import (
+from domain.workspace.exceptions import (
     WorkspaceAlreadyExistsError,
     WorkspaceCreationError,
     WorkspaceRetrievalError,
@@ -60,7 +60,7 @@ class WorkspaceService:
         try:
             context_logger.info("Создание нового пространства")
             workspace = WorkspaceDTO(name=name)
-            workspace = await self.repository.create(**workspace.model_dump())
+            workspace = await self.repository.create(**workspace.model_raw_dump())
         except Exception as e:
             context_logger.error(
                 WorkspaceCreationError.message,

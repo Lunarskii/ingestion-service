@@ -4,16 +4,16 @@ from typing import Any, Annotated
 from io import BytesIO
 
 from pydantic import (
-    BaseModel,
     ConfigDict,
     Field,
     field_serializer,
 )
 
+from schemas.base import BaseSchema
 from domain.document.utils import get_mime_type
 
 
-class File(BaseModel):
+class File(BaseSchema):
     """
     Схема файла, используемая для передачи данных о загруженном файле.
 
@@ -73,7 +73,7 @@ class DocumentStatus(str, Enum):
     failed: str = "FAILED"
 
 
-class DocumentMeta(BaseModel):
+class DocumentMeta(BaseSchema):
     """
     Метаданные обработанного документа для сохранения в репозитории.
 
