@@ -34,7 +34,7 @@ class DatabaseSettings(BaseSettings):
     Настройки базы данных
     """
 
-    dialect: Annotated[str, Field(alias="DATABASE_DIALECT")]
+    dialect: Annotated[str, Field(alias="DATABASE_DIALECT")] = "postgresql"
     driver: Annotated[str, Field(alias="DATABASE_DRIVER")] = "asyncpg"
     username: Annotated[str, Field(alias="DATABASE_USERNAME")]
     password: Annotated[str, Field(alias="DATABASE_PASSWORD")]
