@@ -5,6 +5,14 @@ services:
     build:
       context: .
       dockerfile: docker/backend.dockerfile
+    environment:
+      DATABASE_DIALECT: "$DATABASE_DIALECT"
+      DATABASE_DRIVER: "$DATABASE_DRIVER"
+      DATABASE_USERNAME: "$DATABASE_USERNAME"
+      DATABASE_PASSWORD: "$DATABASE_PASSWORD"
+      DATABASE_HOST: "$DATABASE_HOST"
+      DATABASE_PORT: "$DATABASE_PORT"
+      DATABASE_NAME: "$DATABASE_NAME"
     ports:
       - "8000:8000"
 
