@@ -27,6 +27,8 @@ sqlalchemy = "^2.0.42"
 mammoth = "^1.10.0"
 weasyprint = "^66.0"
 minio = "^7.2.16"
+qdrant-client = "^1.15.1"
+solara = "^1.51.0"
 
 [tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"

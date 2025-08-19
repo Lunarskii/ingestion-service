@@ -14,6 +14,7 @@ from stubs import (
     SQLiteMetadataRepository,
 )
 from infrastructure.storage.minio import MinIORawStorage
+from infrastructure.storage.qdrant import QdrantVectorStore
 from config import settings
 
 
@@ -55,9 +56,25 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
     else:
         raw_storage_coro = __init_object(FileRawStorage)
 
+    if settings.qdrant.is_configured:
+        vector_store_coro = __init_object(
+            QdrantVectorStore,
+            url=settings.qdrant.url,
+            collection_name=settings.qdrant.collection,
+            host=settings.qdrant.host,
+            port=settings.qdrant.port,
+            grpc_port=settings.qdrant.grpc_port,
+            api_key=settings.qdrant.api_key,
+            https=settings.qdrant.use_https,
+            prefer_grpc=settings.qdrant.prefer_grpc,
+            timeoout=settings.qdrant.timeout,
+        )
+    else:
+        vector_store_coro = __init_object(JSONVectorStore)
+
     tasks: list[Coroutine] = [
         raw_storage_coro,
-        __init_object(JSONVectorStore),
+        vector_store_coro,
         __init_object(SQLiteMetadataRepository),
         __init_object(
             SentenceTransformer,

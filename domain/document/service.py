@@ -127,10 +127,8 @@ class DocumentService:
             )
 
             context_logger.info("Определение основного языка документа")
-            if document_info.pages:
-                metadata_kwargs["detected_language"] = langdetect.detect(
-                    document_info.pages[0].text
-                )
+            sample: str = self._get_text_sample(document_info.pages, min_chars=1000)
+            metadata_kwargs["detected_language"] = langdetect.detect(sample)
 
             context_logger.info("Разбиение текста на чанки")
             chunks: list[Page] = self._split_text(document_info.pages)
@@ -158,6 +156,15 @@ class DocumentService:
                 "Не удалось сохранить метаданные документа", error_message=str(e)
             )
 
+    def _get_text_sample(self, pages: list[Page], min_chars: int = 1000) -> str:
+        text: str = ""
+        for page in pages:
+            if page.text:
+                text += f" {page.text}" if text else page.text
+                if len(text) >= min_chars:
+                    break
+        return text
+
     def _split_text(self, pages: list[Page]) -> list[Page]:
         chunks: list[Page] = []
         for page in pages:
@@ -174,7 +181,8 @@ class DocumentService:
         document_name: str,
     ) -> list[Vector]:
         embeddings = self.embedding_model.encode(
-            [chunk.text for chunk in chunks], show_progress_bar=False
+            [chunk.text for chunk in chunks],
+            show_progress_bar=False,
         )
         return [
             Vector(

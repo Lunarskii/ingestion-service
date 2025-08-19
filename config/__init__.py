@@ -6,6 +6,7 @@ from config.settings import (
     TextSplitterSettings as _TextSplitterSettings,
     StubSettings as _StubSettings,
     MinIOSettings as _MinIOSettings,
+    QdrantSettings as _QdrantSettings,
 )
 from config.logging import logger
 
@@ -22,6 +23,7 @@ class Settings:
     text_splitter = _TextSplitterSettings()
     stub = _StubSettings()
     minio = _MinIOSettings()
+    qdrant = _QdrantSettings()
 
 
 settings = Settings()

@@ -82,3 +82,22 @@ class ChatMessageDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
         nullable=False,
     )
     content: Mapped[str] = mapped_column(nullable=False)
+
+    sources: Mapped[list["ChatMessageSourceDAO"]] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+    )
+
+
+class ChatMessageSourceDAO(BaseDAO, UUIDMixin):
+    __tablename__ = "chat_message_sources"
+
+    message_id: Mapped[UUID] = mapped_column(
+        sa.ForeignKey("chat_messages.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    message: Mapped["ChatMessageDAO"] = relationship(back_populates="sources")
+
+    document_name: Mapped[str] = mapped_column(nullable=False)
+    document_page: Mapped[int] = mapped_column(nullable=False)
+    snippet: Mapped[str] = mapped_column(nullable=False)

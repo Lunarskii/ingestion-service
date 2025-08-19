@@ -229,9 +229,18 @@ erDiagram
         text content
         datetime created_at
     }
+    
+    chat_message_sources {
+        UUID id PK
+        UUID message_id FK
+        string document_name
+        integer document_page
+        string snippet
+    }
 
     workspaces ||--o{ chat_sessions : "ON DELETE CASCADE"
     chat_sessions ||--o{ chat_messages : "ON DELETE CASCADE"
+    chat_messages ||--o{ chat_message_sources : "ON DELETE CASCADE"
 ```
 
 ## Схема работы чат-сессий

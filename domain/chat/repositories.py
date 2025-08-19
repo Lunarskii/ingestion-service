@@ -4,10 +4,12 @@ from domain.database.repositories import BaseAlchemyRepository
 from domain.chat.models import (
     ChatSessionDAO,
     ChatMessageDAO,
+    ChatMessageSourceDAO,
 )
 from domain.chat.schemas import (
     ChatSessionDTO,
     ChatMessageDTO,
+    ChatMessageSourceDTO,
 )
 
 
@@ -86,3 +88,8 @@ class ChatMessageRepository(BaseAlchemyRepository[ChatMessageDAO, ChatMessageDTO
         )
         instances = await self.session.scalars(stmt)
         return list(map(self.schema_type.model_validate, instances))
+
+
+class ChatMessageSourceRepository(BaseAlchemyRepository[ChatMessageSourceDAO, ChatMessageSourceDTO]):
+    model_type = ChatMessageSourceDAO
+    schema_type = ChatMessageSourceDTO

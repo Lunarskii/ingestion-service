@@ -69,17 +69,17 @@ class PdfExtractor(TextExtractor):
 
     def _extract(self, document: BytesIO) -> ExtractedInfo:
         document = PdfReader(document)
-        metadata: PdfMetadata = document.metadata
+        metadata: PdfMetadata | None = document.metadata
         pages: list[Page] = [
-            Page(num=page_num, text=page.extract_text())
+            Page(num=page_num, text=page.extract_text() or "")
             for page_num, page in enumerate(document.pages)
         ]
 
         return ExtractedInfo(
             pages=pages,
             document_page_count=len(pages),
-            author=metadata.author,
-            creation_date=parse_date(metadata.creation_date_raw),
+            author=metadata.author if metadata else None,
+            creation_date=parse_date(metadata.creation_date_raw if metadata else None),
         )
 
 

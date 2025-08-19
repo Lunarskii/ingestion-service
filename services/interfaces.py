@@ -62,7 +62,10 @@ class VectorStore(Protocol):
         ...
 
     def search(
-        self, vector: list[float], top_k: int, workspace_id: str
+        self,
+        vector: list[float],
+        top_k: int,
+        workspace_id: str,
     ) -> list[Vector]:
         """
         Выполняет поиск наиболее похожих векторов в заданном рабочем пространстве.

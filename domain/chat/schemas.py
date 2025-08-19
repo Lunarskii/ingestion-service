@@ -115,3 +115,10 @@ class ChatMessageDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
     session_id: str
     role: ChatRole
     content: str
+
+
+class ChatMessageSourceDTO(BaseDTO, UUIDMixin):
+    message_id: str
+    document_name: str
+    document_page: int
+    snippet: str

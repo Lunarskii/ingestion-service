@@ -79,11 +79,16 @@ def main() -> None:
         pass
 
     if documents:
+        row_height: int = 35
+        header_height: int = 40
+        max_height: int = 900
+        height: int = min(header_height + len(documents) * row_height, max_height)
         st.dataframe(
             documents,
             use_container_width=True,
             hide_index=True,
             column_config={"workspace_id": None},
+            height=height,
         )
     else:
         st.text("В этом пространстве пока нет документов.")

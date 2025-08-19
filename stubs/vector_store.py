@@ -54,7 +54,10 @@ class JSONVectorStore(VectorStore):
             json.dump(data, file, ensure_ascii=False, indent=4)  # type: ignore[arg-type]
 
     def search(
-        self, vector: list[float], top_k: int, workspace_id: str
+        self,
+        vector: list[float],
+        top_k: int,
+        workspace_id: str,
     ) -> list[Vector]:
         """
         Ищет ближайшие по косинусному сходству векторы в JSON-индексе.
@@ -93,7 +96,7 @@ class JSONVectorStore(VectorStore):
         similarities.sort(key=lambda x: x[1], reverse=True)
         return [vec for vec, _ in similarities[:top_k]]
 
-    def delete(self, workspace_id: str, document_id: str | None = None):
+    def delete(self, workspace_id: str, document_id: str | None = None) -> None:
         """
         Удаляет файл(-ы) индекса: конкретный документ или все пространство.
 

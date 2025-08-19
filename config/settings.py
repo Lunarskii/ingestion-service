@@ -153,5 +153,43 @@ class MinIOSettings(BaseSettings):
     )
 
     @property
-    def is_configured(self):
-        return self.endpoint and self.bucket and self.access_key and self.secret_key
+    def is_configured(self) -> bool:
+        return bool(
+            self.endpoint and
+            self.bucket and
+            self.access_key and
+            self.secret_key
+        )
+
+
+class QdrantSettings(BaseSettings):
+    """
+    Настройки для векторного хранилища Qdrant.
+    """
+
+    url: Annotated[str | None, Field(alias="QDRANT_URL")] = None
+    collection: Annotated[str | None, Field(alias="QDRANT_COLLECTION")] = None
+    host: Annotated[str | None, Field(alias="QDRANT_HOST")] = None
+    port: Annotated[int, Field(alias="QDRANT_PORT")] = 6333
+    grpc_port: Annotated[int, Field(alias="QDRANT_GRPC_PORT")] = 6334
+    api_key: Annotated[str | None, Field(alias="QDRANT_API_KEY")] = None
+    use_https: Annotated[bool, Field(alias="QDRANT_USE_HTTPS")] = False
+    prefer_grpc: Annotated[bool, Field(alias="QDRANT_PREFER_GRPC")] = False
+    timeout: Annotated[int | None, Field(alias="QDRANT_TIMEOUT")] = 30
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_parse_none_str="None",
+        extra="ignore",
+    )
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(
+            self.collection and (
+                self.url or
+                self.host and self.port or
+                self.host and self.grpc_port and self.prefer_grpc
+            )
+        )

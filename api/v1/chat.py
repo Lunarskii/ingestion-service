@@ -51,6 +51,7 @@ async def ask_llm(
     return await service.ask(question)
 
 
+# TODO добавить в path ("session_id") required==True
 @router.get("/{session_id}/messages", status_code=status.HTTP_200_OK)
 async def chat_history(
     session_id: str,

@@ -7,10 +7,12 @@ from domain.chat.schemas import (
     ChatMessageDTO,
     ChatRole,
     ChatSessionDTO,
+    ChatMessageSourceDTO,
 )
 from domain.chat.repositories import (
     ChatSessionRepository,
     ChatMessageRepository,
+    ChatMessageSourceRepository,
 )
 from domain.chat.exceptions import (
     RAGError,
@@ -204,6 +206,22 @@ class ChatMessageService:
             raise ChatMessageRetrievalError(error_message)
         else:
             return messages
+
+
+class ChatMessageSourceService:
+    def __init__(
+        self,
+        repository: ChatMessageSourceRepository,
+    ):
+        self.repository = repository
+
+    async def sources(self, message_id: str) -> list[ChatMessageSourceDTO]:
+        try:
+            sources: list[ChatMessageSourceDTO] = await self.repository.get_n(message_id=message_id)
+        except Exception as e:
+            ...
+        else:
+            return sources
 
 
 class RAGService:
