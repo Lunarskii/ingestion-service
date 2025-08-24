@@ -29,6 +29,7 @@ weasyprint = "^66.0"
 minio = "^7.2.16"
 qdrant-client = "^1.15.1"
 solara = "^1.51.0"
+aiosqlite = "^0.21.0"
 
 [tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"
