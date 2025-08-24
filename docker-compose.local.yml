@@ -36,6 +36,9 @@ services:
     environment:
       MINIO_ROOT_USER: "${MINIO_ROOT_USER:-access_key}"
       MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-secret_key}"
+      MINIO_COMPRESSION_ENABLE: "${MINIO_COMPRESSION_ENABLE:-on}"
+      MINIO_COMPRESSION_EXTENSIONS: "${MINIO_COMPRESSION_EXTENSIONS:-.pdf}"
+      MINIO_COMPRESSION_MIME_TYPES: "${MINIO_COMPRESSION_MIME_TYPES:-application/pdf}"
     volumes:
       - ./minio:/data
     command: server /data --address ":9000" --console-address ":9001"
