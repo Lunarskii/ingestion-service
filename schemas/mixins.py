@@ -1,8 +1,5 @@
 from typing import Annotated
-from datetime import (
-    datetime,
-    UTC,
-)
+from datetime import datetime
 import uuid
 
 from pydantic import (
@@ -10,37 +7,14 @@ from pydantic import (
     field_serializer,
 )
 
-
-def local_time() -> datetime:
-    """
-    Возвращает текущее локальное время.
-
-    :return: Текущая локальная дата и время (без явного указания временной зоны).
-    :rtype: datetime
-    """
-
-    return datetime.now()
+from utils.datetime import (
+    universal_time,
+    serialize_datetime_to_str,
+)
 
 
-def universal_time() -> datetime:
-    """
-    Возвращает текущую UTC-временную метку без информации о временной зоне.
-
-    :return: Текущее UTC-время с обнулённой tzinfo (naive datetime).
-    :rtype: datetime
-    """
-
-    return datetime.now(UTC).replace(tzinfo=None)
-
-
-def datetime_to_str(value: datetime) -> str | None:
-    """
-    Сериализация datetime в строку формата YYYY-MM-DD HH:MM:SS.
-    """
-
-    if value is None:
-        return value
-    return datetime.strftime(value, "%Y-%m-%d %H:%M:%S")
+class IDMixin:
+    id: int
 
 
 class UUIDMixin:
@@ -67,7 +41,7 @@ class CreatedAtMixin:
 
     @field_serializer("created_at")
     def serialize_created_at(self, value: datetime) -> str | None:
-        return datetime_to_str(value)
+        return serialize_datetime_to_str(value)
 
 
 class UpdatedAtMixin:
@@ -83,7 +57,7 @@ class UpdatedAtMixin:
 
     @field_serializer("updated_at")
     def serialize_updated_at(self, value: datetime) -> str | None:
-        return datetime_to_str(value)
+        return serialize_datetime_to_str(value)
 
 
 class TimestampMixin(CreatedAtMixin, UpdatedAtMixin):

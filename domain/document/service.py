@@ -1,13 +1,13 @@
-from datetime import datetime
-from typing import Any
-
 import langdetect
-from langchain.text_splitter import TextSplitter
-from sentence_transformers import SentenceTransformer
 
-from domain.schemas import (
-    VectorMetadata,
+from domain.embedding import (
+    EmbeddingModel,
     Vector,
+    VectorMetadata,
+)
+from domain.text_splitter import (
+    TextSplitter,
+    Chunk,
 )
 from domain.extraction import (
     extract as extract_from_document,
@@ -17,12 +17,13 @@ from domain.extraction import (
 from domain.document.schemas import (
     File,
     DocumentStatus,
-    DocumentMeta,
+    DocumentDTO,
 )
+from domain.document.repositories import DocumentRepository
+from domain.database.uow import UnitOfWork
 from services import (
     RawStorage,
     VectorStore,
-    MetadataRepository,
 )
 from config import logger
 
@@ -36,8 +37,7 @@ class DocumentService:
         self,
         raw_storage: RawStorage,
         vector_store: VectorStore,
-        metadata_repository: MetadataRepository,
-        embedding_model: SentenceTransformer,
+        embedding_model: EmbeddingModel,
         text_splitter: TextSplitter,
     ):
         """
@@ -45,8 +45,6 @@ class DocumentService:
         :type raw_storage: RawStorage
         :param vector_store: Экземпляр сервиса векторного хранилища.
         :type vector_store: VectorStore
-        :param metadata_repository: Экземпляр репозитория метаданных.
-        :type metadata_repository: MetadataRepository
         :param embedding_model: Модель для работы с эмбеддингами.
         :type embedding_model: SentenceTransformer
         :param text_splitter: Инструмент для разбиения текста на чанки.
@@ -55,15 +53,16 @@ class DocumentService:
 
         self.raw_storage = raw_storage
         self.vector_store = vector_store
-        self.metadata_repository = metadata_repository
         self.embedding_model = embedding_model
         self.text_splitter = text_splitter
 
-    def process(
+    # TODO doc uow
+    async def process(
         self,
         file: File,
         document_id: str,
         workspace_id: str,
+        uow: UnitOfWork,
     ) -> None:
         """
         Выполняет полный цикл обработки загруженного документа.
@@ -92,50 +91,54 @@ class DocumentService:
 
         context_logger = logger.bind(document_id=document_id, workspace_id=workspace_id)
 
-        metadata_kwargs: dict[str, Any] = {
-            "document_id": document_id,
-            "workspace_id": workspace_id,
-            "document_name": file.name,
-            "media_type": file.type,
-            "raw_storage_path": f"{workspace_id}/{document_id}{file.extension}",
-            "file_size_bytes": file.size,
-            "ingested_at": datetime.now(),
-            "status": DocumentStatus.success,
-        }
+        document = DocumentDTO(
+            id=document_id,
+            workspace_id=workspace_id,
+            name=file.name,
+            media_type=file.type,
+            raw_storage_path=f"{workspace_id}/{document_id}{file.extension}",
+            size_bytes=file.size,
+            status=DocumentStatus.success,
+        )
 
         try:
             context_logger.info(
                 "Сохранение необработанного документа",
-                raw_storage_path=metadata_kwargs["raw_storage_path"],
+                raw_storage_path=document.raw_storage_path,
             )
-            self.raw_storage.save(file.content, metadata_kwargs["raw_storage_path"])
+            self.raw_storage.save(file.content, document.raw_storage_path)
 
             context_logger.info(
                 "Извлечение текста и метаданных из документа",
-                media_type=metadata_kwargs["media_type"],
+                media_type=document.media_type,
                 file_size_bytes=file.size,
             )
             document_info: ExtractedInfo = extract_from_document(file)
-            metadata_kwargs.update(
-                document_info.model_dump(
-                    include={
-                        "document_page_count",
-                        "author",
-                        "creation_date",
-                    }
-                )
-            )
+            document.page_count = document_info.document_page_count
+            document.author = document_info.author
+            document.creation_date = document_info.creation_date
 
             context_logger.info("Определение основного языка документа")
             sample: str = self._get_text_sample(document_info.pages, min_chars=1000)
-            metadata_kwargs["detected_language"] = langdetect.detect(sample)
+            document.detected_language = langdetect.detect(sample)
 
             context_logger.info("Разбиение текста на чанки")
-            chunks: list[Page] = self._split_text(document_info.pages)
+            chunks: list[Chunk] = self.text_splitter.split_pages(document_info.pages)
 
             context_logger.info("Создание эмбеддингов для каждого чанка, векторизация")
-            vectors: list[Vector] = self._vectorize_chunks(
-                chunks, document_id, workspace_id, file.name
+            vectors: list[Vector] = await self.embedding_model.encode(
+                sentences=[chunk.text for chunk in chunks],
+                metadata=[
+                    VectorMetadata(
+                        document_id=document_id,
+                        workspace_id=workspace_id,
+                        document_name=file.name,
+                        page_start=chunk.page_spans[0].page_num,
+                        page_end=chunk.page_spans[-1].page_num,
+                        text=chunk.text,
+                    )
+                    for chunk in chunks
+                ]
             )
 
             context_logger.info("Сохранение векторов")
@@ -143,18 +146,15 @@ class DocumentService:
         except Exception as e:
             error_message: str = str(e)
             context_logger.error(
-                "Не удалось обработать документ", error_message=error_message
+                "Не удалось обработать документ",
+                error_message=error_message,
             )
-            metadata_kwargs["error_message"] = error_message
-            metadata_kwargs["status"] = DocumentStatus.failed
+            document.status = DocumentStatus.failed
+            document.error_message = error_message
 
-        try:
-            context_logger.info("Сохранение метаданных документа")
-            self.metadata_repository.save(DocumentMeta(**metadata_kwargs))
-        except Exception as e:
-            context_logger.error(
-                "Не удалось сохранить метаданные документа", error_message=str(e)
-            )
+        context_logger.info("Сохранение метаданных документа")
+        document_repo = uow.get_repository(DocumentRepository)
+        await document_repo.create(**document.model_dump())
 
     def _get_text_sample(self, pages: list[Page], min_chars: int = 1000) -> str:
         text: str = ""
@@ -164,37 +164,3 @@ class DocumentService:
                 if len(text) >= min_chars:
                     break
         return text
-
-    def _split_text(self, pages: list[Page]) -> list[Page]:
-        chunks: list[Page] = []
-        for page in pages:
-            page_chunks: list[str] = self.text_splitter.split_text(page.text)
-            for chunk in page_chunks:
-                chunks.append(Page(num=page.num, text=chunk))
-        return chunks
-
-    def _vectorize_chunks(
-        self,
-        chunks: list[Page],
-        document_id: str,
-        workspace_id: str,
-        document_name: str,
-    ) -> list[Vector]:
-        embeddings = self.embedding_model.encode(
-            [chunk.text for chunk in chunks],
-            show_progress_bar=False,
-        )
-        return [
-            Vector(
-                id=f"{document_id}-{i}",
-                values=embedding.tolist(),
-                metadata=VectorMetadata(
-                    document_id=document_id,
-                    workspace_id=workspace_id,
-                    document_name=document_name,
-                    document_page=chunk.num,
-                    text=chunk.text,
-                ),
-            )
-            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))
-        ]

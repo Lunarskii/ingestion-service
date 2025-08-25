@@ -4,6 +4,7 @@ from schemas.base import BaseSchema
 from schemas.mixins import UUIDMixin
 
 
+# TODO doc
 class VectorMetadata(BaseSchema):
     """
     Метаданные вектора.
@@ -25,10 +26,12 @@ class VectorMetadata(BaseSchema):
     document_id: str
     workspace_id: str
     document_name: str
-    document_page: int
+    page_start: int
+    page_end: int
     text: str
 
 
+# TODO исправить doc id
 class Vector(BaseSchema, UUIDMixin):
     """
     Схема векторного представления текстового фрагмента.

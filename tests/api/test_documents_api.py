@@ -27,7 +27,7 @@ from api.v1.exceptions import (
     DocumentNotFoundError,
 )
 from domain.document.schemas import (
-    DocumentMeta,
+    Document,
     DocumentStatus,
 )
 
@@ -50,8 +50,8 @@ class TestDocumentsAPI:
         )  # noqa
         client = TestClient(app)
 
-        list_metadata: list[DocumentMeta] = [
-            DocumentMeta(
+        list_metadata: list[Document] = [
+            Document(
                 document_id=ValueGenerator.uuid(),
                 workspace_id=workspace_id,
                 document_name=ValueGenerator.text(),
@@ -197,7 +197,7 @@ class TestDocumentsAPI:
         client = TestClient(app)
 
         file_bytes = b"some dummy file content"
-        metadata = DocumentMeta(
+        metadata = Document(
             document_id=document_id,
             workspace_id=ValueGenerator.uuid(),
             document_name="test.pdf",

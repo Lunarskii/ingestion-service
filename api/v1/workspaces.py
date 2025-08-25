@@ -9,17 +9,16 @@ from fastapi import (
 from starlette.status import HTTP_204_NO_CONTENT
 
 from api.v1.dependencies import (
-    workspace_service_dependency,
     raw_storage_dependency,
     vector_store_dependency,
-    metadata_repository_dependency,
 )
-from domain.workspace.service import WorkspaceService
+from domain.workspace.dependencies import workspace_uow_dependency
+from domain.workspace.repositories import WorkspaceRepository
 from domain.workspace.schemas import WorkspaceDTO
+from domain.database.uow import UnitOfWork
 from services import (
     RawStorage,
     VectorStore,
-    MetadataRepository,
 )
 
 
@@ -28,46 +27,49 @@ router = APIRouter(prefix="/workspaces")
 
 @router.get("", status_code=status.HTTP_200_OK)
 async def workspaces(
-    service: Annotated[WorkspaceService, Depends(workspace_service_dependency)],
+    uow: Annotated[UnitOfWork, Depends(workspace_uow_dependency)],
 ) -> list[WorkspaceDTO]:
     """
     Возвращает список всех рабочих пространств.
     """
 
-    return await service.workspaces()
+    workspace_repo = uow.get_repository(WorkspaceRepository)
+    return await workspace_repo.get_n()
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_workspace(
     name: str,
-    service: Annotated[WorkspaceService, Depends(workspace_service_dependency)],
+    uow: Annotated[UnitOfWork, Depends(workspace_uow_dependency)],
 ) -> WorkspaceDTO:
     """
     Создаёт новое рабочее пространство с заданным именем.
     """
 
-    return await service.create(name=name)
+    workspace_repo = uow.get_repository(WorkspaceRepository)
+    return await workspace_repo.create(name=name)
 
 
 @router.delete("/{workspace_id}", status_code=HTTP_204_NO_CONTENT)
 async def delete_workspace(
     bg_tasks: BackgroundTasks,
     workspace_id: str,
-    service: Annotated[WorkspaceService, Depends(workspace_service_dependency)],
+    uow: Annotated[UnitOfWork, Depends(workspace_uow_dependency)],
     raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
     vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
-    metadata_repository: Annotated[
-        MetadataRepository, Depends(metadata_repository_dependency)
-    ],
 ) -> None:
     """
     Запускает фоновую задачу по удалению рабочего пространства и всех связанных данных.
     """
 
+    workspace_repo = uow.get_repository(WorkspaceRepository)
+    await workspace_repo.delete(workspace_id)
+
     bg_tasks.add_task(
-        service.delete,
+        raw_storage.delete,
+        path=f"{workspace_id}/",
+    )
+    bg_tasks.add_task(
+        vector_store.delete,
         workspace_id=workspace_id,
-        raw_storage=raw_storage,
-        vector_store=vector_store,
-        metadata_repository=metadata_repository,
     )

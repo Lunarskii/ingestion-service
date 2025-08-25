@@ -1,10 +1,3 @@
-"""
-Система исключений для работы с базой данных.
-
-Интегрируется с существующей системой ApplicationError и предоставляет
-специализированные исключения для различных типов ошибок БД.
-"""
-
 from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -28,7 +21,6 @@ class DatabaseError(ApplicationError):
 
 
 class EntityNotFoundError(DatabaseError):
-    message = "Запись в базе данных не найдена"
     error_code = "entity_not_found"
     status_code = status.HTTP_404_NOT_FOUND
     
@@ -39,8 +31,11 @@ class EntityNotFoundError(DatabaseError):
         original_error: Exception | None = None,
         **kwargs,
     ):
-        message = f"Сущность {entity_type} с ID {entity_id} не найдена"
-        super().__init__(message=message, original_error=original_error, **kwargs)
+        super().__init__(
+            message=f"Запись в {entity_type} с ID {entity_id} не найдена",
+            original_error=original_error,
+            **kwargs,
+        )
         self.entity_type = entity_type
         self.entity_id = entity_id
 
@@ -58,7 +53,7 @@ class DuplicateEntityError(DatabaseError):
         original_error: Exception | None = None,
         **kwargs,
     ):
-        message = f"Сущность {entity_type} с {duplicate_field}={duplicate_value} уже существует"
+        message = f"Запись в {entity_type} с {duplicate_field}={duplicate_value} уже существует"
         super().__init__(message=message, original_error=original_error, **kwargs)
         self.entity_type = entity_type
         self.duplicate_field = duplicate_field
@@ -110,7 +105,10 @@ class TransactionError(DatabaseError):
         super().__init__(original_error=original_error, **kwargs)
 
 
-def handle_sqlalchemy_error(error: SQLAlchemyError) -> DatabaseError:
+def handle_sqlalchemy_error(
+    error: SQLAlchemyError,
+    entity_type: str = "Unknown",
+) -> DatabaseError:
     """
     Преобразует SQLAlchemy исключения в наши доменные исключения,
     сохраняя детали оригинальной ошибки.
@@ -132,14 +130,11 @@ def handle_sqlalchemy_error(error: SQLAlchemyError) -> DatabaseError:
     )
     
     if isinstance(error, IntegrityError):
-        # Анализируем детали ошибки целостности
         error_str = str(error).lower()
         
         if "duplicate key" in error_str or "unique constraint" in error_str:
-            # Пытаемся извлечь информацию о дублирующемся поле
-            # Это упрощенная версия - в реальном приложении можно сделать более детальный парсинг
             return DuplicateEntityError(
-                entity_type="Unknown",
+                entity_type=entity_type,
                 duplicate_field="Unknown",
                 duplicate_value="Unknown",
                 original_error=error

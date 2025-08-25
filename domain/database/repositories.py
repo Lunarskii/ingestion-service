@@ -1,23 +1,56 @@
-from abc import ABC
 from typing import Any
+import typing
+import types
+import sys
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
+from services import Repository
 from domain.database.models import BaseDAO
+from domain.database.exceptions import (
+    EntityNotFoundError,
+    DatabaseError,
+)
 from schemas.base import BaseDTO
 
 
-class BaseAlchemyRepository[M: BaseDAO, S: BaseDTO](ABC):
+def _resolve_type_arg(arg: Any, cls: Any) -> type | None:
     """
-    Базовый асинхронный репозиторий для работы с SQLAlchemy моделями.
+    Попытаться привести аргумент типа к реальному классу:
+        - если arg - ForwardRef или строка => eval в пространстве имён модуля cls
+        - если arg - type => вернуть его
+        - иначе вернуть None
+    """
 
-    Параметры типа
+    if isinstance(arg, typing.ForwardRef):
+        arg = arg.__forward_arg__
+
+    if isinstance(arg, str):
+        _module: types.ModuleType = sys.modules.get(cls.__module__)
+        _globals: dict = getattr(_module, "__dict__", {}) if _module else {}
+
+        if arg in _globals:
+            return _globals[arg]
+
+        try:
+            return eval(arg, _globals)
+        except Exception:
+            return None
+
+    if isinstance(arg, type):
+        return arg
+
+
+class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
+    """
+    Асинхронный репозиторий для работы с SQLAlchemy ORM моделями.
+
+    Generic типы:
     --------------
-    M : BaseDAO
-        SQLAlchemy ORM модель (класс), с которой репозиторий работает.
-    S : BaseModel
-        Pydantic-схема/модель, используемая для валидации/сериализации результатов.
+        - M : BaseDAO - SQLAlchemy ORM модель (класс), с которой репозиторий работает.
+        - S : BaseDTO - DTO-схема/модель, используемая для валидации/сериализации результатов.
 
     :ivar session: Асинхронная SQLAlchemy сессия, передаваемая в конструктор.
     :vartype session: AsyncSession
@@ -27,10 +60,34 @@ class BaseAlchemyRepository[M: BaseDAO, S: BaseDTO](ABC):
     :vartype schema_type: type[S]
     """
 
-    session: AsyncSession
-    model_type: type[M]
-    schema_type: type[S]
+    model_type: type[M] | None = None
+    schema_type: type[S] | None = None
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        if (
+            getattr(cls, "model_type", None) is not None and
+            getattr(cls, "schema_type", None) is not None
+        ):
+            return
+
+        for base in getattr(cls, "__orig_bases__", ()):
+            origin = typing.get_origin(base) or base
+            if origin is AlchemyRepository:
+                args = typing.get_args(base)
+                if len(args) >= 2:
+                    cls.model_type = _resolve_type_arg(args[0], cls)
+                    cls.schema_type = _resolve_type_arg(args[1], cls)
+                break
+
+        if cls.model_type is None or not isinstance(cls.model_type, type):
+            raise TypeError(f"Не удалось найти model_type для {cls.__name__}. "
+                            f"Укажите явно атрибут model_type или параметризуйте класс")
+        if cls.schema_type is None or not isinstance(cls.schema_type, type):
+            raise TypeError(f"Не удалось найти schema_type для {cls.__name__}. "
+                            f"Укажите явно атрибут schema_type или параметризуйте класс.")
+    
     def __init__(self, session: AsyncSession):
         """
         :param session: Асинхронная SQLAlchemy сессия ``AsyncSession``.
@@ -39,84 +96,175 @@ class BaseAlchemyRepository[M: BaseDAO, S: BaseDTO](ABC):
 
         self.session = session
 
-    async def create(self, **data: Any) -> S:
-        """
-        Создаёт новую запись в базе данных и возвращает её в виде pydantic-схемы.
+    @property
+    def __entity(self) -> str:
+        return f"{self.model_type.__tablename__} [{self.model_type.__name__}]"
 
-        :param data: Набор keyword аргументов для инициализации ORM-модели.
-        :type data: dict[str, Any]
+    def _handle_sqlalchemy_error(
+        self,
+        error: SQLAlchemyError,
+        operation: str,
+    ) -> DatabaseError:
+        """
+        Обрабатывает SQLAlchemy исключения и преобразует их в доменные исключения.
+        
+        :param error: SQLAlchemy исключение
+        :param operation: Операция, которая вызвала ошибку
+        :return: Доменное исключение
+        """
+
+        from domain.database.exceptions import handle_sqlalchemy_error
+
+        domain_error: DatabaseError = handle_sqlalchemy_error(
+            error=error,
+            entity_type=self.__entity,
+        )
+        if hasattr(domain_error, 'message') and domain_error.message:
+            domain_error.message = f"Ошибка при выполнении SQL операции '{operation}': {domain_error.message}"
+        
+        return domain_error
+
+    async def _get_instance(self, id: Any) -> M:
+        """
+        Внутренний метод для получения ORM модели по первичному ключу (ID).
+
+        :param id: ID записи
+        :return: ORM модель
+        :raises: EntityNotFoundError если запись не найдена
+        """
+
+        try:
+            instance = await self.session.get(self.model_type, id)
+            if instance is None:
+                raise EntityNotFoundError(
+                    entity_type=self.__entity,
+                    entity_id=id,
+                )
+            return instance
+        except SQLAlchemyError as e:
+            raise self._handle_sqlalchemy_error(e, "SELECT")
+    
+    async def create(self, **kwargs: Any) -> S:
+        """
+        Создаёт новую запись в базе данных и возвращает её в виде DTO-схемы.
+
+        :param kwargs: Набор keyword аргументов для инициализации ORM-модели.
+        :type kwargs: Any
         :return: Созданная запись, преобразованная через ``schema_type.model_validate``.
         :rtype: S
         """
 
-        instance = self.model_type(**data)
-        self.session.add(instance)
-        await self.session.commit()
+        try:
+            instance = self.model_type(**kwargs)
+            self.session.add(instance)
+            await self.session.flush()
+            return self.schema_type.model_validate(instance)
+        except SQLAlchemyError as e:
+            raise self._handle_sqlalchemy_error(e, "INSERT")
+    
+    async def get(self, id: Any) -> S:
+        """
+        Возвращает запись по её первичному ключу (ID).
+
+        :param id: ID записи.
+        :type id: Any
+        :return: DTO-схему найденной записи.
+        :rtype: S
+        :raises: EntityNotFoundError если запись не найдена.
+        """
+
+        instance = await self._get_instance(id)
         return self.schema_type.model_validate(instance)
 
-    async def get(self, id: int | str) -> S | None:
-        """
-        Возвращает запись по её первичному ключу.
-
-        :param id: Значение первичного ключа.
-        :type id: int | str
-        :return: Pydantic-схема найденного объекта или ``None``, если запись не найдена.
-        :rtype: S | None
-        """
-
-        instance = await self.session.get(self.model_type, id)
-        if instance is None:
-            return None
-        return self.schema_type.model_validate(instance)
-
-    async def get_n(self, n: int | None = None, **data: Any) -> list[S]:
+    async def get_n(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        **kwargs: Any,
+    ) -> list[S]:
         """
         Возвращает список записей, отфильтрованных по переданным критериям.
 
-        :param n: Максимальное число возвращаемых записей. ``None`` означает отсутствие лимита.
-        :type n: int | None
-        :param data: Критерии фильтрации.
-        :type data: dict[str, Any]
-        :return: Список pydantic-схем соответствующих записей.
+        :param limit: Максимальное число возвращаемых записей. ``None`` означает отсутствие лимита.
+        :type limit: int | None
+        :param offset: Смещение от начала. ``None`` означает отсутствие сдвига.
+        :type offset: int
+        :param kwargs: Критерии фильтрации.
+        :type kwargs: Any
+        :return: Список DTO-схем соответствующих записей.
         :rtype: list[S]
         """
 
-        stmt = select(self.model_type).filter_by(**data).limit(n)
-        instances = await self.session.scalars(stmt)
-        return list(map(self.schema_type.model_validate, instances))
-
-    async def update(self, id: int | str, **data: Any) -> S | None:
+        try:
+            stmt = select(self.model_type).filter_by(**kwargs).limit(limit).offset(offset)
+            instances = await self.session.scalars(stmt)
+            return list(map(self.schema_type.model_validate, instances))
+        except SQLAlchemyError as e:
+            raise self._handle_sqlalchemy_error(e, "SELECT")
+    
+    async def update(self, id: Any, **kwargs: Any) -> S:
         """
         Обновляет существующую запись заданными полями и возвращает её.
 
-        :param id: Значение первичного ключа записи для обновления.
-        :type id: int | str
-        :param data: Поля и значения для обновления.
-        :type data: dict
-        :return: Обновлённая запись в виде pydantic-схемы или ``None``, если запись не найдена.
-        :rtype: S | None
+        :param id: ID записи для обновления.
+        :type id: Any
+        :param kwargs: Поля и значения для обновления.
+        :type kwargs: Any
+        :return: DTO-схему обновленной записи.
+        :rtype: S
+        :raises: EntityNotFoundError если запись не найдена.
         """
 
-        instance = await self.session.get(self.model_type, id)
-        if instance is None:
-            return None
-        instance.update(**data)
-        await self.session.commit()
-        return self.schema_type.model_validate(instance)
-
-    async def delete(self, id: int | str) -> S | None:
+        try:
+            instance = await self._get_instance(id)
+            instance.update(**kwargs)
+            await self.session.flush()
+            return self.schema_type.model_validate(instance)
+        except SQLAlchemyError as e:
+            raise self._handle_sqlalchemy_error(e, "UPDATE")
+    
+    async def delete(self, id: Any) -> None:
         """
-        Удаляет запись по первичному ключу и возвращает её представление.
+        Удаляет запись по первичному ключу (ID).
 
-        :param id: Значение первичного ключа удаляемой записи.
-        :type id: int | str
-        :return: Pydantic-схема удалённого объекта или ``None``, если запись не найдена.
-        :rtype: S | None
+        :param id: ID удаляемой записи.
+        :type id: Any
+        :raises: EntityNotFoundError если запись не найдена
         """
 
-        instance = await self.session.get(self.model_type, id)
-        if instance is None:
-            return None
-        await self.session.delete(instance)
-        await self.session.commit()
-        return self.schema_type.model_validate(instance)
+        try:
+            instance = await self._get_instance(id)
+            await self.session.delete(instance)
+            await self.session.flush()
+        except SQLAlchemyError as e:
+            raise self._handle_sqlalchemy_error(e, "DELETE")
+    
+    async def exists(self, id: Any) -> bool:
+        """
+        Проверяет существование записи по первичному ключу (ID).
+        
+        :param id: ID записи.
+        :return: True если запись существует, False иначе.
+        :rtype: bool
+        """
+
+        try:
+            instance = await self.session.get(self.model_type, id)
+            return instance is not None
+        except SQLAlchemyError as e:
+            raise self._handle_sqlalchemy_error(e, "EXISTS")
+    
+    async def count(self) -> int:
+        """
+        Возвращает общее количество записей.
+        
+        :return: Количество записей
+        :rtype: int
+        """
+
+        try:
+            stmt = select(self.model_type.id)
+            result = await self.session.execute(stmt)
+            return len(result.scalars().all())
+        except SQLAlchemyError as e:
+            raise self._handle_sqlalchemy_error(e, "COUNT")

@@ -14,8 +14,8 @@ from api.v1.dependencies import (
     rag_service_dependency,
 )
 from domain.chat.schemas import (
-    ChatRequest,
-    ChatResponse,
+    RAGRequest,
+    RAGResponse,
     ChatSessionDTO,
     ChatRole,
     ChatMessageDTO,
@@ -62,12 +62,12 @@ class TestChatAPI:
         "chat_request, chat_response",
         [
             (
-                ChatRequest(
+                RAGRequest(
                     question=ValueGenerator.text(),
                     workspace_id=ValueGenerator.uuid(),
                     top_k=ValueGenerator.integer(),
                 ),
-                ChatResponse(
+                RAGResponse(
                     answer=ValueGenerator.text(),
                     sources=[],
                     session_id=ValueGenerator.uuid(),
@@ -79,8 +79,8 @@ class TestChatAPI:
         self,
         mock_rag_service: MagicMock,
         chat_api_url: str,
-        chat_request: ChatRequest,
-        chat_response: ChatResponse,
+        chat_request: RAGRequest,
+        chat_response: RAGResponse,
         expected_status_code: int = status.HTTP_200_OK,
     ):
         app.dependency_overrides.clear()  # noqa

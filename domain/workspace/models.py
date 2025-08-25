@@ -31,7 +31,7 @@ class WorkspaceDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
 
     __tablename__ = "workspaces"
 
-    name: Mapped[str] = mapped_column(nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(unique=True)
 
     sessions: Mapped[list["ChatSessionDAO"]] = relationship(
         back_populates="workspace",

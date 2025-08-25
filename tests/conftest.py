@@ -19,7 +19,7 @@ from reportlab.lib.pagesizes import A4
 from domain.document.service import DocumentService
 from domain.document.schemas import (
     File,
-    DocumentMeta,
+    Document,
     DocumentStatus,
 )
 from domain.chat.service import (
@@ -38,7 +38,7 @@ from services import (
     VectorStore,
     MetadataRepository,
 )
-from domain.schemas import (
+from domain.embedding.schemas import (
     VectorMetadata,
     Vector,
 )
@@ -130,8 +130,8 @@ class ValueGenerator:
         return [cls.word() for _ in range(n_values)]
 
     @classmethod
-    def document_metadata(cls) -> DocumentMeta:
-        return DocumentMeta(
+    def document_metadata(cls) -> Document:
+        return Document(
             document_id=cls.uuid(),
             workspace_id=cls.uuid(),
             document_name=cls.text(),

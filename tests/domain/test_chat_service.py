@@ -15,9 +15,9 @@ from domain.chat.service import (
     RAGService,
 )
 from domain.chat.schemas import (
-    ChatRequest,
-    Source,
-    ChatResponse,
+    RAGRequest,
+    ChatMessageSource,
+    RAGResponse,
     ChatSessionDTO,
     ChatRole,
     ChatMessageDTO,
@@ -29,7 +29,7 @@ from domain.chat.exceptions import (
     ChatMessageRetrievalError,
     RAGError,
 )
-from domain.schemas import (
+from domain.embedding.schemas import (
     VectorMetadata,
     Vector,
 )
@@ -310,13 +310,13 @@ class TestRAGService:
     @pytest.mark.parametrize(
         "chat_request",
         [
-            ChatRequest(
+            RAGRequest(
                 question=ValueGenerator.text(),
                 workspace_id=ValueGenerator.uuid(),
                 session_id=ValueGenerator.uuid(),
                 top_k=ValueGenerator.integer(),
             ),
-            ChatRequest(
+            RAGRequest(
                 question=ValueGenerator.text(),
                 workspace_id=ValueGenerator.uuid(),
                 session_id=None,
@@ -331,7 +331,7 @@ class TestRAGService:
         mock_embedding_model: MagicMock,
         mock_chat_session_service: MagicMock,
         mock_chat_message_service: MagicMock,
-        chat_request: ChatRequest,
+        chat_request: RAGRequest,
     ):
         workspace_id: str = chat_request.workspace_id
         if chat_request.session_id:
@@ -363,10 +363,10 @@ class TestRAGService:
             for _ in range(ValueGenerator.integer(2))
         ]
         llm_answer: str = ValueGenerator.text()
-        expected_ask_response = ChatResponse(
+        expected_ask_response = RAGResponse(
             answer=llm_answer,
             sources=[
-                Source(
+                ChatMessageSource(
                     source_id=v.metadata.document_id,
                     document_name=v.metadata.document_name,
                     document_page=v.metadata.document_page,
@@ -396,7 +396,7 @@ class TestRAGService:
             session_service=mock_chat_session_service,  # noqa
             message_service=mock_chat_message_service,  # noqa
         )
-        ask_response: ChatResponse = await rag_service.ask(
+        ask_response: RAGResponse = await rag_service.ask(
             request=chat_request.model_copy()
         )
 
@@ -449,7 +449,7 @@ class TestRAGService:
         mock_chat_session_service: MagicMock,
         mock_chat_message_service: MagicMock,
     ):
-        chat_request = ChatRequest(
+        chat_request = RAGRequest(
             question=ValueGenerator.text(),
             workspace_id=ValueGenerator.uuid(),
             session_id=ValueGenerator.uuid(),

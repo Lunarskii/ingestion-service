@@ -3,6 +3,7 @@ from io import BytesIO
 from minio import Minio
 from minio.credentials.providers import Provider
 from minio.deleteobjects import DeleteObject
+from minio.error import S3Error
 import urllib3
 
 from services import RawStorage
@@ -66,10 +67,16 @@ class MinIORawStorage(RawStorage):
             cert_check=cert_check,
         )
 
+        # TODO поправить проблему создания бакета при запуске в нескольких процессах
         self.bucket_name = bucket_name
         if not self.client.bucket_exists(self.bucket_name):
             self.client.make_bucket(self.bucket_name)
 
+    @staticmethod
+    def _normalize_path(path: str):
+        return path.lstrip("/")
+
+    # TODO добавить detect на media_type (content_type), чтобы положить в put_object(...)
     def save(self, file_bytes: bytes, path: str) -> None:
         """
         Сохраняет бинарные данные в MinIO как объект по указанному пути.
@@ -82,7 +89,7 @@ class MinIORawStorage(RawStorage):
 
         self.client.put_object(
             bucket_name=self.bucket_name,
-            object_name=path.lstrip("/"),
+            object_name=self._normalize_path(path),
             data=BytesIO(file_bytes),
             length=len(file_bytes),
         )
@@ -99,7 +106,7 @@ class MinIORawStorage(RawStorage):
 
         response = self.client.get_object(
             bucket_name=self.bucket_name,
-            object_name=path.lstrip("/"),
+            object_name=self._normalize_path(path),
         )
         try:
             return response.read()
@@ -119,7 +126,7 @@ class MinIORawStorage(RawStorage):
         :type path: str
         """
 
-        path = path.lstrip("/")
+        path = self._normalize_path(path)
         if path.endswith("/"):
             delete_object_list = list(
                 map(
@@ -142,3 +149,13 @@ class MinIORawStorage(RawStorage):
                 bucket_name=self.bucket_name,
                 object_name=path,
             )
+
+    def exists(self, path: str) -> bool:
+        try:
+            self.client.stat_object(
+                bucket_name=self.bucket_name,
+                object_name=self._normalize_path(path),
+            )
+            return True
+        except S3Error:
+            return False

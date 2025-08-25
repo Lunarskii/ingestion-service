@@ -1,36 +1,35 @@
+import uuid
 from enum import Enum
+from typing import Annotated
+
+from pydantic import Field
 
 from schemas.base import (
     BaseSchema,
     BaseDTO,
 )
 from schemas.mixins import (
+    IDMixin,
     UUIDMixin,
     CreatedAtMixin,
 )
 
 
-class ChatRequest(BaseSchema):
+class ChatRole(str, Enum):
     """
-    Схема запроса к RAGService.
+    Перечисление ролей участников чата.
 
-    :ivar question: Текст вопроса пользователя.
-    :vartype question: str
-    :ivar workspace_id: Идентификатор рабочего пространства.
-    :vartype workspace_id: str
-    :ivar session_id: Идентификатор сессии.
-    :vartype session_id: str | None
-    :ivar top_k: Количество релевантных источников (фрагментов) для поиска в RAG.
-    :vartype top_k: int
+    :cvar user: Пользователь.
+    :vartype user: str
+    :cvar assistant: Ассистент/LLM
+    :vartype assistant: str
     """
 
-    question: str
-    workspace_id: str
-    session_id: str | None = None
-    top_k: int = 3
+    user = "user"
+    assistant = "assistant"
 
 
-class Source(BaseSchema):
+class ChatMessageSource(BaseSchema):
     """
     Схема источника (фрагмента документа).
 
@@ -50,9 +49,54 @@ class Source(BaseSchema):
     snippet: str
 
 
-class ChatResponse(BaseSchema):
+class ChatMessage(BaseSchema, CreatedAtMixin):
+    id: Annotated[
+        str,
+        Field(
+            serialization_alias="message_id",
+            default_factory=lambda: str(uuid.uuid4()),  # type: ignore
+        ),
+    ]
+    session_id: str
+    role: ChatRole
+    content: str
+    sources: list[ChatMessageSource] = []
+
+
+class ChatSession(BaseSchema, CreatedAtMixin):
+    id: Annotated[
+        str,
+        Field(
+            serialization_alias="session_id",
+            default_factory=lambda: str(uuid.uuid4()),  # type: ignore
+        ),
+    ]
+    workspace_id: str
+
+
+class RAGRequest(BaseSchema):
     """
-    Схема ответа от ChatService.
+    Схема запроса к RAGService.
+
+    :ivar question: Текст вопроса пользователя.
+    :vartype question: str
+    :ivar workspace_id: Идентификатор рабочего пространства.
+    :vartype workspace_id: str
+    :ivar session_id: Идентификатор сессии.
+    :vartype session_id: str | None
+    :ivar top_k: Количество релевантных источников (фрагментов) для поиска в RAG.
+    :vartype top_k: int
+    """
+
+    question: str
+    workspace_id: str
+    session_id: str | None = None
+    top_k: int = 3
+
+
+class RAGResponse(BaseSchema):
+    """
+    Схема ответа от RAGService.
 
     :ivar answer: Сгенерированный ответ на вопрос.
     :vartype answer: str
@@ -63,7 +107,7 @@ class ChatResponse(BaseSchema):
     """
 
     answer: str
-    sources: list[Source]
+    sources: list[ChatMessageSource]
     session_id: str
 
 
@@ -80,20 +124,6 @@ class ChatSessionDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
     """
 
     workspace_id: str
-
-
-class ChatRole(str, Enum):
-    """
-    Перечисление ролей участников чата.
-
-    :cvar user: Пользователь.
-    :vartype user: str
-    :cvar assistant: Ассистент/LLM
-    :vartype assistant: str
-    """
-
-    user = "user"
-    assistant = "assistant"
 
 
 class ChatMessageDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
@@ -117,7 +147,23 @@ class ChatMessageDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
     content: str
 
 
-class ChatMessageSourceDTO(BaseDTO, UUIDMixin):
+class ChatMessageSourceDTO(BaseDTO, IDMixin):
+    """
+    DTO (Data Transfer Object) для представления схемы источника (фрагмента документа).
+
+    :ivar source_id: Идентификатор источника (UUID в строковом виде).
+    :vartype source_id: str
+    :ivar message_id: Идентификатор сообщения (UUID в строковом виде).
+    :vartype message_id: str
+    :ivar document_name: Имя документа.
+    :vartype document_name: str
+    :ivar document_page: Страница в документе, на которой находится фрагмент.
+    :vartype document_page: int
+    :ivar snippet: Фрагмент.
+    :vartype snippet: str
+    """
+
+    source_id: str
     message_id: str
     document_name: str
     document_page: int

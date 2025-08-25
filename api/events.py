@@ -5,17 +5,16 @@ from typing import (
 from functools import partial
 import asyncio
 
-from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
+from domain.embedding import EmbeddingModel
+from domain.text_splitter import TextSplitter
+from infrastructure.storage_minio import MinIORawStorage
+from infrastructure.vectorstore_qdrant import QdrantVectorStore
 from stubs import (
     FileRawStorage,
     JSONVectorStore,
-    SQLiteMetadataRepository,
 )
-from infrastructure.storage.minio import MinIORawStorage
-from infrastructure.storage.qdrant import QdrantVectorStore
 from config import settings
+from utils.singleton import singleton_registry
 
 
 if TYPE_CHECKING:
@@ -46,7 +45,7 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
         raw_storage_coro = __init_object(
             MinIORawStorage,
             endpoint=settings.minio.endpoint,
-            bucket_name=settings.minio.bucket,
+            bucket_name=settings.minio.bucket_raw,
             access_key=settings.minio.access_key,
             secret_key=settings.minio.secret_key,
             session_token=settings.minio.session_token,
@@ -67,7 +66,9 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
             api_key=settings.qdrant.api_key,
             https=settings.qdrant.use_https,
             prefer_grpc=settings.qdrant.prefer_grpc,
-            timeoout=settings.qdrant.timeout,
+            timeout=settings.qdrant.timeout,
+            vector_size=settings.qdrant.vector_size,
+            distance=settings.qdrant.distance,
         )
     else:
         vector_store_coro = __init_object(JSONVectorStore)
@@ -75,16 +76,16 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
     tasks: list[Coroutine] = [
         raw_storage_coro,
         vector_store_coro,
-        __init_object(SQLiteMetadataRepository),
         __init_object(
-            SentenceTransformer,
-            model_name_or_path=settings.embedding_model.model_name,
-            device=settings.embedding_model.device,
-            cache_folder=settings.embedding_model.cache_folder,
-            token=settings.embedding_model.token,
+            EmbeddingModel,
+            model_name_or_path=settings.embedding.model_name,
+            device=settings.embedding.device,
+            cache_folder=settings.embedding.cache_folder,
+            token=settings.embedding.token,
+            max_concurrency=settings.embedding.max_concurrency,
         ),
         __init_object(
-            RecursiveCharacterTextSplitter,
+            TextSplitter,
             chunk_size=settings.text_splitter.chunk_size,
             chunk_overlap=settings.text_splitter.chunk_overlap,
         ),
@@ -93,24 +94,24 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
     (
         raw_storage,
         vector_store,
-        metadata_repository,
         embedding_model,
         text_splitter,
     ) = await asyncio.gather(*tasks)
 
     app.state.raw_storage = raw_storage  # type: ignore[attr-defined]
     app.state.vector_store = vector_store  # type: ignore[attr-defined]
-    app.state.metadata_repository = metadata_repository  # type: ignore[attr-defined]
     app.state.embedding_model = embedding_model  # type: ignore[attr-defined]
     app.state.text_splitter = text_splitter  # type: ignore[attr-defined]
+
+
+async def on_shutdown_event_handler(app: "FastAPI") -> None:
+    await singleton_registry.close_all()
 
 
 def setup_event_handlers(app: "FastAPI") -> None:
     """
     Регистрирует обработчики событий приложения.
-
-    В текущей реализации регистрируется только обработчик ``startup`` события,
-    который инициализирует внешние сервисы.
     """
 
     app.add_event_handler("startup", partial(on_startup_event_handler, app))
+    app.add_event_handler("shutdown", partial(on_shutdown_event_handler, app))

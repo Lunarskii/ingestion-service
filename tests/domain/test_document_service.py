@@ -13,8 +13,8 @@ from tests.mock_utils import (
 )
 from domain.document.service import DocumentService
 from domain.document.schemas import File
-from domain.document.schemas import DocumentMeta
-from domain.schemas import (
+from domain.document.schemas import Document
+from domain.embedding.schemas import (
     VectorMetadata,
     Vector,
 )
@@ -125,7 +125,7 @@ class TestDocumentService:
 
         mock_metadata_repository.save.assert_called_once()
         args = call_args(mock_metadata_repository.save)
-        assert isinstance(args["meta"], DocumentMeta)
+        assert isinstance(args["meta"], Document)
         assert args["meta"].document_id == document_id
         assert args["meta"].workspace_id == workspace_id
 

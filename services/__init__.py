@@ -1,12 +1,12 @@
 from services.interfaces import (
     RawStorage,
     VectorStore,
-    MetadataRepository,
+    Repository,
 )
 
 
 __all__ = [
     "RawStorage",
     "VectorStore",
-    "MetadataRepository",
+    "Repository",
 ]

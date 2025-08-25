@@ -5,7 +5,7 @@ import pytest
 
 from tests.conftest import ValueGenerator
 from stubs import JSONVectorStore
-from domain.schemas import (
+from domain.embedding.schemas import (
     VectorMetadata,
     Vector,
 )

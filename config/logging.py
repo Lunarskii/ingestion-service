@@ -96,5 +96,5 @@ class InterceptHandler(logging.Handler):
 
 logging.basicConfig(handlers=[InterceptHandler()], level=logging.NOTSET, force=True)
 logging.getLogger().setLevel(logging.CRITICAL)
-for noisy in ("uvicorn", "gunicorn", "httpx"):
+for noisy in ("uvicorn", "gunicorn", "httpx", "fontTools", "fontTools.subset"):
     logging.getLogger(noisy).setLevel(logging.CRITICAL)

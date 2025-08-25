@@ -16,7 +16,7 @@ from qdrant_client.models import (
 )
 
 from services import VectorStore
-from domain.schemas import (
+from domain.embedding.schemas import (
     Vector,
     VectorMetadata,
 )
@@ -26,6 +26,8 @@ class QdrantVectorStore(VectorStore):
     def __init__(
         self,
         collection_name: str,
+        vector_size: int,
+        distance: str = Distance.COSINE,
         location: str | None = None,
         url: str | None = None,
         port: int | None = 6333,
@@ -71,8 +73,8 @@ class QdrantVectorStore(VectorStore):
             self.client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(
-                    size=384,  # TODO вынести в конфиг размер хранимого вектора или спросить у зависимости из SentenceTransformer
-                    distance=Distance.COSINE,  # TODO тоже можно вынести
+                    size=vector_size,
+                    distance=distance,
                 ),
             )
 

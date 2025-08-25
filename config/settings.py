@@ -2,9 +2,18 @@ from typing import Annotated
 
 from pydantic import Field
 from pydantic_settings import (
-    BaseSettings,
+    BaseSettings as _BaseSettings,
     SettingsConfigDict,
 )
+
+
+class BaseSettings(_BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_parse_none_str="None",
+        extra="ignore",
+    )
 
 
 class APISettings(BaseSettings):
@@ -21,42 +30,20 @@ class APISettings(BaseSettings):
     redoc_url: Annotated[str | None, Field(alias="REDOC_URL")] = "/redoc"
     root_path: Annotated[str, Field(alias="ROOT_PATH")] = ""
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        env_parse_none_str="None",
-        extra="ignore",
-    )
-
 
 class DatabaseSettings(BaseSettings):
     """
     Настройки базы данных
     """
 
-    dialect: Annotated[str, Field(alias="DATABASE_DIALECT")] = "postgresql"
-    driver: Annotated[str, Field(alias="DATABASE_DRIVER")] = "asyncpg"
-    username: Annotated[str, Field(alias="DATABASE_USERNAME")]
-    password: Annotated[str, Field(alias="DATABASE_PASSWORD")]
-    host: Annotated[str, Field(alias="DATABASE_HOST")]
-    port: Annotated[int, Field(alias="DATABASE_PORT")]
-    name: Annotated[str, Field(alias="DATABASE_NAME")]
+    # TODO добавить default sqlite db url
+    url: Annotated[str, Field(alias="DATABASE_URL")] = "sqlite..."
     echo: Annotated[bool, Field(alias="DATABASE_ECHO")] = False
     echo_pool: Annotated[bool, Field(alias="DATABASE_ECHO_POOL")] = False
     pool_pre_ping: Annotated[bool, Field(alias="DATABASE_POOL_PRE_PING")] = True
     auto_flush: Annotated[bool, Field(alias="DATABASE_AUTO_FLUSH")] = False
     auto_commit: Annotated[bool, Field(alias="DATABASE_AUTO_COMMIT")] = False
     expire_on_commit: Annotated[bool, Field(alias="DATABASE_EXPIRE_ON_COMMIT")] = False
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
-
-    @property
-    def url(self) -> str:
-        return f"{self.dialect}+{self.driver}://{self.username}:{self.password}@{self.host}:{self.port}/{self.name}"
 
 
 class DocumentRestrictionSettings(BaseSettings):
@@ -70,14 +57,8 @@ class DocumentRestrictionSettings(BaseSettings):
         ".docx",
     }
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
 
-
-class EmbeddingModelSettings(BaseSettings):
+class EmbeddingSettings(BaseSettings):
     """
     Настройки Embedding модели.
     """
@@ -85,18 +66,12 @@ class EmbeddingModelSettings(BaseSettings):
     model_name: Annotated[str, Field(alias="EMBEDDING_MODEL_NAME")] = (
         "sentence-transformers/all-MiniLM-L6-v2"
     )
-    device: Annotated[str | None, Field(alias="EMBEDDING_MODEL_DEVICE")] = None
-    cache_folder: Annotated[str | None, Field(alias="EMBEDDING_MODEL_CACHE_FOLDER")] = (
+    device: Annotated[str | None, Field(alias="EMBEDDING_DEVICE")] = None
+    cache_folder: Annotated[str | None, Field(alias="EMBEDDING_CACHE_FOLDER")] = (
         None
     )
-    token: Annotated[bool | str | None, Field(alias="EMBEDDING_MODEL_TOKEN")] = None
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        env_parse_none_str="None",
-        extra="ignore",
-    )
+    token: Annotated[bool | str | None, Field(alias="EMBEDDING_TOKEN")] = None
+    max_concurrency: Annotated[int, Field(alias="EMBEDDING_MAX_CONCURRENCY")] = 3
 
 
 class TextSplitterSettings(BaseSettings):
@@ -106,12 +81,6 @@ class TextSplitterSettings(BaseSettings):
 
     chunk_size: Annotated[int, Field(alias="TEXT_SPLITTER_CHUNK_SIZE")] = 500
     chunk_overlap: Annotated[int, Field(alias="TEXT_SPLITTER_CHUNK_OVERLAP")] = 50
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
 
 
 class StubSettings(BaseSettings):
@@ -123,13 +92,6 @@ class StubSettings(BaseSettings):
         "./local_storage/raw/"
     )
     index_path: Annotated[str, Field(alias="INDEX_PATH")] = "./local_storage/index/"
-    sqlite_url: Annotated[str, Field(alias="SQLITE_URL")] = "./local_storage/sqlite.db"
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
 
 
 class MinIOSettings(BaseSettings):
@@ -138,27 +100,20 @@ class MinIOSettings(BaseSettings):
     """
 
     endpoint: Annotated[str | None, Field(alias="MINIO_ENDPOINT")] = None
-    bucket: Annotated[str | None, Field(alias="MINIO_BUCKET")] = None
+    bucket_raw: Annotated[str, Field(alias="MINIO_BUCKET_RAW")] = "raw-zone"
+    bucket_silver: Annotated[str, Field(alias="MINIO_BUCKET_SILVER")] = "silver-zone"
     access_key: Annotated[str | None, Field(alias="MINIO_ACCESS_KEY")] = None
     secret_key: Annotated[str | None, Field(alias="MINIO_SECRET_KEY")] = None
     session_token: Annotated[str | None, Field(alias="MINIO_SESSION_TOKEN")] = None
     secure: Annotated[bool, Field(alias="MINIO_SECURE")] = False
     region: Annotated[str | None, Field(alias="MINIO_REGION")] = None
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        env_parse_none_str="None",
-        extra="ignore",
-    )
-
     @property
     def is_configured(self) -> bool:
         return bool(
             self.endpoint and
-            self.bucket and
-            self.access_key and
-            self.secret_key
+            self.bucket_raw and
+            self.bucket_silver
         )
 
 
@@ -168,7 +123,7 @@ class QdrantSettings(BaseSettings):
     """
 
     url: Annotated[str | None, Field(alias="QDRANT_URL")] = None
-    collection: Annotated[str | None, Field(alias="QDRANT_COLLECTION")] = None
+    collection: Annotated[str, Field(alias="QDRANT_COLLECTION")] = "notebook_chunks"
     host: Annotated[str | None, Field(alias="QDRANT_HOST")] = None
     port: Annotated[int, Field(alias="QDRANT_PORT")] = 6333
     grpc_port: Annotated[int, Field(alias="QDRANT_GRPC_PORT")] = 6334
@@ -176,13 +131,8 @@ class QdrantSettings(BaseSettings):
     use_https: Annotated[bool, Field(alias="QDRANT_USE_HTTPS")] = False
     prefer_grpc: Annotated[bool, Field(alias="QDRANT_PREFER_GRPC")] = False
     timeout: Annotated[int | None, Field(alias="QDRANT_TIMEOUT")] = 30
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        env_parse_none_str="None",
-        extra="ignore",
-    )
+    vector_size: Annotated[int, Field(alias="QDRANT_VECTOR_SIZE")] = 384
+    distance: Annotated[str, Field(alias="QDRANT_DISTANCE")] = "Cosine"
 
     @property
     def is_configured(self) -> bool:
@@ -193,3 +143,10 @@ class QdrantSettings(BaseSettings):
                 self.host and self.grpc_port and self.prefer_grpc
             )
         )
+
+
+class DatetimeSettings(BaseSettings):
+    serialization_format: Annotated[
+        str,
+        Field(alias="DATETIME_SERIALIZATION_FORMAT"),
+    ] = "%Y-%m-%d %H:%M:%S"

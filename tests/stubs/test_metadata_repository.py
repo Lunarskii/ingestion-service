@@ -3,7 +3,7 @@ import sqlite3
 
 from tests.conftest import ValueGenerator
 from stubs import SQLiteMetadataRepository
-from domain.document.schemas import DocumentMeta
+from domain.document.schemas import Document
 
 
 class TestSQLiteMetadataRepository:
@@ -31,7 +31,7 @@ class TestSQLiteMetadataRepository:
     def test_save_inserts_metadata_correctly(
         self,
         tmp_path,
-        document_metadata: DocumentMeta = ValueGenerator.document_metadata(),
+        document_metadata: Document = ValueGenerator.document_metadata(),
     ):
         sqlite_url: str = (
             f"{tmp_path}/{ValueGenerator.path()}{ValueGenerator.word()}.db"
@@ -60,7 +60,7 @@ class TestSQLiteMetadataRepository:
             f"{tmp_path}/{ValueGenerator.path()}{ValueGenerator.word()}.db"
         )
         table_name: str = f"{ValueGenerator.word()}"
-        document_metadata: DocumentMeta = ValueGenerator.document_metadata()
+        document_metadata: Document = ValueGenerator.document_metadata()
 
         metadata_repository = SQLiteMetadataRepository(
             sqlite_url=sqlite_url, table_name=table_name
@@ -85,7 +85,7 @@ class TestSQLiteMetadataRepository:
             f"{tmp_path}/{ValueGenerator.path()}{ValueGenerator.word()}.db"
         )
         table_name: str = f"{ValueGenerator.word()}"
-        document_metadata_list: list[DocumentMeta] = [
+        document_metadata_list: list[Document] = [
             ValueGenerator.document_metadata(),
             ValueGenerator.document_metadata(),
         ]
@@ -107,7 +107,7 @@ class TestSQLiteMetadataRepository:
             f"{tmp_path}/{ValueGenerator.path()}{ValueGenerator.word()}.db"
         )
         table_name: str = f"{ValueGenerator.word()}"
-        document_metadata_list: list[DocumentMeta] = [
+        document_metadata_list: list[Document] = [
             ValueGenerator.document_metadata(),
             ValueGenerator.document_metadata(),
         ]

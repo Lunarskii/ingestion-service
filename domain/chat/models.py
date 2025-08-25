@@ -10,6 +10,7 @@ import sqlalchemy as sa
 
 from domain.database.models import BaseDAO
 from domain.database.mixins import (
+    IDMixin,
     UUIDMixin,
     CreatedAtMixin,
 )
@@ -38,7 +39,6 @@ class ChatSessionDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
 
     workspace_id: Mapped[UUID] = mapped_column(
         sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
-        nullable=False,
     )
     workspace: Mapped["WorkspaceDAO"] = relationship(back_populates="sessions")
 
@@ -68,7 +68,6 @@ class ChatMessageDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
 
     session_id: Mapped[UUID] = mapped_column(
         sa.ForeignKey("chat_sessions.id", ondelete="CASCADE"),
-        nullable=False,
     )
     session: Mapped["ChatSessionDAO"] = relationship(back_populates="messages")
 
@@ -76,12 +75,10 @@ class ChatMessageDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
         sa.Enum(
             ChatRole,
             name="chat_role",
-            native_enum=True,
-            create_type=True,
+            native_enum=False,
         ),
-        nullable=False,
     )
-    content: Mapped[str] = mapped_column(nullable=False)
+    content: Mapped[str]
 
     sources: Mapped[list["ChatMessageSourceDAO"]] = relationship(
         back_populates="message",
@@ -89,15 +86,16 @@ class ChatMessageDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
     )
 
 
-class ChatMessageSourceDAO(BaseDAO, UUIDMixin):
+class ChatMessageSourceDAO(BaseDAO, IDMixin):
     __tablename__ = "chat_message_sources"
+
+    source_id: Mapped[UUID]
 
     message_id: Mapped[UUID] = mapped_column(
         sa.ForeignKey("chat_messages.id", ondelete="CASCADE"),
-        nullable=False,
     )
     message: Mapped["ChatMessageDAO"] = relationship(back_populates="sources")
 
-    document_name: Mapped[str] = mapped_column(nullable=False)
-    document_page: Mapped[int] = mapped_column(nullable=False)
-    snippet: Mapped[str] = mapped_column(nullable=False)
+    document_name: Mapped[str]
+    document_page: Mapped[int]
+    snippet: Mapped[str]

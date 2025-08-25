@@ -1,20 +1,13 @@
 from sqlalchemy import select
 
-from domain.database.repositories import BaseAlchemyRepository
+from domain.database.repositories import AlchemyRepository
 from domain.workspace.models import WorkspaceDAO
 from domain.workspace.schemas import WorkspaceDTO
 
 
-class WorkspaceRepository(BaseAlchemyRepository[WorkspaceDAO, WorkspaceDTO]):
+class WorkspaceRepository(AlchemyRepository[WorkspaceDAO, WorkspaceDTO]):
     """
-    Репозиторий для работы с сущностями ``WorkspaceDAO``.
-
-    Наследует :class:`BaseAlchemyRepository` и задаёт конкретные типы модели и схемы:
-
-    :ivar model_type: ORM-модель рабочего пространства.
-    :vartype model_type: type[WorkspaceDAO]
-    :ivar schema_type: Pydantic-схема для сериализации/валидации workspace.
-    :vartype schema_type: type[WorkspaceDTO]
+    Репозиторий для работы с пространствами.
     """
 
     model_type = WorkspaceDAO
@@ -28,7 +21,7 @@ class WorkspaceRepository(BaseAlchemyRepository[WorkspaceDAO, WorkspaceDTO]):
 
         :param name: Имя рабочего пространства для поиска.
         :type name: str
-        :return: DTO рабочего пространства или ``None``, если запись не найдена.
+        :return: DTO-схема рабочего пространства или ``None``, если запись не найдена.
         :rtype: WorkspaceDTO | None
         """
 

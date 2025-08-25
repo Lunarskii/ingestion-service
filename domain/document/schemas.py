@@ -1,16 +1,23 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any, Annotated
+from typing import (
+    Any,
+    Annotated,
+)
 from io import BytesIO
 
 from pydantic import (
-    ConfigDict,
     Field,
     field_serializer,
 )
 
-from schemas.base import BaseSchema
-from domain.document.utils import get_mime_type
+from schemas.base import (
+    BaseSchema,
+    BaseDTO,
+)
+from schemas.mixins import UUIDMixin
+from utils.file import get_mime_type
+from utils.datetime import serialize_datetime_to_str
 
 
 class File(BaseSchema):
@@ -73,28 +80,29 @@ class DocumentStatus(str, Enum):
     failed: str = "FAILED"
 
 
-class DocumentMeta(BaseSchema):
+# TODO doc name
+class Document(BaseSchema):
     """
     Метаданные обработанного документа для сохранения в репозитории.
 
-    :ivar document_id: Уникальный идентификатор документа.
-    :vartype document_id: str
+    :ivar id: Уникальный идентификатор документа.
+    :vartype id: str
     :ivar workspace_id: Идентификатор рабочего пространства.
     :vartype workspace_id: str
     :ivar media_type: MIME-тип документа, например ``application/pdf``.
     :vartype media_type: str
     :ivar detected_language: Определённый язык содержимого.
     :vartype detected_language: str | None
-    :ivar document_page_count: Количество страниц.
-    :vartype document_page_count: int | None
+    :ivar page_count: Количество страниц.
+    :vartype page_count: int | None
     :ivar author: Автор документа.
     :vartype author: str | None
     :ivar creation_date: Дата создания документа.
     :vartype creation_date: datetime
     :ivar raw_storage_path: Путь в ``RawStorage``, где лежит оригинальный файл.
     :vartype raw_storage_path: str
-    :ivar file_size_bytes: Размер файла в байтах.
-    :vartype file_size_bytes: int
+    :ivar size_bytes: Размер файла в байтах.
+    :vartype size_bytes: int
     :ivar ingested_at: Время приёма/загрузки документа.
     :vartype ingested_at: datetime
     :ivar status: Статус обработки (``DocumentStatus``).
@@ -103,38 +111,56 @@ class DocumentMeta(BaseSchema):
     :vartype error_message: str | None
     """
 
-    model_config = ConfigDict(extra="allow")
-
-    document_id: str
+    id: Annotated[
+        str,
+        Field(serialization_alias="document_id"),
+    ]
     workspace_id: str
-    document_name: str
+    name: Annotated[
+        str,
+        Field(serialization_alias="document_name"),
+    ]
     media_type: str
     detected_language: str | None = None
-    document_page_count: int | None = None
-    author: str | None = None
-    creation_date: Annotated[datetime | None, Field(default_factory=datetime.now)]
+    page_count: Annotated[
+        int | None,
+        Field(serialization_alias="document_page_count"),
+    ] = None
+    author: Annotated[
+        str | None,
+        Field(serialization_alias="document_author"),
+    ] = None
+    creation_date: datetime | None = None
     raw_storage_path: str
-    file_size_bytes: int
+    size_bytes: Annotated[
+        int,
+        Field(serialization_alias="document_size_bytes"),
+    ]
     ingested_at: Annotated[datetime, Field(default_factory=datetime.now)]
     status: DocumentStatus = DocumentStatus.success
     error_message: str | None = None
 
     @field_serializer("creation_date", "ingested_at")
     def datetime_to_str(self, value: datetime) -> str | None:
-        """
-        Сериализация datetime в строку формата YYYY-MM-DD HH:MM:SS.
-        """
+        return serialize_datetime_to_str(value)
 
+
+class DocumentDTO(BaseDTO, UUIDMixin):
+    workspace_id: str
+    name: str
+    media_type: str
+    detected_language: str | None = None
+    page_count: int | None = None
+    author: str | None = None
+    creation_date: datetime | None = None
+    raw_storage_path: str
+    size_bytes: int
+    ingested_at: Annotated[datetime, Field(default_factory=datetime.now)]
+    status: DocumentStatus = DocumentStatus.success
+    error_message: str | None = None
+
+    @field_serializer("creation_date")
+    def reset_timezone(self, value: datetime) -> datetime | None:
         if value is None:
-            return value
-        return datetime.strftime(value, "%Y-%m-%d %H:%M:%S")
-
-    @field_serializer("status")
-    def document_status_to_str(self, value: DocumentStatus) -> str | None:
-        """
-        Сериализация статуса в строковое значение.
-        """
-
-        if value is None:
-            return value
-        return value.value
+            return None
+        return value.replace(tzinfo=None)

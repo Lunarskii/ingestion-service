@@ -72,3 +72,7 @@ class FileRawStorage(RawStorage):
             shutil.rmtree(full_path)
         elif os.path.isfile(full_path):
             os.remove(full_path)
+
+    def exists(self, path: str) -> bool:
+        full_path: str = os.path.join(self.directory, path.lstrip("/"))
+        return os.path.isfile(full_path)

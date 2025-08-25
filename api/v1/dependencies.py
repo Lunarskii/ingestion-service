@@ -5,33 +5,20 @@ from fastapi import (
     UploadFile,
     Request,
 )
-from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import TextSplitter
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.exceptions import (
     UnsupportedFileTypeError,
     FileTooLargeError,
 )
-from domain.document.utils import get_file_extension
+from domain.embedding import EmbeddingModel
+from domain.text_splitter import TextSplitter
 from domain.document.service import DocumentService
 from domain.document.schemas import File
-from domain.chat.service import (
-    ChatSessionService,
-    ChatMessageService,
-    RAGService,
-)
-from domain.chat.repositories import (
-    ChatSessionRepository,
-    ChatMessageRepository,
-)
-from domain.workspace.service import WorkspaceService
-from domain.workspace.repositories import WorkspaceRepository
-from domain.database.dependencies import scoped_session_dependency
+from domain.chat.service import RAGService
+from utils.file import get_file_extension
 from services import (
     RawStorage,
     VectorStore,
-    MetadataRepository,
 )
 from config import (
     Settings,
@@ -93,15 +80,7 @@ async def vector_store_dependency(request: Request) -> VectorStore:
     return request.app.state.vector_store
 
 
-async def metadata_repository_dependency(request: Request) -> MetadataRepository:
-    """
-    Возвращает настроенный репозиторий метаданных из состояния приложения.
-    """
-
-    return request.app.state.metadata_repository
-
-
-async def embedding_model_dependency(request: Request) -> SentenceTransformer:
+async def embedding_model_dependency(request: Request) -> EmbeddingModel:
     """
     Возвращает настроенную модель эмбеддингов из состояния приложения.
     """
@@ -120,11 +99,8 @@ async def text_splitter_dependency(request: Request) -> TextSplitter:
 async def document_service_dependency(
     raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
     vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
-    metadata_repository: Annotated[
-        MetadataRepository, Depends(metadata_repository_dependency)
-    ],
     embedding_model: Annotated[
-        SentenceTransformer, Depends(embedding_model_dependency)
+        EmbeddingModel, Depends(embedding_model_dependency)
     ],
     text_splitter: Annotated[TextSplitter, Depends(text_splitter_dependency)],
 ) -> DocumentService:
@@ -135,68 +111,15 @@ async def document_service_dependency(
     return DocumentService(
         raw_storage=raw_storage,
         vector_store=vector_store,
-        metadata_repository=metadata_repository,
         embedding_model=embedding_model,
         text_splitter=text_splitter,
     )
 
 
-async def chat_session_repository_dependency(
-    session: Annotated[AsyncSession, Depends(scoped_session_dependency)],
-) -> ChatSessionRepository:
-    """
-    Возвращает репозиторий ``ChatSessionRepository``, привязанный к текущей сессии ДБ.
-    """
-
-    return ChatSessionRepository(session)
-
-
-async def chat_session_service_dependency(
-    repository: Annotated[
-        ChatSessionRepository,
-        Depends(chat_session_repository_dependency),
-    ],
-) -> ChatSessionService:
-    """
-    Возвращает сервис управления чат-сессиями :class:`ChatSessionService`.
-    """
-
-    return ChatSessionService(repository=repository)
-
-
-async def chat_message_repository_dependency(
-    session: Annotated[AsyncSession, Depends(scoped_session_dependency)],
-) -> ChatMessageRepository:
-    """
-    Возвращает репозиторий ``ChatMessageRepository``, привязанный к текущей сессии ДБ.
-    """
-
-    return ChatMessageRepository(session)
-
-
-async def chat_message_service_dependency(
-    repository: Annotated[
-        ChatMessageRepository,
-        Depends(chat_message_repository_dependency),
-    ],
-) -> ChatMessageService:
-    """
-    Возвращает сервис управления сообщениями чата :class:`ChatMessageService`.
-    """
-
-    return ChatMessageService(repository=repository)
-
-
 async def rag_service_dependency(
     vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
     embedding_model: Annotated[
-        SentenceTransformer, Depends(embedding_model_dependency)
-    ],
-    chat_session_service: Annotated[
-        ChatSessionService, Depends(chat_session_service_dependency)
-    ],
-    chat_message_service: Annotated[
-        ChatMessageService, Depends(chat_message_service_dependency)
+        EmbeddingModel, Depends(embedding_model_dependency)
     ],
 ) -> RAGService:
     """
@@ -206,30 +129,4 @@ async def rag_service_dependency(
     return RAGService(
         vector_store=vector_store,
         embedding_model=embedding_model,
-        session_service=chat_session_service,
-        message_service=chat_message_service,
-    )
-
-
-async def workspace_repository_dependency(
-    session: Annotated[AsyncSession, Depends(scoped_session_dependency)],
-) -> WorkspaceRepository:
-    """
-    Возвращает репозиторий ``WorkspaceRepository``, привязанный к текущей сессии ДБ.
-    """
-
-    return WorkspaceRepository(session)
-
-
-async def workspace_service_dependency(
-    repository: Annotated[
-        WorkspaceRepository, Depends(workspace_repository_dependency)
-    ],
-) -> WorkspaceService:
-    """
-    Создаёт и возвращает экземпляр сервиса :class:`WorkspaceService`.
-    """
-
-    return WorkspaceService(
-        repository=repository,
     )

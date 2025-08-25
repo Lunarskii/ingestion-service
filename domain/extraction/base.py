@@ -18,8 +18,8 @@ from domain.extraction.schemas import (
     Page,
     ExtractedInfo,
 )
-from domain.extraction.utils import parse_date
 from domain.extraction.exceptions import ExtractionError
+from utils.datetime import parse_date
 
 
 class TextExtractor(ABC):

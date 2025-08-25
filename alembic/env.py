@@ -10,6 +10,7 @@ from config import settings
 from domain.database.models import BaseDAO
 from domain.chat import models as chat_models  # noqa
 from domain.workspace import models as workspace_models  # noqa
+from domain.document import models as document_models  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

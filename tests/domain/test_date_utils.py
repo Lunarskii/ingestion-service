@@ -2,10 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from domain.extraction.utils import (
-    parse_iso8824_date,
-    parse_date,
-)
+from utils.datetime import parse_iso8824_date, parse_date
 
 
 class TestParseISO8824Date:

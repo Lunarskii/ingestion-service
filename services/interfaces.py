@@ -3,10 +3,9 @@ from typing import (
     Any,
 )
 
-from domain.schemas import (
-    Vector,
-)
-from domain.document.schemas import DocumentMeta
+from pydantic import BaseModel
+
+from domain.embedding import Vector
 
 
 class RawStorage(Protocol):
@@ -43,6 +42,9 @@ class RawStorage(Protocol):
         :param path: Путь к файлу или префикс (например, директория) для удаления.
         :type path: str
         """
+        ...
+
+    def exists(self, path: str) -> bool:
         ...
 
 
@@ -96,36 +98,26 @@ class VectorStore(Protocol):
         ...
 
 
-class MetadataRepository(Protocol):
-    """
-    Интерфейс для репозитория метаданных документов.
-    """
-
-    def save(self, meta: DocumentMeta) -> None:
-        """
-        Сохраняет метаданные обработанного документа.
-
-        :param meta: Объект `DocumentMeta`, содержащий всю информацию о документе и его статусе.
-        :type meta: DocumentMeta
-        """
+class Repository(Protocol):
+    async def create(self, **kwargs: Any) -> BaseModel:
         ...
 
-    def get(self, **data: Any) -> list[DocumentMeta]:
-        """
-        Извлекает все сохраненные метаданные документов для заданного фильтра.
-
-        :param data: Набор keyword аргументов, по которым фильтруются документы.
-        :type data: dict[str, Any]
-        :return: Список объектов `DocumentMeta`.
-        :rtype: list[DocumentMeta]
-        """
+    async def get(self, key: Any) -> BaseModel:
         ...
 
-    def delete(self, **data: Any) -> None:
-        """
-        Удаляет записи метаданных по заданному фильтру или все записи, если фильтр пуст.
+    async def get_n(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        **kwargs: Any,
+    ) -> list[BaseModel]:
+        ...
 
-        :param data: Набор keyword аргументов для фильтрации записей, которые требуется удалить.
-        :type data: dict[str, Any]
-        """
+    async def update(self, key: Any, **kwargs: Any) -> BaseModel:
+        ...
+
+    async def delete(self, key: Any) -> None:
+        ...
+
+    async def exists(self, key: Any) -> bool:
         ...

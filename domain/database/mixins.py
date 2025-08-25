@@ -1,35 +1,15 @@
-from datetime import (
-    datetime,
-    UTC,
+from datetime import datetime
+from uuid import (
+    UUID,
+    uuid4,
 )
-from uuid import UUID
 
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
 )
 
-
-def local_time() -> datetime:
-    """
-    Возвращает текущее локальное время.
-
-    :return: Текущая локальная дата и время (без явного указания временной зоны).
-    :rtype: datetime
-    """
-
-    return datetime.now()
-
-
-def universal_time() -> datetime:
-    """
-    Возвращает текущую UTC-временную метку без информации о временной зоне.
-
-    :return: Текущее UTC-время с обнулённой tzinfo (naive datetime).
-    :rtype: datetime
-    """
-
-    return datetime.now(UTC).replace(tzinfo=None)
+from utils.datetime import universal_time
 
 
 class IDMixin:
@@ -62,6 +42,7 @@ class UUIDMixin:
     id: Mapped[UUID] = mapped_column(
         primary_key=True,
         nullable=False,
+        default=lambda: str(uuid4()),
         sort_order=-100,
     )
 

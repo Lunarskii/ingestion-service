@@ -4,7 +4,7 @@ import math
 import shutil
 from typing import Any
 
-from domain.schemas import Vector
+from domain.embedding.schemas import Vector
 from services import VectorStore
 from config import settings
 
