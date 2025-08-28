@@ -1,5 +1,3 @@
-from typing import Any
-
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -34,18 +32,3 @@ class BaseDTO(BaseModel):
         extra="ignore",
         frozen=False,
     )
-
-    def model_raw_dump(self) -> dict[str, Any]:
-        """
-        Возвращает "сырое" представление DTO в виде словаря, без применения pydantic-сериализаторов.
-        Если значение является вложенным ``BaseDTO``, то рекурсивно вызывает ``model_raw_dump()`` для него.
-        """
-
-        raw: dict[str, Any] = {}
-        for name in self.__pydantic_fields__.keys():
-            value: Any = getattr(self, name)
-            if isinstance(value, BaseDTO):
-                raw[name] = value.model_raw_dump()
-            else:
-                raw[name] = value
-        return raw

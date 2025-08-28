@@ -80,20 +80,21 @@ class DocumentStatus(str, Enum):
     failed: str = "FAILED"
 
 
-# TODO doc name
 class Document(BaseSchema):
     """
-    Метаданные обработанного документа для сохранения в репозитории.
+    Метаданные документа.
 
     :ivar id: Уникальный идентификатор документа.
     :vartype id: str
     :ivar workspace_id: Идентификатор рабочего пространства.
     :vartype workspace_id: str
+    :ivar name: Имя документа.
+    :vartype name: str
     :ivar media_type: MIME-тип документа, например ``application/pdf``.
     :vartype media_type: str
     :ivar detected_language: Определённый язык содержимого.
     :vartype detected_language: str | None
-    :ivar page_count: Количество страниц.
+    :ivar page_count: Количество страниц в документе.
     :vartype page_count: int | None
     :ivar author: Автор документа.
     :vartype author: str | None
@@ -146,6 +147,37 @@ class Document(BaseSchema):
 
 
 class DocumentDTO(BaseDTO, UUIDMixin):
+    """
+    DTO (Data Transfer Object) для представления метаданных документа.
+
+    :ivar id: Уникальный идентификатор документа.
+    :vartype id: str
+    :ivar workspace_id: Идентификатор рабочего пространства.
+    :vartype workspace_id: str
+    :ivar name: Имя документа.
+    :vartype name: str
+    :ivar media_type: MIME-тип документа, например ``application/pdf``.
+    :vartype media_type: str
+    :ivar detected_language: Определённый язык содержимого.
+    :vartype detected_language: str | None
+    :ivar page_count: Количество страниц в документе.
+    :vartype page_count: int | None
+    :ivar author: Автор документа.
+    :vartype author: str | None
+    :ivar creation_date: Дата создания документа.
+    :vartype creation_date: datetime
+    :ivar raw_storage_path: Путь в ``RawStorage``, где лежит оригинальный файл.
+    :vartype raw_storage_path: str
+    :ivar size_bytes: Размер файла в байтах.
+    :vartype size_bytes: int
+    :ivar ingested_at: Время приёма/загрузки документа.
+    :vartype ingested_at: datetime
+    :ivar status: Статус обработки (``DocumentStatus``).
+    :vartype status: DocumentStatus
+    :ivar error_message: Текст ошибки, если статус ``DocumentStatus.failed``.
+    :vartype error_message: str | None
+    """
+
     workspace_id: str
     name: str
     media_type: str

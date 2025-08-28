@@ -1,6 +1,7 @@
 from unittest.mock import (
     MagicMock,
     AsyncMock,
+    create_autospec,
 )
 from typing import Any
 
@@ -17,7 +18,6 @@ from tests.mock_utils import assert_called_once_with
 from api.main import app
 from api.v1.dependencies import (
     document_service_dependency,
-    metadata_repository_dependency,
     raw_storage_dependency,
     validate_upload_file,
 )
@@ -27,9 +27,21 @@ from api.v1.exceptions import (
     DocumentNotFoundError,
 )
 from domain.document.schemas import (
+    DocumentDTO,
     Document,
     DocumentStatus,
 )
+from domain.document.repositories import DocumentRepository
+from domain.document.dependencies import document_uow_dependency
+
+
+mock_document_repo = create_autospec(DocumentRepository, instance=True)
+
+
+def _get_repo_side_effect(repo_type):
+    if repo_type is DocumentRepository:
+        return mock_document_repo
+    raise KeyError(f"Неожиданный тип репозитория: {repo_type!r}")
 
 
 class TestDocumentsAPI:
@@ -39,40 +51,41 @@ class TestDocumentsAPI:
 
     def test_documents_returns_list(
         self,
-        mock_metadata_repository: MagicMock,
+        mock_uow: MagicMock,
         documents_api_url: str,
         workspace_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_200_OK,
     ):
         app.dependency_overrides.clear()  # noqa
-        app.dependency_overrides[metadata_repository_dependency] = (
-            lambda: mock_metadata_repository
-        )  # noqa
+        mock_uow.get_repository.side_effect = _get_repo_side_effect
+        app.dependency_overrides[document_uow_dependency] = lambda: mock_uow  # noqa
         client = TestClient(app)
 
-        list_metadata: list[Document] = [
-            Document(
-                document_id=ValueGenerator.uuid(),
+        documents: list[DocumentDTO] = [
+            DocumentDTO(
                 workspace_id=workspace_id,
-                document_name=ValueGenerator.text(),
+                name=ValueGenerator.text(),
                 media_type=ValueGenerator.text(),
                 raw_storage_path=f"{ValueGenerator.path()}.pdf",
-                file_size_bytes=ValueGenerator.integer(),
+                size_bytes=ValueGenerator.integer(),
                 status=DocumentStatus.success,
             )
             for _ in range(ValueGenerator.integer(2))
         ]
-        mock_metadata_repository.get.return_value = list_metadata
+        mock_document_repo.get_n.return_value = documents
         response: Response = client.get(
             documents_api_url,
             params={"workspace_id": workspace_id},
         )
 
         assert response.status_code == expected_status_code
-        assert response.json() == [metadata.model_dump() for metadata in list_metadata]
+        assert response.json() == [
+            Document(**document.model_dump()).model_dump(by_alias=True)
+            for document in documents
+        ]
 
         assert_called_once_with(
-            mock_metadata_repository.get,
+            mock_document_repo.get_n,
             workspace_id=workspace_id,
         )
 
@@ -155,20 +168,19 @@ class TestDocumentsAPI:
 
     def test_download_file_not_found(
         self,
-        mock_metadata_repository: MagicMock,
+        mock_uow: MagicMock,
         mock_raw_storage: MagicMock,
         documents_api_url: str,
         document_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_404_NOT_FOUND,
     ):
         app.dependency_overrides.clear()  # noqa
-        app.dependency_overrides[metadata_repository_dependency] = (
-            lambda: mock_metadata_repository
-        )  # noqa
+        mock_uow.get_repository.side_effect = _get_repo_side_effect
+        app.dependency_overrides[document_uow_dependency] = lambda: mock_uow  # noqa
         app.dependency_overrides[raw_storage_dependency] = lambda: mock_raw_storage  # noqa
         client = TestClient(app)
 
-        mock_metadata_repository.get.return_value = []
+        mock_document_repo.get = AsyncMock(side_effect=Exception("database get error"))
         response: Response = client.get(f"{documents_api_url}/{document_id}/download")
 
         assert response.status_code == expected_status_code
@@ -176,37 +188,33 @@ class TestDocumentsAPI:
         with pytest.raises(HTTPError):
             response.raise_for_status()
 
-        assert_called_once_with(
-            mock_metadata_repository.get,
-            document_id=document_id,
-        )
+        mock_document_repo.get.assert_called_once_with(document_id)
 
     def test_download_file_success(
         self,
-        mock_metadata_repository: MagicMock,
+        mock_uow: MagicMock,
         mock_raw_storage: MagicMock,
         documents_api_url: str,
         document_id=ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_200_OK,
     ):
         app.dependency_overrides.clear()  # noqa
-        app.dependency_overrides[metadata_repository_dependency] = (
-            lambda: mock_metadata_repository
-        )  # noqa
+        mock_uow.get_repository.side_effect = _get_repo_side_effect
+        app.dependency_overrides[document_uow_dependency] = lambda: mock_uow  # noqa
         app.dependency_overrides[raw_storage_dependency] = lambda: mock_raw_storage  # noqa
         client = TestClient(app)
 
         file_bytes = b"some dummy file content"
-        metadata = Document(
-            document_id=document_id,
+        document = DocumentDTO(
+            id=document_id,
             workspace_id=ValueGenerator.uuid(),
-            document_name="test.pdf",
+            name="test.pdf",
             media_type="application/pdf",
             raw_storage_path="some/path/test.pdf",
-            file_size_bytes=len(file_bytes),
+            size_bytes=len(file_bytes),
             status=DocumentStatus.success,
         )
-        mock_metadata_repository.get.return_value = [metadata]
+        mock_document_repo.get = AsyncMock(return_value=document)
         mock_raw_storage.get.return_value = file_bytes
         response: Response = client.get(f"{documents_api_url}/{document_id}/download")
 
@@ -214,13 +222,11 @@ class TestDocumentsAPI:
         assert response.content == file_bytes
         content_disposition = response.headers.get("content-disposition", "")
         assert "filename" in content_disposition
-        assert response.headers.get("content-length") == str(metadata.file_size_bytes)
+        assert response.headers.get("content-length") == str(document.size_bytes)
+
+        mock_document_repo.get.assert_called_once_with(document_id)
 
         assert_called_once_with(
-            mock_metadata_repository.get,
-            document_id=document_id,
-        )
-        assert_called_once_with(
             mock_raw_storage.get,
-            path=metadata.raw_storage_path,
+            path=document.raw_storage_path,
         )

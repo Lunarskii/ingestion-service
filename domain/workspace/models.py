@@ -21,12 +21,12 @@ class WorkspaceDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
     """
     DAO (ORM) модель, представляющая рабочее пространство (workspace).
 
-    :cvar __tablename__: Название таблицы в базе данных.
-    :vartype __tablename__: str
+    :ivar id: Идентификатор рабочего пространства.
+    :vartype id: UUID
     :ivar name: Человеко-читаемое уникальное имя пространства.
     :vartype name: str
-    :ivar sessions: Список связанных чат-сессий (relationship).
-    :vartype sessions: list[ChatSessionDAO]
+    :ivar created_at: Время создания рабочего пространства.
+    :vartype created_at: datetime
     """
 
     __tablename__ = "workspaces"

@@ -66,7 +66,8 @@ class TestJSONVectorStore:
             document_id=document_id,
             workspace_id=workspace_id,
             document_name=ValueGenerator.text(),
-            document_page=ValueGenerator.integer(),
+            page_start=ValueGenerator.integer(),
+            page_end=ValueGenerator.integer(),
             text=ValueGenerator.text(),
         )
         vectors1: list[Vector] = [

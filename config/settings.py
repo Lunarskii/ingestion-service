@@ -36,8 +36,7 @@ class DatabaseSettings(BaseSettings):
     Настройки базы данных
     """
 
-    # TODO добавить default sqlite db url
-    url: Annotated[str, Field(alias="DATABASE_URL")] = "sqlite..."
+    url: Annotated[str, Field(alias="DATABASE_URL")] = "sqlite+aiosqlite:///./local_storage/sqlite.db"
     echo: Annotated[bool, Field(alias="DATABASE_ECHO")] = False
     echo_pool: Annotated[bool, Field(alias="DATABASE_ECHO_POOL")] = False
     pool_pre_ping: Annotated[bool, Field(alias="DATABASE_POOL_PRE_PING")] = True
@@ -146,6 +145,10 @@ class QdrantSettings(BaseSettings):
 
 
 class DatetimeSettings(BaseSettings):
+    """
+    Настройки времени приложения.
+    """
+
     serialization_format: Annotated[
         str,
         Field(alias="DATETIME_SERIALIZATION_FORMAT"),

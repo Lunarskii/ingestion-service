@@ -8,6 +8,7 @@ from sqlalchemy.orm import (
     Mapped,
     mapped_column,
 )
+import sqlalchemy as sa
 
 from utils.datetime import universal_time
 
@@ -23,7 +24,9 @@ class IDMixin:
     __abstract__ = True
 
     id: Mapped[int] = mapped_column(
+        sa.Integer,
         primary_key=True,
+        autoincrement=True,
         nullable=False,
         sort_order=-100,
     )

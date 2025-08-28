@@ -39,12 +39,12 @@ class IUnitOfWork(ABC):
     
     @abstractmethod
     async def __aenter__(self):
-        """Async context manager entry"""
+        """Вход в асинхронный контекстный менеджер"""
         ...
     
     @abstractmethod
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Async context manager exit"""
+        """Выход из асинхронного контекстного менеджера"""
         ...
 
 
@@ -53,7 +53,7 @@ class UnitOfWork(IUnitOfWork):
     Универсальный Unit of Work паттерн для управления транзакциями и репозиториями.
     
     Этот класс инкапсулирует работу с базой данных и предоставляет
-    единую точку для управления транзакциями. Может работать с любыми репозиториями.
+    единую точку для управления транзакциями. Может работать с любыми ``AlchemyRepository``.
     """
     
     def __init__(self, session: AsyncSession):
@@ -115,12 +115,24 @@ class UnitOfWork(IUnitOfWork):
             raise handle_sqlalchemy_error(e)
     
     async def __aenter__(self):
-        """Async context manager entry"""
+        """
+        Открывает транзакцию в базу данных.
+
+        В данный момент просто возвращает UnitOfWork экземпляр.
+
+        :return: Этот же экземпляр UnitOfWork.
+        :rtype: UnitOfWork
+        """
 
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Async context manager exit"""
+        """
+        Закрывает транзакцию в базе данных.
+
+        Откатывает все изменения, если произошла какая-то ошибка, иначе
+        сохраняет.
+        """
 
         try:
             if exc_type is not None:
@@ -146,8 +158,11 @@ class UnitOfWorkFactory:
         Создает Unit of Work с предустановленными репозиториями.
         
         :param session: Сессия базы данных
+        :type session: AsyncSession
         :param repo_types: Типы репозиториев для предустановки
-        :return: Unit of Work с готовыми репозиториями
+        :type repo_types: type[AlchemyRepository]
+        :return: UnitOfWork с готовыми репозиториями.
+        :rtype: UnitOfWork
         """
 
         uow = UnitOfWork(session)

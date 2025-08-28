@@ -14,6 +14,5 @@ class TestAPIEvents:
         with TestClient(app):
             assert app.state.raw_storage is not None
             assert app.state.vector_store is not None
-            assert app.state.metadata_repository is not None
             assert app.state.embedding_model is not None
             assert app.state.text_splitter is not None

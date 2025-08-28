@@ -11,6 +11,7 @@ from services import Repository
 from domain.database.models import BaseDAO
 from domain.database.exceptions import (
     EntityNotFoundError,
+    ValidationError,
     DatabaseError,
 )
 from schemas.base import BaseDTO
@@ -217,7 +218,16 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
 
         try:
             instance = await self._get_instance(id)
-            instance.update(**kwargs)
+
+            for key, value in kwargs.items():
+                if not hasattr(instance, key):
+                    raise ValidationError(
+                        field=key,
+                        value=value,
+                        constraint="",
+                    )
+                setattr(instance, key, value)
+
             await self.session.flush()
             return self.schema_type.model_validate(instance)
         except SQLAlchemyError as e:

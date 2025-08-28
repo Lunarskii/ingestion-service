@@ -11,8 +11,6 @@ import io
 
 import pytest
 import docx
-from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.pagesizes import A4
 
@@ -23,25 +21,24 @@ from domain.document.schemas import (
     DocumentStatus,
 )
 from domain.chat.service import (
-    ChatSessionService,
-    ChatMessageService,
     RAGService,
 )
 from domain.chat.repositories import (
     ChatSessionRepository,
     ChatMessageRepository,
 )
-from domain.workspace.service import WorkspaceService
 from domain.workspace.repositories import WorkspaceRepository
 from services import (
     RawStorage,
     VectorStore,
-    MetadataRepository,
 )
-from domain.embedding.schemas import (
+from domain.embedding import (
     VectorMetadata,
     Vector,
 )
+from domain.database.uow import UnitOfWork
+from domain.embedding import EmbeddingModel
+from domain.text_splitter import TextSplitter
 
 
 class ValueGenerator:
@@ -112,7 +109,8 @@ class ValueGenerator:
                 document_id=cls.uuid(),
                 workspace_id=cls.uuid(),
                 document_name=cls.text(),
-                document_page=cls.integer(),
+                page_start=cls.integer(),
+                page_end=cls.integer(),
                 text=cls.text(),
             ),
         )
@@ -219,8 +217,16 @@ def tmp_document(tmp_path) -> Any:
         1: (ValueGenerator.docx, ".docx"),
     }
 
-    def _make(target_bytes: int = 1_000_000) -> tuple[bytes, str, str]:
-        func, file_extension = _map[random.randint(0, len(_map) - 1)]
+    def _make(target_bytes: int = 1_000_000, doc_type: str | None = None) -> tuple[bytes, str, str]:
+        if doc_type:
+            if doc_type == ".pdf":
+                func, file_extension = _map[0]
+            elif doc_type == ".docx":
+                func, file_extension = _map[1]
+            else:
+                raise NotImplementedError()
+        else:
+            func, file_extension = _map[random.randint(0, len(_map) - 1)]
         path = tmp_path / f"document_{target_bytes}{file_extension}"
         func(path, target_bytes)
         with open(path, "rb") as file:
@@ -248,18 +254,13 @@ def mock_vector_store(mocker) -> MagicMock:
 
 
 @pytest.fixture
-def mock_metadata_repository(mocker) -> MagicMock:
-    return mocker.create_autospec(MetadataRepository, instance=True)
-
-
-@pytest.fixture
 def mock_embedding_model(mocker) -> MagicMock:
-    return mocker.create_autospec(SentenceTransformer, instance=True)
+    return mocker.create_autospec(EmbeddingModel, instance=True)
 
 
 @pytest.fixture
 def mock_text_splitter(mocker) -> MagicMock:
-    return mocker.create_autospec(RecursiveCharacterTextSplitter, instance=True)
+    return mocker.create_autospec(TextSplitter, instance=True)
 
 
 @pytest.fixture
@@ -273,18 +274,8 @@ def mock_file_scheme(mocker) -> MagicMock:
 
 
 @pytest.fixture
-def mock_chat_session_service(mocker) -> MagicMock:
-    return mocker.create_autospec(ChatSessionService, instance=True)
-
-
-@pytest.fixture
 def mock_chat_session_repository(mocker) -> MagicMock:
     return mocker.create_autospec(ChatSessionRepository, instance=True)
-
-
-@pytest.fixture
-def mock_chat_message_service(mocker) -> MagicMock:
-    return mocker.create_autospec(ChatMessageService, instance=True)
 
 
 @pytest.fixture
@@ -303,5 +294,5 @@ def mock_workspace_repository(mocker) -> MagicMock:
 
 
 @pytest.fixture
-def mock_workspace_service(mocker) -> MagicMock:
-    return mocker.create_autospec(WorkspaceService, instance=True)
+def mock_uow(mocker) -> MagicMock:
+    return mocker.create_autospec(UnitOfWork, instance=True)

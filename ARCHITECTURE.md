@@ -34,10 +34,12 @@
   - Вся бизнес-логика и модели предметной области (DAO, DTO, схемы), репозитории, сервисы.
 - **Ключевые пакеты**:
   - `domain/chat`: RAG-логика, управление сессиями, сообщениями.
-  - `domain/database`: общая бд-логика (подключения, миксины (Mixins), модели, репозитории).
+  - `domain/database`: общая бд-логика (подключения, миксины (Mixins), модели, репозитории, UoW).
   - `domain/document`: обработка документов.
   - `domain/extraction`: экстракторы текста (PDF, DOCX, ...)
   - `domain/workspace`: работа с рабочими пространствами.
+  - `domain/embedding`: работа с эмбеддингами, векторами.
+  - `domain/text_splitter`: разделители страниц, текста на чанки (фрагменты).
 - **Ключевые правила**:
   - Изолирован от инфраструктуры: все зависимости (хранилище, векторный индекс, репозитории) принимаются через интерфейсы/протоколы.
   - Преобразование ORM <-> DTO выполняется через Pydantic `from_attributes`/`model_validate`.
@@ -51,9 +53,10 @@
 
 ### **`infrastructure` (Инфраструктура)**
 - **Ответственность**:
-  - Реальные реализации контрактов: `MinIORawStorage`, реальные клиенты БД/векторных баз и т.п.
+  - Реальные реализации контрактов `services/interfaces.py`, например `MinIORawStorage`, `QdrantVectorStore` и т.п.
 - **Ключевые модули**:
-  - `infrastructure/storage/minio.py`: реализация интерфейса `RawStorage` на базе MinIO хранилища.
+  - `infrastructure/storage_minio.py`: реализация интерфейса `RawStorage` на базе MinIO файлового хранилища.
+  - `infrastructure/vectorstore_qdrant.py`: реализация интерфейса `VectorStore` на базе Qdrant векторного хранилища.
 
 ### **`schemas` (Схемы / DTO)**
 - **Ответственность**:
@@ -67,20 +70,28 @@
 
 ### **`services` (Абстракции / Интерфейсы)**
 - **Ответственность**:
-  - Описание `Protocol`-интерфейсов для хранения (`RawStorage`, `VectorStore`, `MetadataRepository`) и других внешних сервисов.
+  - Описание `Protocol`-интерфейсов для хранения (`RawStorage`, `VectorStore`, `Repository`) и других внешних сервисов.
   - Используются в `domain` для типизации и DI.
 - **Ключевые модули**:
   - `services/interfaces.py`: интерфейсы.
 
 ### **`stubs` (Заглушки для локальной разработки и тестирования)**
 - **Ответственность**
-  - Лёгкие, файл-системные реализации интерфейсов для разработки: `FileRawStorage`, `JSONVectorStore`, `SQLiteMetadataRepository`.
+  - Лёгкие, файл-системные реализации интерфейсов для разработки: `FileRawStorage`, `JSONVectorStore`.
   - Используются в on_startup событии при отсутствии production конфигурации (например, `settings.minio`).
 - **Ключевые модули**:
   - `stubs/raw_storage.py`: заглушка хранилища сырых файлов.
   - `stubs/vector_store.py`: заглушка векторного хранилища.
-  - `stubs/metadata_repository.py`: заглушка репозитория метаданных.
   - `stubs/llm_stub.py`: LLM заглушка.
+
+### **`utils` (Утилиты)**
+- **Ответственность**
+  - Реализация общих утилит, например получение универсального времени без временной зоны.
+  - Используются во всем приложении.
+- **Ключевые модули**:
+  - `utils/datetime.py`: утилиты для конвертирования времени из строки в datetime и обратно и т.п.
+  - `utils/file.py`: утилиты для работы с файлами: определение MIME-типа, расширения файла.
+  - `utils/singleton.py`: реестр синглтонов.
 
 ## Технологии
 
@@ -234,10 +245,27 @@ erDiagram
         UUID id PK
         UUID message_id FK
         string document_name
-        integer document_page
+        integer page_start
+        integer page_end
         string snippet
     }
+    
+    documents {
+        UUID id PK
+        UUID workspace_id FK
+        string name
+        string detected_language
+        int page_count
+        string author
+        datetime creation_date
+        string raw_storage_path
+        int size_bytes
+        datetime ingested_at
+        enum status "SUCCESS, FAILED"
+        string error_message
+    }
 
+    workspaces ||--o{ documents : "ON DELETE CASCADE"
     workspaces ||--o{ chat_sessions : "ON DELETE CASCADE"
     chat_sessions ||--o{ chat_messages : "ON DELETE CASCADE"
     chat_messages ||--o{ chat_message_sources : "ON DELETE CASCADE"
@@ -249,57 +277,35 @@ sequenceDiagram
     participant Client
     participant API
     participant RAGService
-    participant ChatSessionService
-    participant ChatSessionRepository
-    participant ChatMessageService
-    participant ChatMessageRepository
     participant EmbeddingModel
     participant VectorStore
     participant LLM as LLM (stub/client)
-    participant Database
+    participant DB as Database
 
     Client->>API: POST /v1/chat/ask {question, workspace_id, top_k, session_id?}
     API->>RAGService: ask(request)
     
-    RAGService-->>ChatSessionService: create_session_if_not_exists(workspace_id)
-    ChatSessionService-->>ChatSessionRepository: create(workspace_id)
-    ChatSessionRepository-->>Database: INSERT chat_sessions (workspace_id)
-    Database-->>ChatSessionRepository: ChatSessionDTO
-    ChatSessionRepository-->>ChatSessionService: ChatSessionDTO
-    ChatSessionService-->>RAGService: session_id (created or existing)
+    RAGService-->>DB: create session if not exists
+    DB-->>RAGService: session_id (created or existing)
     
     RAGService->>EmbeddingModel: encode(question)
-    EmbeddingModel->>RAGService: question_vector
-    RAGService->>VectorStore: search(question_vector, top_k, workspace_id)
-    VectorStore->>RAGService: retrieved_vectors (sources)
-    RAGService->>RAGService: generate_sources_from_vectors(retrieved_vectors)
+    EmbeddingModel->>RAGService: embedding
+    RAGService->>VectorStore: search(embedding, top_k, workspace_id)
+    VectorStore->>RAGService: retrieved vectors (sources)
+    RAGService->>RAGService: generate sources from retrieved vectors
     
-    RAGService->>ChatMessageService: recent_messages(session_id, n=4)
-    ChatMessageService->>ChatMessageRepository: recent_messages(session_id, 4)
-    ChatMessageRepository->>Database: SELECT ... FROM chat_messages WHERE ...
-    Database->>ChatMessageRepository: list ChatMessageDTO
-    ChatMessageRepository->>ChatMessageService: list ChatMessageDTO
-    ChatMessageService->>RAGService: recent_messages
-    
-    RAGService->>RAGService: generate_prompt(sources, recent_messages, question)
+    RAGService->>DB: get recent messages
+    DB->>RAGService: recent messages
+
+    RAGService->>RAGService: generate prompt (sources, recent_messages, question)
     RAGService->>LLM: generate(prompt)
     LLM->>RAGService: answer
     
-    RAGService->>ChatMessageService: create(session_id, role=user, content=question)
-    ChatMessageService->>ChatMessageRepository: create(session_id, user, question)
-    ChatMessageRepository->>Database: INSERT chat_messages (user)
-    Database->>ChatMessageRepository: ChatMessageDTO
-    ChatMessageRepository->>ChatMessageService: ChatMessageDTO
-    ChatMessageService-->>RAGService: ChatMessageDTO
+    RAGService->>DB: insert user message
+    RAGService->>DB: insert assistant message
+    RAGService->>DB: insert assistant sources
     
-    RAGService->>ChatMessageService: create(session_id, role=assistant, content=answer)
-    ChatMessageService->>ChatMessageRepository: create(session_id, assistant, answer)
-    ChatMessageRepository->>Database: INSERT chat_messages (assistant)
-    Database->>ChatMessageRepository: ChatMessageDTO
-    ChatMessageRepository->>ChatMessageService: ChatMessageDTO
-    ChatMessageService-->>RAGService: ChatMessageDTO
-    
-    RAGService->>API: ChatResponse(answer, sources, session_id)
+    RAGService->>API: RAGResponse(answer, sources, session_id)
     API->>Client: 200 OK {answer, sources, session_id}
 ```
 
@@ -308,7 +314,7 @@ sequenceDiagram
 **Пример: Добавление поддержки S3 для `RawStorage`**
 
 1. **Создать новую реализацию:**
-- Создать файл, например, `./infrastructure/storage/s3_storage.py`.
+- Создать файл, например, `./infrastructure/s3_storage.py`.
 - В этом файле создать класс `S3RawStorage`, который реализует протокол `RawStorage` (т.е. имеет методы интерфейса `RawStorage`).
 
 ```python
@@ -359,7 +365,7 @@ class Settings:
 from typing import Coroutine
 from config import settings
 from stubs import FileRawStorage
-from infrastructure.storage.s3_storage import S3RawStorage # Импортируем новый класс
+from infrastructure.s3_storage import S3RawStorage # Импортируем новый класс
 
 async def on_startup_event_handler(app: "FastAPI") -> None:
     def __init_object(cls, *args, **kwargs) -> Coroutine:

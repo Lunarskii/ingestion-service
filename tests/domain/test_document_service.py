@@ -1,46 +1,77 @@
 from unittest.mock import (
     MagicMock,
     create_autospec,
-    call,
 )
 from typing import Any
 import os
 
+import pytest
+
 from tests.conftest import ValueGenerator
-from tests.mock_utils import (
-    call_args,
-    assert_called_once_with,
-)
+from tests.mock_utils import assert_called_once_with
 from domain.document.service import DocumentService
-from domain.document.schemas import File
-from domain.document.schemas import Document
-from domain.embedding.schemas import (
+from domain.document.schemas import (
+    File,
+    DocumentStatus,
+)
+from domain.document.repositories import DocumentRepository
+from domain.embedding import (
     VectorMetadata,
     Vector,
 )
-from domain.extraction.schemas import (
+from domain.text_splitter import (
+    Chunk,
+    PageSpan,
+)
+from domain.extraction import (
+    extract as extract_from_document,
     Page,
     ExtractedInfo,
 )
-from domain.extraction import extract as extract_from_document
+
+
+mock_document_repo = create_autospec(DocumentRepository, instance=True)
+
+
+def _get_repo_side_effect(repo_type):
+    if repo_type is DocumentRepository:
+        return mock_document_repo
+    raise KeyError(f"Неожиданный тип репозитория: {repo_type!r}")
 
 
 class TestDocumentService:
-    def test_process_success(
+    @pytest.mark.asyncio
+    async def test_process_success(
         self,
         monkeypatch,
+        mock_uow: MagicMock,
         mock_raw_storage: MagicMock,
         mock_vector_store: MagicMock,
-        mock_metadata_repository: MagicMock,
         mock_embedding_model: MagicMock,
         mock_text_splitter: MagicMock,
         tmp_document: Any,
         document_id: str = ValueGenerator.uuid(),
         workspace_id: str = ValueGenerator.uuid(),
     ):
+        mock_document_repo.reset_mock()
+
         file_bytes, path, file_extension = tmp_document()
         vector: list[float] = ValueGenerator.float_vector()
-        chunks: list[str] = ValueGenerator.chunks(1)
+        chunks: list[Chunk] = [
+            Chunk(
+                text=ValueGenerator.text(),
+                page_spans=[
+                    PageSpan(
+                        text=ValueGenerator.text(),
+                        page_num=ValueGenerator.integer(),
+                        chunk_start_on_page=ValueGenerator.integer(),
+                        chunk_end_on_page=ValueGenerator.integer(),
+                    )
+                    for _ in range(1, 3)
+                ]
+            )
+            for _ in range(ValueGenerator.integer(2))
+        ]
         file = File(
             content=file_bytes,
             name=os.path.basename(path),
@@ -48,7 +79,10 @@ class TestDocumentService:
             extension=file_extension,
         )
         pages: list[Page] = [
-            Page(num=i, text=ValueGenerator.text())
+            Page(
+                num=i,
+                text=ValueGenerator.text(),
+            )
             for i in range(ValueGenerator.integer(1))
         ]
         extracted_info = ExtractedInfo(
@@ -59,43 +93,43 @@ class TestDocumentService:
         )
         vectors: list[Vector] = [
             Vector(
-                id=f"{document_id}-{i}",
                 values=vector,
                 metadata=VectorMetadata(
                     document_id=document_id,
                     workspace_id=workspace_id,
                     document_name=file.name,
-                    document_page=i,
-                    text=chunks[0],
+                    page_start=chunk.page_spans[0].page_num,
+                    page_end=chunk.page_spans[-1].page_num,
+                    text=chunk.text,
                 ),
             )
-            for i in range(len(pages))
+            for chunk in chunks
         ]
 
-        mock_text_splitter.split_text.return_value = chunks
-        mock_vector = MagicMock()
-        mock_vector.tolist.return_value = vector
-        mock_embedding_model.encode.return_value = [
-            mock_vector for _ in range(len(pages))
-        ]
+        mock_uow.get_repository.side_effect = _get_repo_side_effect
+        mock_text_splitter.split_pages.return_value = chunks
+        mock_embedding_model.encode.return_value = vectors
         mock_extract_function = create_autospec(
-            extract_from_document, return_value=extracted_info, spec_set=True
+            extract_from_document,
+            return_value=extracted_info,
+            spec_set=True,
         )
         monkeypatch.setattr(
-            "domain.document.service.extract_from_document", mock_extract_function
+            "domain.document.service.extract_from_document",
+            mock_extract_function,
         )
 
         document_service = DocumentService(
             raw_storage=mock_raw_storage,  # noqa
             vector_store=mock_vector_store,  # noqa
-            metadata_repository=mock_metadata_repository,  # noqa
             embedding_model=mock_embedding_model,  # noqa
             text_splitter=mock_text_splitter,  # noqa
         )
-        document_service.process(
+        await document_service.process(
             file=file,
             document_id=document_id,
             workspace_id=workspace_id,
+            uow=mock_uow,
         )
 
         assert_called_once_with(
@@ -109,13 +143,15 @@ class TestDocumentService:
             file=file,
         )
 
-        mock_text_splitter.split_text.assert_has_calls(
-            [call(text=page.text) for page in pages]
+        assert_called_once_with(
+            mock_text_splitter.split_pages,
+            pages=pages,
         )
 
         assert_called_once_with(
             mock_embedding_model.encode,
-            sentences=[chunks[0] for _ in range(len(pages))],
+            sentences=[chunk.text for chunk in chunks],
+            metadata=[v.metadata for v in vectors],
         )
 
         assert_called_once_with(
@@ -123,23 +159,34 @@ class TestDocumentService:
             vectors=vectors,
         )
 
-        mock_metadata_repository.save.assert_called_once()
-        args = call_args(mock_metadata_repository.save)
-        assert isinstance(args["meta"], Document)
-        assert args["meta"].document_id == document_id
-        assert args["meta"].workspace_id == workspace_id
+        assert_called_once_with(
+            mock_document_repo.create,
+            id=document_id,
+            workspace_id=workspace_id,
+            name=file.name,
+            media_type=file.type,
+            raw_storage_path=f"{workspace_id}/{document_id}{file_extension}",
+            size_bytes=file.size,
+            status=DocumentStatus.success,
+            page_count=extracted_info.document_page_count,
+            author=extracted_info.author,
+            creation_date=extracted_info.creation_date,
+        )
 
-    def test_process_handles_exceptions(
+    @pytest.mark.asyncio
+    async def test_process_handles_exceptions(
         self,
+        mock_uow: MagicMock,
         mock_raw_storage: MagicMock,
         mock_vector_store: MagicMock,
-        mock_metadata_repository: MagicMock,
         mock_embedding_model: MagicMock,
         mock_text_splitter: MagicMock,
         tmp_document: Any,
         document_id: str = ValueGenerator.uuid(),
         workspace_id: str = ValueGenerator.uuid(),
     ):
+        mock_document_repo.reset_mock()
+
         file_bytes, path, file_extension = tmp_document()
         file = File(
             content=file_bytes,
@@ -148,20 +195,29 @@ class TestDocumentService:
             extension=file_extension,
         )
 
+        mock_uow.get_repository.side_effect = _get_repo_side_effect
         mock_raw_storage.save = MagicMock(side_effect=Exception("process error"))
-        mock_metadata_repository.save = MagicMock(
-            side_effect=Exception("process error")
-        )
 
         document_service = DocumentService(
             raw_storage=mock_raw_storage,  # noqa
             vector_store=mock_vector_store,  # noqa
-            metadata_repository=mock_metadata_repository,  # noqa
             embedding_model=mock_embedding_model,  # noqa
             text_splitter=mock_text_splitter,  # noqa
         )
-        document_service.process(
+        await document_service.process(
             file=file,
             document_id=document_id,
             workspace_id=workspace_id,
+            uow=mock_uow,
+        )
+
+        assert_called_once_with(
+            mock_document_repo.create,
+            id=document_id,
+            workspace_id=workspace_id,
+            name=file.name,
+            media_type=file.type,
+            raw_storage_path=f"{workspace_id}/{document_id}{file_extension}",
+            size_bytes=file.size,
+            status=DocumentStatus.failed,
         )

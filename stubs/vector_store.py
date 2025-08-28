@@ -55,15 +55,15 @@ class JSONVectorStore(VectorStore):
 
     def search(
         self,
-        vector: list[float],
+        embedding: list[float],
         top_k: int,
         workspace_id: str,
     ) -> list[Vector]:
         """
         Ищет ближайшие по косинусному сходству векторы в JSON-индексе.
 
-        :param vector: Вектор-запрос для поиска похожих чанков.
-        :type vector: list[float]
+        :param embedding: Вектор-запрос для поиска похожих чанков.
+        :type embedding: list[float]
         :param top_k: Максимальное число возвращаемых результатов.
         :type top_k: int
         :param workspace_id: Идентификатор рабочего пространства.
@@ -89,7 +89,7 @@ class JSONVectorStore(VectorStore):
                         similarities.append(
                             (
                                 _vector,
-                                self._cosine_similarity(_vector.values, vector),
+                                self._cosine_similarity(_vector.values, embedding),
                             )
                         )
 

@@ -56,7 +56,6 @@ class DocumentService:
         self.embedding_model = embedding_model
         self.text_splitter = text_splitter
 
-    # TODO doc uow
     async def process(
         self,
         file: File,
@@ -75,11 +74,11 @@ class DocumentService:
         Пайплайн:
             1. Сохранение исходного файла в ``RawStorage``.
             2. Извлечение текста и метаданных с помощью ``TextExtractor``.
-            3. Определение языка документа (по тексту первой страницы).
+            3. Определение языка документа.
             4. Разбиение текста на чанки с помощью ``TextSplitter``.
             5. Генерация эмбеддингов для каждого чанка.
             6. Загрузка векторов в ``VectorStore``.
-            7. Сохранение метаданных в ``MetadataRepository``.
+            7. Сохранение метаданных в репозиторий.
 
         :param file: Объект файла, содержащий байты и метаданные (:class:`File`).
         :type file: File
@@ -87,6 +86,8 @@ class DocumentService:
         :type document_id: str
         :param workspace_id: Идентификатор рабочего пространства (workspace).
         :type workspace_id: str
+        :param uow: UnitOfWork - менеджер транзакции и фабрика репозиториев.
+        :type uow: UnitOfWork
         """
 
         context_logger = logger.bind(document_id=document_id, workspace_id=workspace_id)
@@ -157,6 +158,20 @@ class DocumentService:
         await document_repo.create(**document.model_dump())
 
     def _get_text_sample(self, pages: list[Page], min_chars: int = 1000) -> str:
+        """
+        Пытается получить кусочек текста из списка страниц ``pages`` заданного размера ``min_chars``.
+
+        Полезно для случаев, когда первая страница документа не содержит текста.
+
+        :param pages: Список страниц документа.
+        :type pages: list[Page]
+        :param min_chars: Минимальное количество символов, которое нужно попытаться извлечь. Если документ
+            содержит меньше указанного количества символов, будут извлечены все символы.
+        :type min_chars: int
+        :return: Кусочек текста.
+        :rtype str:
+        """
+
         text: str = ""
         for page in pages:
             if page.text:

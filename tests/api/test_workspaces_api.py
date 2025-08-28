@@ -1,6 +1,7 @@
 from unittest.mock import (
     MagicMock,
     AsyncMock,
+    create_autospec,
 )
 
 from fastapi.testclient import TestClient
@@ -12,12 +13,21 @@ from tests.conftest import ValueGenerator
 from tests.mock_utils import assert_called_once_with
 from api.main import app
 from api.v1.dependencies import (
-    workspace_service_dependency,
     raw_storage_dependency,
     vector_store_dependency,
-    metadata_repository_dependency,
 )
 from domain.workspace.schemas import WorkspaceDTO
+from domain.workspace.repositories import WorkspaceRepository
+from domain.workspace.dependencies import workspace_uow_dependency
+
+
+mock_workspace_repo = create_autospec(WorkspaceRepository, instance=True)
+
+
+def _get_repo_side_effect(repo_type):
+    if repo_type is WorkspaceRepository:
+        return mock_workspace_repo
+    raise KeyError(f"Неожиданный тип репозитория: {repo_type!r}")
 
 
 class TestWorkspacesAPI:
@@ -27,87 +37,87 @@ class TestWorkspacesAPI:
 
     def test_workspaces_returns_list(
         self,
-        mock_workspace_service: MagicMock,
+        mock_uow: MagicMock,
         workspaces_api_url: str,
         expected_status_code: int = status.HTTP_200_OK,
     ):
         app.dependency_overrides.clear()  # noqa
-        app.dependency_overrides[workspace_service_dependency] = (
-            lambda: mock_workspace_service
-        )  # noqa
+        mock_uow.get_repository.side_effect = _get_repo_side_effect
+        app.dependency_overrides[workspace_uow_dependency] = lambda: mock_uow  # noqa
         client = TestClient(app)
 
-        list_workspaces: list[WorkspaceDTO] = [
+        workspaces: list[WorkspaceDTO] = [
             WorkspaceDTO(name=ValueGenerator.text())
             for _ in range(ValueGenerator.integer(2))
         ]
-        mock_workspace_service.workspaces.return_value = list_workspaces
+        mock_workspace_repo.get_n.return_value = workspaces
         response: Response = client.get(workspaces_api_url)
 
         assert response.status_code == expected_status_code
         assert response.json() == [
-            workspace.model_dump() for workspace in list_workspaces
+            workspace.model_dump(by_alias=True)
+            for workspace in workspaces
         ]
 
-        assert_called_once_with(mock_workspace_service.workspaces)
+        assert_called_once_with(mock_workspace_repo.get_n)
 
     def test_create_workspace_returns_response(
         self,
-        mock_workspace_service: MagicMock,
+        mock_uow: MagicMock,
         workspaces_api_url: str,
         expected_status_code: int = status.HTTP_201_CREATED,
     ):
         app.dependency_overrides.clear()  # noqa
-        app.dependency_overrides[workspace_service_dependency] = (
-            lambda: mock_workspace_service
-        )  # noqa
+        mock_uow.get_repository.side_effect = _get_repo_side_effect
+        app.dependency_overrides[workspace_uow_dependency] = lambda: mock_uow  # noqa
         client = TestClient(app)
 
-        workspace: WorkspaceDTO = WorkspaceDTO(name=ValueGenerator.text())
-        mock_workspace_service.create.return_value = workspace
+        workspace = WorkspaceDTO(name=ValueGenerator.text())
+        mock_workspace_repo.create.return_value = workspace
         response: Response = client.post(
             workspaces_api_url,
             params={"name": workspace.name},
         )
 
         assert response.status_code == expected_status_code
-        assert response.json() == workspace.model_dump()
+        assert response.json() == workspace.model_dump(by_alias=True)
 
         assert_called_once_with(
-            mock_workspace_service.create,
+            mock_workspace_repo.create,
             name=workspace.name,
         )
 
     def test_delete_workspace_success(
         self,
-        mock_workspace_service: MagicMock,
+        mock_uow: MagicMock,
         mock_raw_storage: MagicMock,
         mock_vector_store: MagicMock,
-        mock_metadata_repository: MagicMock,
         workspaces_api_url: str,
         workspace_id: str = ValueGenerator.uuid(),
         expected_status_code: int = status.HTTP_204_NO_CONTENT,
     ):
         app.dependency_overrides.clear()  # noqa
-        mock_workspace_service.delete = AsyncMock(return_value=None)
-        app.dependency_overrides[workspace_service_dependency] = (
-            lambda: mock_workspace_service
-        )  # noqa
+        mock_uow.get_repository.side_effect = _get_repo_side_effect
+        app.dependency_overrides[workspace_uow_dependency] = lambda: mock_uow  # noqa
         app.dependency_overrides[raw_storage_dependency] = lambda: mock_raw_storage  # noqa
         app.dependency_overrides[vector_store_dependency] = lambda: mock_vector_store  # noqa
-        app.dependency_overrides[metadata_repository_dependency] = (
-            lambda: mock_metadata_repository
-        )  # noqa
         client = TestClient(app)
 
+        mock_workspace_repo.delete = AsyncMock(return_value=None)
+        mock_raw_storage.delete = AsyncMock(return_value=None)
+        mock_vector_store.delete = AsyncMock(return_value=None)
         response: Response = client.delete(f"{workspaces_api_url}/{workspace_id}")
 
         assert response.status_code == expected_status_code
 
+        mock_workspace_repo.delete.assert_called_once_with(workspace_id)
+
         assert_called_once_with(
-            mock_workspace_service.delete,
+            mock_raw_storage.delete,
+            path=f"{workspace_id}/",
+        )
+
+        assert_called_once_with(
+            mock_vector_store.delete,
             workspace_id=workspace_id,
-            raw_storage=mock_raw_storage,
-            vector_store=mock_vector_store,
-            metadata_repository=mock_metadata_repository,
         )

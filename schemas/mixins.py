@@ -14,7 +14,7 @@ from utils.datetime import (
 
 
 class IDMixin:
-    id: int
+    id: int | None = None
 
 
 class UUIDMixin:

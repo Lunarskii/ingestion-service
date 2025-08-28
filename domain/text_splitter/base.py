@@ -13,6 +13,10 @@ from domain.extraction.schemas import Page
 
 
 class TextSplitter:
+    """
+    Обертка над RecursiveCharacterTextSplitter, работающая с разделением страниц.
+    """
+
     def __init__(
         self,
         chunk_size: int = 500,
@@ -23,8 +27,30 @@ class TextSplitter:
         strip_whitespace: bool = True,
         separators: list[str] | None = None,
         is_separator_regex: bool = False,
-        page_separator: str = "\n\n",
+        page_separator: str = "\n",
     ):
+        """
+        :param chunk_size: Максимальная длина чанка (в символах).
+        :type chunk_size: int
+        :param chunk_overlap: Перекрытие между соседними чанками (в символах).
+        :type chunk_overlap: int
+        :param length_function: Функция для измерения длины строки (по умолчанию len).
+        :type length_function: Callable[[str], int]
+        :param keep_separator: Как сохранять разделитель при разбиении (см. RecursiveCharacterTextSplitter).
+        :type keep_separator: Literal["start", "end"] | bool
+        :param add_start_index: Добавлять ли индекс старта чанка.
+        :type add_start_index: bool
+        :param strip_whitespace: Удалять ли внешние пробелы при разбиении.
+        :type strip_whitespace: bool
+        :param separators: Список разделителей для RecursiveCharacterTextSplitter.
+        :type separators: list[str] | None
+        :param is_separator_regex: Считать ли разделители регулярными выражениями.
+        :type is_separator_regex: bool
+        :param page_separator: Строка, которая вставляется между страницами при склейке
+                               полного текста (по умолчанию "\n").
+        :type page_separator: str
+        """
+
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
@@ -38,6 +64,43 @@ class TextSplitter:
         self.page_separator = page_separator
 
     def split_pages(self, pages: list[Page]) -> list[Chunk]:
+        """
+        Разбивает список страниц на чанки и вычисляет перекрытия с каждой страницей.
+
+        Алгоритм (вкратце):
+          1. Склеиваем страницы в единый текст, вставляя `page_separator` между страницами.
+             При этом запоминаем абсолютные позиции начала и конца каждой страницы в
+             этом склеенном тексте.
+          2. Вызываем `splitter.split_text(text)`, чтобы получить последовательность
+             чанков (строк).
+          3. Для каждого чанка находим его индекс в объединённом тексте (ищем с позиции
+             `search_position`, чтобы поддерживать порядок и избегать нахождения "старых"
+             совпадений).
+          4. Вычисляем перекрытие чанка с каждой страницей и формируем объект
+             :class:`PageSpan` для каждого непустого перекрытия.
+          5. Формируем объект :class:`Chunk` с полем ``text`` и списком ``page_spans``.
+
+        :param pages: Список страниц для разбиения. Элемент - объект :class:`Page`
+                      (с полем `num` и `text`).
+        :type pages: list[Page]
+        :return: Список объектов :class:`Chunk`. Пустой список возвращается, если
+                 входной `pages` пуст.
+        :rtype: list[Chunk]
+
+        Особенности и гарантии
+        ---------------------
+        * Если один и тот же текст чанка встречается в объединённом тексте более одного
+          раза - мы сначала пытаемся найти вхождение начиная с `search_position` чтобы
+          поддержать порядок; если не находим - ищем по всему тексту; в крайнем случае
+          используем `search_position` как позицию начала.
+        * Для каждого найденного перекрытия вычисляются относительные индексы в пределах
+          исходной страницы (`chunk_start_on_page`, `chunk_end_on_page`), пригодные для
+          извлечения подстроки из `page.text`.
+        * Внутренние позиции считаются в символах строки Python (не в байтах).
+
+        :raises ValueError: если объекты в `pages` не имеют атрибутов `num` и `text`.
+        """
+        
         if not pages:
             return []
 

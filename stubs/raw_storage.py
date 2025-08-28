@@ -74,5 +74,14 @@ class FileRawStorage(RawStorage):
             os.remove(full_path)
 
     def exists(self, path: str) -> bool:
+        """
+        Проверяет существование файла по пути.
+
+        :param path: Путь к файлу.
+        :type path: str
+        :return: True, если файл существует, иначе False.
+        :rtype: bool
+        """
+
         full_path: str = os.path.join(self.directory, path.lstrip("/"))
         return os.path.isfile(full_path)

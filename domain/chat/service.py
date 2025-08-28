@@ -47,7 +47,6 @@ class RAGService:
         self.vector_store = vector_store
         self.embedding_model = embedding_model
 
-    # TODO doc uow
     async def ask(
         self,
         request: RAGRequest,
@@ -66,7 +65,9 @@ class RAGService:
 
         :param request: Схема запроса.
         :type request: RAGRequest
-        :return: Ответ в виде :class:`ChatResponse`, содержащий текст ответа, источники и session_id.
+        :param uow: UnitOfWork - менеджер транзакции и фабрика репозиториев.
+        :type uow: UnitOfWork
+        :return: Ответ в виде :class:`RAGResponse`, содержащий текст ответа, источники и session_id.
         :rtype: RAGResponse
         :raises RAGError: При любых ошибках внутри RAG-пайплайна.
         """
@@ -85,13 +86,13 @@ class RAGService:
 
         try:
             context_logger.info("Векторизация вопроса")
-            question_vector: list[float] = await self.embedding_model.encode(
+            embedding: list[float] = await self.embedding_model.encode(
                 sentences=request.question,
             )
 
             context_logger.info("Формирование списка источников")
             sources: list[ChatMessageSource] = self._generate_sources(
-                vector=question_vector,
+                embedding=embedding,
                 top_k=request.top_k,
                 workspace_id=request.workspace_id,
             )
@@ -130,7 +131,8 @@ class RAGService:
                 source_id=source.source_id,
                 message_id=assistant_message.id,
                 document_name=source.document_name,
-                document_page=source.document_page,
+                page_start=source.page_start,
+                page_end=source.page_end,
                 snippet=source.snippet,
             )
 
@@ -142,12 +144,25 @@ class RAGService:
 
     def _generate_sources(
         self,
-        vector: list[float],
+        embedding: list[float],
         top_k: int,
         workspace_id: str,
     ) -> list[ChatMessageSource]:
+        """
+        Преобразует результаты поиска в список источников.
+
+        :param embedding: Вектор запроса.
+        :type embedding: list[float]
+        :param top_k: Максимальное количество возвращаемых источников.
+        :type top_k: int
+        :param workspace_id: Идентификатор рабочего пространства.
+        :type workspace_id: str
+        :return: Список источников.
+        :rtype: list[ChatMessageSource]
+        """
+
         retrieved_vectors: list[Vector] = self.vector_store.search(
-            vector=vector,
+            embedding=embedding,
             top_k=top_k,
             workspace_id=workspace_id,
         )
@@ -155,7 +170,8 @@ class RAGService:
             ChatMessageSource(
                 source_id=vector.metadata.document_id,
                 document_name=vector.metadata.document_name,
-                document_page=vector.metadata.document_page,
+                page_start=vector.metadata.page_start,
+                page_end=vector.metadata.page_end,
                 snippet=vector.metadata.text,
             )
             for vector in retrieved_vectors
@@ -168,6 +184,31 @@ class RAGService:
         question: str,
         sources: list[ChatMessageSource] | None = None,
     ) -> str:
+        """
+        Составляет текст промпта для LLM на основе найденных фрагментов и истории чата.
+
+        Описание
+        --------
+        * Получает последние сообщения из репозитория сообщений ``ChatMessageRepository``.
+        * Собирает текстовые сниппеты найденных источников и историю сообщений.
+        * Склеивает их в итоговый промпт, который предназначен для передачи в LLM.
+
+        :param uow: UnitOfWork для доступа к репозиторию сообщений.
+        :type uow: UnitOfWork
+        :param session_id: Идентификатор текущей сессии.
+        :type session_id: str
+        :param question: Текст вопроса.
+        :type question: str
+        :param sources: Список источников.
+        :type sources: list[ChatMessageSource] | None
+        :return: Текст промпта.
+        :rtype: str
+
+        :note:
+            Текущее ограничение количества сообщений из истории сообщений задано хардкодом (`limit=4`).
+            Можно вынести в параметр конфигурации при необходимости.
+        """
+
         source_context: str = "\n".join([source.snippet for source in sources])
         chat_message_repo: ChatMessageRepository = uow.get_repository(ChatMessageRepository)
         recent_messages: list[ChatMessageDTO] = await chat_message_repo.get_recent_messages(

@@ -151,6 +151,15 @@ class MinIORawStorage(RawStorage):
             )
 
     def exists(self, path: str) -> bool:
+        """
+        Проверяет существование объекта по пути.
+
+        :param path: Путь к объекту.
+        :type path: str
+        :return: True, если объект существует, иначе False.
+        :rtype: bool
+        """
+
         try:
             self.client.stat_object(
                 bucket_name=self.bucket_name,

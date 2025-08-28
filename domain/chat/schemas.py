@@ -37,19 +37,39 @@ class ChatMessageSource(BaseSchema):
     :vartype source_id: str
     :ivar document_name: Имя документа.
     :vartype document_name: str
-    :ivar document_page: Страница в документе, на которой находится фрагмент.
-    :vartype document_page: int
+    :ivar page_start: Страница, на которой находится начало источника (фрагмента документа).
+    :vartype page_start: int
+    :ivar page_end: Страница, на которой находится конец источника (фрагмента документа).
+    :vartype page_end: int
     :ivar snippet: Фрагмент.
     :vartype snippet: str
     """
 
     source_id: str
     document_name: str
-    document_page: int
+    page_start: int
+    page_end: int
     snippet: str
 
 
 class ChatMessage(BaseSchema, CreatedAtMixin):
+    """
+    Схема представления сообщения чат-сессии.
+
+    :ivar id: Идентификатор сообщения (UUID в строковом виде).
+    :vartype id: str
+    :ivar session_id: Идентификатор чат-сессии, к которой относится сообщение.
+    :vartype session_id: str
+    :ivar role: Роль автора (:class:`ChatRole`).
+    :vartype role: ChatRole
+    :ivar content: Текст сообщения.
+    :vartype content: str
+    :ivar sources: Список источников, связанных с сообщением (если имеются).
+    :vartype sources: list[ChatMessageSource] | None
+    :ivar created_at: Время создания сообщения.
+    :vartype created_at: datetime
+    """
+
     id: Annotated[
         str,
         Field(
@@ -64,6 +84,17 @@ class ChatMessage(BaseSchema, CreatedAtMixin):
 
 
 class ChatSession(BaseSchema, CreatedAtMixin):
+    """
+    Схема представления чат-сессии.
+
+    :ivar id: Идентификатор сессии (UUID в строковом виде).
+    :vartype id: str
+    :ivar workspace_id: Идентификатор рабочего пространства, к которому относится сессия.
+    :vartype workspace_id: str
+    :ivar created_at: Время создания сессии.
+    :vartype created_at: datetime
+    """
+
     id: Annotated[
         str,
         Field(
@@ -157,8 +188,10 @@ class ChatMessageSourceDTO(BaseDTO, IDMixin):
     :vartype message_id: str
     :ivar document_name: Имя документа.
     :vartype document_name: str
-    :ivar document_page: Страница в документе, на которой находится фрагмент.
-    :vartype document_page: int
+    :ivar page_start: Страница, на которой находится начало источника (фрагмента документа).
+    :vartype page_start: int
+    :ivar page_end: Страница, на которой находится конец источника (фрагмента документа).
+    :vartype page_end: int
     :ivar snippet: Фрагмент.
     :vartype snippet: str
     """
@@ -166,5 +199,6 @@ class ChatMessageSourceDTO(BaseDTO, IDMixin):
     source_id: str
     message_id: str
     document_name: str
-    document_page: int
+    page_start: int
+    page_end: int
     snippet: str

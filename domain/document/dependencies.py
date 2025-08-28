@@ -14,6 +14,11 @@ from domain.database.uow import (
 async def document_uow_dependency(
     session: Annotated[AsyncSession, Depends(scoped_session_dependency)],
 ) -> UnitOfWork:
+    """
+    Возвращает UnitOfWork с предзарегистрированными репозиториями:
+        * ``DocumentRepository``
+    """
+
     async with UnitOfWorkFactory.get_uow(
         session,
         DocumentRepository,

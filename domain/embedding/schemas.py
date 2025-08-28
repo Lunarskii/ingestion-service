@@ -4,7 +4,6 @@ from schemas.base import BaseSchema
 from schemas.mixins import UUIDMixin
 
 
-# TODO doc
 class VectorMetadata(BaseSchema):
     """
     Метаданные вектора.
@@ -15,8 +14,10 @@ class VectorMetadata(BaseSchema):
     :vartype workspace_id: str
     :ivar document_name: Имя документа.
     :vartype document_name: str
-    :ivar document_page: Страница документа.
-    :vartype document_page: int
+    :ivar page_start: Страница, на которой находится начало источника (фрагмента документа).
+    :vartype page_start: int
+    :ivar page_end: Страница, на которой находится конец источника (фрагмента документа).
+    :vartype page_end: int
     :ivar text: Текст на странице документа.
     :vartype text: str
     """
@@ -31,12 +32,11 @@ class VectorMetadata(BaseSchema):
     text: str
 
 
-# TODO исправить doc id
 class Vector(BaseSchema, UUIDMixin):
     """
     Схема векторного представления текстового фрагмента.
 
-    :ivar id: Уникальный идентификатор вектора (например, сочетание document_id и индекса фрагмента).
+    :ivar id: Уникальный идентификатор вектора (UUID в строковом виде).
     :vartype id: str
     :ivar values: Список значений эмбеддинга.
     :vartype values: list[float]

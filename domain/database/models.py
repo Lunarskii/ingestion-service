@@ -34,20 +34,6 @@ class BaseModel(AsyncAttrs, DeclarativeBase):
         }
     )
 
-    def update(self, **data: Any) -> Self:
-        """
-        Обновляет поля модели значениями из keyword аргументов.
-
-        :param data: Набор keyword аргументов для обновления атрибутов модели.
-        :type data: Any
-        :return: Экземпляр модели (self) после обновления.
-        :rtype: Self
-        """
-
-        for key, value in data.items():
-            setattr(self, key, value)
-        return self
-
 
 class BaseDAO(BaseModel):
     """

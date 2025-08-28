@@ -91,7 +91,8 @@ async def chat_history(
                     ChatMessageSource(
                         source_id=source.source_id,
                         document_name=source.document_name,
-                        document_page=source.document_page,
+                        page_start=source.page_start,
+                        page_end=source.page_end,
                         snippet=source.snippet,
                     )
                     for source in sources
