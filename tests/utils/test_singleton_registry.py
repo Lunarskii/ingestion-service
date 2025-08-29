@@ -35,7 +35,9 @@ class TestSingletonRegistry:
             def __init__(self, value):
                 self.value = value
 
-        obj = await singleton_registry.create(C, factory=lambda value=1: C(value), value=5)
+        obj = await singleton_registry.create(
+            C, factory=lambda value=1: C(value), value=5
+        )
         assert isinstance(obj, C)
         assert obj.value == 5
         assert singleton_registry.get(C) is obj
@@ -68,7 +70,9 @@ class TestSingletonRegistry:
             await asyncio.sleep(0.01)
             return object()
 
-        results = await asyncio.gather(*(singleton_registry.create("key", factory=factory) for _ in range(10)))
+        results = await asyncio.gather(
+            *(singleton_registry.create("key", factory=factory) for _ in range(10))
+        )
         assert all(result is results[0] for result in results)
         assert calls == 1
 
@@ -110,8 +114,12 @@ class TestSingletonRegistry:
             except RuntimeError:
                 return False
 
-        v1 = await singleton_registry.create("run_true", factory=sync_factory_check, run_in_thread=True)
-        v2 = await singleton_registry.create("run_false", factory=sync_factory_check, run_in_thread=False)
+        v1 = await singleton_registry.create(
+            "run_true", factory=sync_factory_check, run_in_thread=True
+        )
+        v2 = await singleton_registry.create(
+            "run_false", factory=sync_factory_check, run_in_thread=False
+        )
         assert v1 is False
         assert v2 is True
 

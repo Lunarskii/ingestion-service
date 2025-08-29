@@ -68,7 +68,7 @@ class TestDocumentService:
                         chunk_end_on_page=ValueGenerator.integer(),
                     )
                     for _ in range(1, 3)
-                ]
+                ],
             )
             for _ in range(ValueGenerator.integer(2))
         ]

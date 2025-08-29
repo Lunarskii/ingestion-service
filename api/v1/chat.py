@@ -40,7 +40,9 @@ async def chats(
     """
 
     chat_session_repo = uow.get_repository(ChatSessionRepository)
-    sessions: list[ChatSessionDTO] = await chat_session_repo.get_n(workspace_id=workspace_id)
+    sessions: list[ChatSessionDTO] = await chat_session_repo.get_n(
+        workspace_id=workspace_id
+    )
     return [
         ChatSession(
             id=session.id,
@@ -78,9 +80,13 @@ async def chat_history(
     chat_message_repo = uow.get_repository(ChatMessageRepository)
     chat_message_source_repo = uow.get_repository(ChatMessageSourceRepository)
 
-    messages_dto: list[ChatMessageDTO] = await chat_message_repo.get_messages(session_id)
+    messages_dto: list[ChatMessageDTO] = await chat_message_repo.get_messages(
+        session_id
+    )
     for message in messages_dto:
-        sources: list[ChatMessageSourceDTO] = await chat_message_source_repo.get_n(message_id=message.id)
+        sources: list[ChatMessageSourceDTO] = await chat_message_source_repo.get_n(
+            message_id=message.id
+        )
         messages.append(
             ChatMessage(
                 id=message.id,

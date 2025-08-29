@@ -9,9 +9,9 @@ from exceptions.base import ApplicationError
 class DatabaseError(ApplicationError):
     message = "Ошибка при работе с базой данных"
     error_code = "database_error"
-    
+
     def __init__(
-        self, 
+        self,
         message: str | None = None,
         original_error: Exception | None = None,
         **kwargs,
@@ -23,11 +23,11 @@ class DatabaseError(ApplicationError):
 class EntityNotFoundError(DatabaseError):
     error_code = "entity_not_found"
     status_code = status.HTTP_404_NOT_FOUND
-    
+
     def __init__(
-        self, 
-        entity_type: str, 
-        entity_id: Any, 
+        self,
+        entity_type: str,
+        entity_id: Any,
         original_error: Exception | None = None,
         **kwargs,
     ):
@@ -44,12 +44,12 @@ class DuplicateEntityError(DatabaseError):
     message = "Такая запись в базе данных уже существует"
     error_code = "duplicate_entity"
     status_code = status.HTTP_409_CONFLICT
-    
+
     def __init__(
-        self, 
-        entity_type: str, 
-        duplicate_field: str, 
-        duplicate_value: Any, 
+        self,
+        entity_type: str,
+        duplicate_field: str,
+        duplicate_value: Any,
         original_error: Exception | None = None,
         **kwargs,
     ):
@@ -64,12 +64,12 @@ class ValidationError(DatabaseError):
     message = "Ошибка валидации данных"
     error_code = "validation_error"
     status_code = status.HTTP_400_BAD_REQUEST
-    
+
     def __init__(
-        self, 
-        field: str, 
-        value: Any, 
-        constraint: str, 
+        self,
+        field: str,
+        value: Any,
+        constraint: str,
         original_error: Exception | None = None,
         **kwargs,
     ):
@@ -84,7 +84,7 @@ class ConnectionError(DatabaseError):
     message = "Ошибка подключения к базе данных"
     error_code = "connection_error"
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    
+
     def __init__(
         self,
         original_error: Exception | None = None,
@@ -96,7 +96,7 @@ class ConnectionError(DatabaseError):
 class TransactionError(DatabaseError):
     message = "Ошибка транзакции"
     error_code = "transaction_error"
-    
+
     def __init__(
         self,
         original_error: Exception | None = None,
@@ -111,14 +111,14 @@ def handle_sqlalchemy_error(
 ) -> DatabaseError:
     """
     Преобразует SQLAlchemy исключения в наши доменные исключения, сохраняя детали оригинальной ошибки.
-    
+
     Это позволяет:
         1. Сохранить детали SQLAlchemy ошибки для отладки.
         2. Предоставить понятные сообщения в API.
         3. Правильно обработать разные типы ошибок.
         4. Интегрироваться с существующей системой ApplicationError.
     """
-    
+
     from sqlalchemy.exc import (
         IntegrityError,
         OperationalError,
@@ -127,59 +127,55 @@ def handle_sqlalchemy_error(
         DataError,
         ProgrammingError,
     )
-    
+
     if isinstance(error, IntegrityError):
         error_str = str(error).lower()
-        
+
         if "duplicate key" in error_str or "unique constraint" in error_str:
             return DuplicateEntityError(
                 entity_type=entity_type,
                 duplicate_field="Unknown",
                 duplicate_value="Unknown",
-                original_error=error
+                original_error=error,
             )
         else:
             return ValidationError(
                 field="Unknown",
                 value="Unknown",
                 constraint="Integrity constraint",
-                original_error=error
+                original_error=error,
             )
-    
+
     elif isinstance(error, OperationalError):
         if "connection" in str(error).lower():
             return ConnectionError(original_error=error)
         else:
             return DatabaseError(
-                message="Операционная ошибка базы данных",
-                original_error=error
+                message="Операционная ошибка базы данных", original_error=error
             )
-    
+
     elif isinstance(error, NoResultFound):
         return EntityNotFoundError("Unknown", "Unknown", original_error=error)
-    
+
     elif isinstance(error, MultipleResultsFound):
         return DatabaseError(
-            message="Найдено несколько результатов вместо одного",
-            original_error=error
+            message="Найдено несколько результатов вместо одного", original_error=error
         )
-    
+
     elif isinstance(error, DataError):
         return ValidationError(
             field="Unknown",
-            value="Unknown", 
+            value="Unknown",
             constraint="Data type constraint",
-            original_error=error
+            original_error=error,
         )
-    
+
     elif isinstance(error, ProgrammingError):
         return DatabaseError(
-            message="Ошибка программирования SQL",
-            original_error=error
+            message="Ошибка программирования SQL", original_error=error
         )
-    
+
     else:
         return DatabaseError(
-            message="Неизвестная ошибка базы данных",
-            original_error=error
+            message="Неизвестная ошибка базы данных", original_error=error
         )

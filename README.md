@@ -2,6 +2,15 @@
 Этот сервис предоставляет API для загрузки, обработки и индексации документов (PDF, DOCX, ...), 
 и API для "общения" с ними. 
 
+## Дымовой сценарий
+
+1. Создать рабочее пространство (workspace) -> получить workspace_id.
+2. Загрузить документ (PDF, DOCX и др.) в сервис (POST /v1/documents/upload {document}) -> получить document_id.
+3. Убедиться, что в реестре/базе данных появилась запись по этому document_id.
+4. Задать вопрос в чат (POST /v1/chat/ask {question, workspace_id, top_k, session_id?}) -> получить answer (ответ) и sources (источники)
+   - Скачать исходный документ из источника.
+   - Задать вопрос снова
+
 ## Функционал
 
 ### 1. Documents API
@@ -231,10 +240,6 @@ QDRANT_COLLECTION=my_collection_name
 QDRANT_VECTOR_SIZE=384
 QDRANT_DISTANCE=Cosine
 ```
-
-## Дымовой сценарий
-
-- TODO
 
 ## Установка и запуск
 

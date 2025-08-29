@@ -38,7 +38,9 @@ class TestEmbeddingModel:
         self,
         embedding_model: EmbeddingModel,
     ):
-        embeddings: numpy.ndarray = await embedding_model.encode(["some string", "some string", "some string"])
+        embeddings: numpy.ndarray = await embedding_model.encode(
+            ["some string", "some string", "some string"]
+        )
         assert isinstance(embeddings, numpy.ndarray)
         assert len(embeddings) > 0
         for embedding in embeddings:

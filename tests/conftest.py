@@ -217,7 +217,9 @@ def tmp_document(tmp_path) -> Any:
         1: (ValueGenerator.docx, ".docx"),
     }
 
-    def _make(target_bytes: int = 1_000_000, doc_type: str | None = None) -> tuple[bytes, str, str]:
+    def _make(
+        target_bytes: int = 1_000_000, doc_type: str | None = None
+    ) -> tuple[bytes, str, str]:
         if doc_type:
             if doc_type == ".pdf":
                 func, file_extension = _map[0]

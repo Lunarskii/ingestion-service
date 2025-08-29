@@ -45,7 +45,9 @@ class QdrantVectorStore(VectorStore):
         path: str | None = None,
         force_disable_check_same_thread: bool = False,
         grpc_options: dict[str, Any] | None = None,
-        auth_token_provider: Callable[[], str] | Callable[[], Awaitable[str]] | None = None,
+        auth_token_provider: Callable[[], str]
+        | Callable[[], Awaitable[str]]
+        | None = None,
         cloud_inference: bool = False,
         local_inference_batch_size: int | None = None,
         check_compatibility: bool = True,
@@ -64,7 +66,7 @@ class QdrantVectorStore(VectorStore):
         :type url: str | None
         :param port: HTTP-порт (по умолчанию 6333).
         :type port: int | None
-        :param grpc_port: GRPC-порт (по умолчанию 6334).
+        :param grpc_port: gRPC-порт (по умолчанию 6334).
         :type grpc_port: int | None
         :param prefer_grpc: Предпочитать gRPC соединение, если доступно.
         :type prefer_grpc: bool

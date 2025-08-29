@@ -1,8 +1,4 @@
 from enum import Enum
-from typing import (
-    Any,
-    Self,
-)
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncAttrs

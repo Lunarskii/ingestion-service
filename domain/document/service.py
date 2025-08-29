@@ -139,7 +139,7 @@ class DocumentService:
                         text=chunk.text,
                     )
                     for chunk in chunks
-                ]
+                ],
             )
 
             context_logger.info("Сохранение векторов")

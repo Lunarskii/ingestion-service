@@ -55,8 +55,7 @@ class TestWorkspacesAPI:
 
         assert response.status_code == expected_status_code
         assert response.json() == [
-            workspace.model_dump(by_alias=True)
-            for workspace in workspaces
+            workspace.model_dump(by_alias=True) for workspace in workspaces
         ]
 
         assert_called_once_with(mock_workspace_repo.get_n)

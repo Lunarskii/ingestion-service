@@ -7,4 +7,5 @@ class DocumentRepository(AlchemyRepository[DocumentDAO, DocumentDTO]):
     """
     Репозиторий для работы с документами.
     """
+
     ...

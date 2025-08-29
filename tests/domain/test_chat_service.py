@@ -32,7 +32,9 @@ from stubs import llm_stub
 
 mock_chat_session_repo = create_autospec(ChatSessionRepository, instance=True)
 mock_chat_message_repo = create_autospec(ChatMessageRepository, instance=True)
-mock_chat_message_source_repo = create_autospec(ChatMessageSourceRepository, instance=True)
+mock_chat_message_source_repo = create_autospec(
+    ChatMessageSourceRepository, instance=True
+)
 
 
 def _get_repo_side_effect(repo_type):

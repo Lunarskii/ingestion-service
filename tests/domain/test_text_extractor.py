@@ -18,7 +18,7 @@ class TestTextExtractor:
         [
             (PdfExtractor(), ".pdf"),
             # (DocxExtractor(), ".docx"),
-        ]
+        ],
     )
     def test_extract_success(
         self,
@@ -39,7 +39,7 @@ class TestTextExtractor:
         [
             PdfExtractor(),
             DocxExtractor(),
-        ]
+        ],
     )
     def test_extract_invalid_file(
         self,

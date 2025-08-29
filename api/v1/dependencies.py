@@ -99,9 +99,7 @@ async def text_splitter_dependency(request: Request) -> TextSplitter:
 async def document_service_dependency(
     raw_storage: Annotated[RawStorage, Depends(raw_storage_dependency)],
     vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
-    embedding_model: Annotated[
-        EmbeddingModel, Depends(embedding_model_dependency)
-    ],
+    embedding_model: Annotated[EmbeddingModel, Depends(embedding_model_dependency)],
     text_splitter: Annotated[TextSplitter, Depends(text_splitter_dependency)],
 ) -> DocumentService:
     """
@@ -118,9 +116,7 @@ async def document_service_dependency(
 
 async def rag_service_dependency(
     vector_store: Annotated[VectorStore, Depends(vector_store_dependency)],
-    embedding_model: Annotated[
-        EmbeddingModel, Depends(embedding_model_dependency)
-    ],
+    embedding_model: Annotated[EmbeddingModel, Depends(embedding_model_dependency)],
 ) -> RAGService:
     """
     Создаёт и возвращает экземпляр сервиса :class:`RAGService`.

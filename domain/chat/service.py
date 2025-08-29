@@ -210,11 +210,15 @@ class RAGService:
         """
 
         source_context: str = "\n".join([source.snippet for source in sources])
-        chat_message_repo: ChatMessageRepository = uow.get_repository(ChatMessageRepository)
-        recent_messages: list[ChatMessageDTO] = await chat_message_repo.get_recent_messages(
+        chat_message_repo: ChatMessageRepository = uow.get_repository(
+            ChatMessageRepository
+        )
+        recent_messages: list[
+            ChatMessageDTO
+        ] = await chat_message_repo.get_recent_messages(
             session_id=session_id,
             limit=4,
-        ) # TODO мб нужно как-то вынести limit (n)
+        )  # TODO мб нужно как-то вынести limit (n)
         message_context: str = "\n".join(
             [message.content for message in recent_messages]
         )

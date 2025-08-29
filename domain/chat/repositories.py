@@ -17,6 +17,7 @@ class ChatSessionRepository(AlchemyRepository[ChatSessionDAO, ChatSessionDTO]):
     """
     Репозиторий для работы с чат-сессиями.
     """
+
     ...
 
 
@@ -73,8 +74,11 @@ class ChatMessageRepository(AlchemyRepository[ChatMessageDAO, ChatMessageDTO]):
         return list(map(self.schema_type.model_validate, instances))
 
 
-class ChatMessageSourceRepository(AlchemyRepository[ChatMessageSourceDAO, ChatMessageSourceDTO]):
+class ChatMessageSourceRepository(
+    AlchemyRepository[ChatMessageSourceDAO, ChatMessageSourceDTO]
+):
     """
     Репозиторий для работы с источниками сообщений.
     """
+
     ...

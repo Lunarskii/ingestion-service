@@ -68,8 +68,8 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
         super().__init_subclass__(**kwargs)
 
         if (
-            getattr(cls, "model_type", None) is not None and
-            getattr(cls, "schema_type", None) is not None
+            getattr(cls, "model_type", None) is not None
+            and getattr(cls, "schema_type", None) is not None
         ):
             return
 
@@ -83,12 +83,16 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
                 break
 
         if cls.model_type is None or not isinstance(cls.model_type, type):
-            raise TypeError(f"Не удалось найти model_type для {cls.__name__}. "
-                            f"Укажите явно атрибут model_type или параметризуйте класс")
+            raise TypeError(
+                f"Не удалось найти model_type для {cls.__name__}. "
+                f"Укажите явно атрибут model_type или параметризуйте класс"
+            )
         if cls.schema_type is None or not isinstance(cls.schema_type, type):
-            raise TypeError(f"Не удалось найти schema_type для {cls.__name__}. "
-                            f"Укажите явно атрибут schema_type или параметризуйте класс.")
-    
+            raise TypeError(
+                f"Не удалось найти schema_type для {cls.__name__}. "
+                f"Укажите явно атрибут schema_type или параметризуйте класс."
+            )
+
     def __init__(self, session: AsyncSession):
         """
         :param session: Асинхронная SQLAlchemy сессия ``AsyncSession``.
@@ -108,7 +112,7 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
     ) -> DatabaseError:
         """
         Обрабатывает SQLAlchemy исключения и преобразует их в доменные исключения.
-        
+
         :param error: SQLAlchemy исключение
         :param operation: Операция, которая вызвала ошибку
         :return: Доменное исключение
@@ -120,9 +124,9 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             error=error,
             entity_type=self.__entity,
         )
-        if hasattr(domain_error, 'message') and domain_error.message:
+        if hasattr(domain_error, "message") and domain_error.message:
             domain_error.message = f"Ошибка при выполнении SQL операции '{operation}': {domain_error.message}"
-        
+
         return domain_error
 
     async def _get_instance(self, id: Any) -> M:
@@ -144,7 +148,7 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             return instance
         except SQLAlchemyError as e:
             raise self._handle_sqlalchemy_error(e, "SELECT")
-    
+
     async def create(self, **kwargs: Any) -> S:
         """
         Создаёт новую запись в базе данных и возвращает её в виде DTO-схемы.
@@ -162,7 +166,7 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             return self.schema_type.model_validate(instance)
         except SQLAlchemyError as e:
             raise self._handle_sqlalchemy_error(e, "INSERT")
-    
+
     async def get(self, id: Any) -> S:
         """
         Возвращает запись по её первичному ключу (ID).
@@ -197,12 +201,14 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
         """
 
         try:
-            stmt = select(self.model_type).filter_by(**kwargs).limit(limit).offset(offset)
+            stmt = (
+                select(self.model_type).filter_by(**kwargs).limit(limit).offset(offset)
+            )
             instances = await self.session.scalars(stmt)
             return list(map(self.schema_type.model_validate, instances))
         except SQLAlchemyError as e:
             raise self._handle_sqlalchemy_error(e, "SELECT")
-    
+
     async def update(self, id: Any, **kwargs: Any) -> S:
         """
         Обновляет существующую запись заданными полями и возвращает её.
@@ -232,7 +238,7 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             return self.schema_type.model_validate(instance)
         except SQLAlchemyError as e:
             raise self._handle_sqlalchemy_error(e, "UPDATE")
-    
+
     async def delete(self, id: Any) -> None:
         """
         Удаляет запись по первичному ключу (ID).
@@ -248,11 +254,11 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             await self.session.flush()
         except SQLAlchemyError as e:
             raise self._handle_sqlalchemy_error(e, "DELETE")
-    
+
     async def exists(self, id: Any) -> bool:
         """
         Проверяет существование записи по первичному ключу (ID).
-        
+
         :param id: ID записи.
         :return: True если запись существует, False иначе.
         :rtype: bool
@@ -263,11 +269,11 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             return instance is not None
         except SQLAlchemyError as e:
             raise self._handle_sqlalchemy_error(e, "EXISTS")
-    
+
     async def count(self) -> int:
         """
         Возвращает общее количество записей.
-        
+
         :return: Количество записей
         :rtype: int
         """

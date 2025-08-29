@@ -146,7 +146,8 @@ class EmbeddingModel:
         prompt: str | None = None,
         batch_size: int = 32,
         show_progress_bar: bool = False,
-        output_value: Literal["sentence_embedding", "token_embeddings"] | None = "sentence_embedding",
+        output_value: Literal["sentence_embedding", "token_embeddings"]
+        | None = "sentence_embedding",
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
         convert_to_numpy: bool = True,
         convert_to_tensor: bool = False,
@@ -204,7 +205,7 @@ class EmbeddingModel:
         :raises asyncio.TimeoutError: при невозможности получить слот семафора в заданный ``acquire_timeout``.
         :raises Exception: любые исключения, проброшенные из ``SentenceTransformer.encode``.
         """
-        
+
         async with self._concurrency_guard():
             embeddings = await asyncio.to_thread(
                 self.model.encode,

@@ -36,7 +36,9 @@ class DatabaseSettings(BaseSettings):
     Настройки базы данных
     """
 
-    url: Annotated[str, Field(alias="DATABASE_URL")] = "sqlite+aiosqlite:///./local_storage/sqlite.db"
+    url: Annotated[str, Field(alias="DATABASE_URL")] = (
+        "sqlite+aiosqlite:///./local_storage/sqlite.db"
+    )
     echo: Annotated[bool, Field(alias="DATABASE_ECHO")] = False
     echo_pool: Annotated[bool, Field(alias="DATABASE_ECHO_POOL")] = False
     pool_pre_ping: Annotated[bool, Field(alias="DATABASE_POOL_PRE_PING")] = True
@@ -47,7 +49,7 @@ class DatabaseSettings(BaseSettings):
 
 class DocumentRestrictionSettings(BaseSettings):
     """
-    Настройки (ограничения) документа.
+    Настройки ограничений документа.
     """
 
     max_upload_mb: Annotated[int, Field(alias="DR_MAX_UPLOAD_MB")] = 25
@@ -66,11 +68,9 @@ class EmbeddingSettings(BaseSettings):
         "sentence-transformers/all-MiniLM-L6-v2"
     )
     device: Annotated[str | None, Field(alias="EMBEDDING_DEVICE")] = None
-    cache_folder: Annotated[str | None, Field(alias="EMBEDDING_CACHE_FOLDER")] = (
-        None
-    )
+    cache_folder: Annotated[str | None, Field(alias="EMBEDDING_CACHE_FOLDER")] = None
     token: Annotated[bool | str | None, Field(alias="EMBEDDING_TOKEN")] = None
-    max_concurrency: Annotated[int, Field(alias="EMBEDDING_MAX_CONCURRENCY")] = 3
+    max_concurrency: Annotated[int, Field(alias="EMBEDDING_MAX_CONCURRENCY")] = 2
 
 
 class TextSplitterSettings(BaseSettings):
@@ -109,11 +109,7 @@ class MinIOSettings(BaseSettings):
 
     @property
     def is_configured(self) -> bool:
-        return bool(
-            self.endpoint and
-            self.bucket_raw and
-            self.bucket_silver
-        )
+        return bool(self.endpoint and self.bucket_raw and self.bucket_silver)
 
 
 class QdrantSettings(BaseSettings):
@@ -136,10 +132,14 @@ class QdrantSettings(BaseSettings):
     @property
     def is_configured(self) -> bool:
         return bool(
-            self.collection and (
-                self.url or
-                self.host and self.port or
-                self.host and self.grpc_port and self.prefer_grpc
+            self.collection
+            and (
+                self.url
+                or self.host
+                and self.port
+                or self.host
+                and self.grpc_port
+                and self.prefer_grpc
             )
         )
 

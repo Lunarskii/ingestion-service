@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     create_async_engine,
-    async_sessionmaker
+    async_sessionmaker,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -74,8 +74,7 @@ class DummyDAO:
 
 
 class DummyDTO:
-    def __init__(self):
-        ...
+    def __init__(self): ...
 
 
 class DummyRepository(AlchemyRepository[DummyDAO, DummyDTO]):
@@ -133,9 +132,9 @@ class TestAlchemyRepository:
         repo = UserRepository(async_session)
         user: UserDTO = await repo.create(name="Eve")
 
-        assert await repo.exists(user.id) == True
+        assert await repo.exists(user.id)
         await repo.delete(user.id)
-        assert await repo.exists(user.id) == False
+        assert not await repo.exists(user.id)
 
     @pytest.mark.asyncio
     async def test_create_raises_for_database_error(

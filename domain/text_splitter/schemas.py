@@ -25,7 +25,7 @@ class Chunk(BaseSchema):
     """
     Чанк - кусок склеенного текста документа и набор PageSpan-ов, указывающих,
     какие части чанка каким страницам соответствуют.
-    
+
     :ivar text: Текст чанка.
     :vartype text: str
     :ivar page_spans: Список объектов :class:`PageSpan`, каждый из которых

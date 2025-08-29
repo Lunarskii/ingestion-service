@@ -7,6 +7,7 @@ from minio.error import S3Error
 import urllib3
 
 from services import RawStorage
+from utils.file import get_mime_type
 
 
 class MinIORawStorage(RawStorage):
@@ -76,7 +77,6 @@ class MinIORawStorage(RawStorage):
     def _normalize_path(path: str):
         return path.lstrip("/")
 
-    # TODO добавить detect на media_type (content_type), чтобы положить в put_object(...)
     def save(self, file_bytes: bytes, path: str) -> None:
         """
         Сохраняет бинарные данные в MinIO как объект по указанному пути.
@@ -92,6 +92,7 @@ class MinIORawStorage(RawStorage):
             object_name=self._normalize_path(path),
             data=BytesIO(file_bytes),
             length=len(file_bytes),
+            content_type=get_mime_type(file_bytes),
         )
 
     def get(self, path: str) -> bytes:

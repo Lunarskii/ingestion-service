@@ -26,11 +26,11 @@ class TestMinIORawStorage:
         file_bytes: bytes = b"some dummy file content"
         path: str = f"{ValueGenerator.path()}{ValueGenerator.uuid()}.ext"
 
-        assert minio.exists(path) == False
+        assert not minio.exists(path)
         minio.save(file_bytes, path)
-        assert minio.exists(path) == True
+        assert minio.exists(path)
         minio.delete(path)
-        assert minio.exists(path) == False
+        assert not minio.exists(path)
 
     def test_get_bytes_correct(
         self,
@@ -39,12 +39,12 @@ class TestMinIORawStorage:
         file_bytes: bytes = b"some dummy file content"
         path: str = f"{ValueGenerator.path()}{ValueGenerator.uuid()}.ext"
 
-        assert minio.exists(path) == False
+        assert not minio.exists(path)
         minio.save(file_bytes, path)
-        assert minio.exists(path) == True
+        assert minio.exists(path)
         assert minio.get(path) == file_bytes
         minio.delete(path)
-        assert minio.exists(path) == False
+        assert not minio.exists(path)
 
     def test_delete_correct(
         self,
@@ -53,11 +53,11 @@ class TestMinIORawStorage:
         file_bytes: bytes = b"some dummy file content"
         path: str = f"{ValueGenerator.path()}{ValueGenerator.uuid()}.ext"
 
-        assert minio.exists(path) == False
+        assert not minio.exists(path)
         minio.save(file_bytes, path)
-        assert minio.exists(path) == True
+        assert minio.exists(path)
         minio.delete(path)
-        assert minio.exists(path) == False
+        assert not minio.exists(path)
 
     def test_exists_correct_path(
         self,
@@ -66,15 +66,15 @@ class TestMinIORawStorage:
         file_bytes: bytes = b"some dummy file content"
         path: str = f"{ValueGenerator.path()}{ValueGenerator.uuid()}.ext"
 
-        assert minio.exists(path) == False
+        assert not minio.exists(path)
         minio.save(file_bytes, path)
-        assert minio.exists(path) == True
+        assert minio.exists(path)
         minio.delete(path)
-        assert minio.exists(path) == False
+        assert not minio.exists(path)
 
     def test_exists_invalid_path(
         self,
         minio: MinIORawStorage,
     ):
         path: str = f"{ValueGenerator.path()}{ValueGenerator.uuid()}.ext"
-        assert minio.exists(path) == False
+        assert not minio.exists(path)

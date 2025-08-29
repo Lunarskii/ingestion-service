@@ -34,7 +34,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(as_uuid=False), nullable=False),
         sa.Column("session_id", sa.Uuid(as_uuid=False), nullable=False),
         sa.Column(
-            "role", sa.Enum("user", "assistant", name="chat_role", native_enum=False),
+            "role",
+            sa.Enum("user", "assistant", name="chat_role", native_enum=False),
             nullable=False,
         ),
         sa.Column("content", sa.String(), nullable=False),

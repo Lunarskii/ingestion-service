@@ -35,7 +35,11 @@ def upgrade() -> None:
         sa.Column("raw_storage_path", sa.String(), nullable=False),
         sa.Column("size_bytes", sa.BigInteger(), nullable=False),
         sa.Column("ingested_at", sa.DateTime(), nullable=False),
-        sa.Column("status", sa.Enum("success", "failed", name="document_status", native_enum=False), nullable=False),
+        sa.Column(
+            "status",
+            sa.Enum("success", "failed", name="document_status", native_enum=False),
+            nullable=False,
+        ),
         sa.Column("error_message", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id", name=op.f("documents_pkey")),
     )

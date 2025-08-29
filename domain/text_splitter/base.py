@@ -100,7 +100,7 @@ class TextSplitter:
 
         :raises ValueError: если объекты в `pages` не имеют атрибутов `num` и `text`.
         """
-        
+
         if not pages:
             return []
 
@@ -114,7 +114,9 @@ class TextSplitter:
             current_position += len(page.text)
             page_ends.append(current_position)
             current_position += len(self.page_separator)
-            text += f"{page.text}{self.page_separator}" if i < len(pages) - 1 else page.text
+            text += (
+                f"{page.text}{self.page_separator}" if i < len(pages) - 1 else page.text
+            )
 
         chunks: list[Chunk] = []
         search_position: int = 0

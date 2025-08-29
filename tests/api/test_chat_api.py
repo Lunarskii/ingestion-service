@@ -34,7 +34,9 @@ from domain.chat.repositories import (
 
 mock_chat_session_repo = create_autospec(ChatSessionRepository, instance=True)
 mock_chat_message_repo = create_autospec(ChatMessageRepository, instance=True)
-mock_chat_message_source_repo = create_autospec(ChatMessageSourceRepository, instance=True)
+mock_chat_message_source_repo = create_autospec(
+    ChatMessageSourceRepository, instance=True
+)
 
 
 def _get_repo_side_effect(repo_type):
@@ -196,8 +198,5 @@ class TestChatAPI:
             session_id=session_id,
         )
         mock_chat_message_source_repo.get_n.assert_has_calls(
-            [
-                call(message_id=message.id)
-                for message in messages
-            ],
+            [call(message_id=message.id) for message in messages],
         )

@@ -174,7 +174,9 @@ class SingletonRegistry:
                 obj: Any = await factory(*args, **kwargs)
             else:
                 if run_in_thread:
-                    obj: Any = await asyncio.to_thread(partial(factory, *args, **kwargs))
+                    obj: Any = await asyncio.to_thread(
+                        partial(factory, *args, **kwargs)
+                    )
                 else:
                     obj: Any = factory(*args, **kwargs)
 
