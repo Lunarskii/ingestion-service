@@ -6,7 +6,7 @@ from fastapi import (
     status,
 )
 
-from api.v1.dependencies import rag_service_dependency
+from api.v1.chat.dependencies import rag_service_dependency
 from domain.chat.dependencies import chat_uow_dependency
 from domain.chat.service import RAGService
 from domain.chat.repositories import (

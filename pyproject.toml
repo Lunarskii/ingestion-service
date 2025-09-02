@@ -29,6 +29,9 @@ weasyprint = "^66.0"
 minio = "^7.2.16"
 qdrant-client = "^1.15.1"
 aiosqlite = "^0.21.0"
+pydantic = {extras = ["email"], version = "^2.11.7"}
+pyjwt = {extras = ["crypto"], version = "^2.10.1"}
+bcrypt = "^4.3.0"
 
 [tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"

@@ -19,9 +19,9 @@ from api.main import app
 from api.v1.dependencies import (
     document_service_dependency,
     raw_storage_dependency,
-    validate_upload_file,
 )
-from api.v1.exceptions import (
+from api.v1.documents.dependencies import validate_upload_file
+from api.v1.documents.exceptions import (
     UnsupportedFileTypeError,
     FileTooLargeError,
     DocumentNotFoundError,

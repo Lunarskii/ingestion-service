@@ -70,6 +70,7 @@ class ChatMessage(BaseSchema, CreatedAtMixin):
     :vartype created_at: datetime
     """
 
+    # TODO скорее всего нужно убрать default_factory, потому что эта схема возвращает уже существующие данные из DTO
     id: Annotated[
         str,
         Field(

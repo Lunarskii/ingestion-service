@@ -13,13 +13,11 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 
-from api.v1.dependencies import (
-    validate_upload_file,
-    document_service_dependency,
-    raw_storage_dependency,
-)
-from api.v1.utils import build_content_disposition
-from api.v1.exceptions import DocumentNotFoundError
+from api.v1.documents.dependencies import document_service_dependency
+from api.v1.dependencies import raw_storage_dependency
+from api.v1.documents.dependencies import validate_upload_file
+from api.v1.documents.utils import build_content_disposition
+from api.v1.documents.exceptions import DocumentNotFoundError
 from domain.document.dependencies import document_uow_dependency
 from domain.document.repositories import DocumentRepository
 from domain.document.service import DocumentService
