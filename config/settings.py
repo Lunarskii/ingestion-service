@@ -153,3 +153,32 @@ class DatetimeSettings(BaseSettings):
         str,
         Field(alias="DATETIME_SERIALIZATION_FORMAT"),
     ] = "%Y-%m-%d %H:%M:%S"
+
+
+class KeycloakSettings(BaseSettings):
+    """
+    Настройки для системы идентификации Keycloak.
+    """
+
+    url: Annotated[str, Field(alias="KEYCLOAK_URL")]
+    client_id: Annotated[str, Field(alias="KEYCLOAK_CLIENT_ID")]
+    client_secret: Annotated[str | None, Field(alias="KEYCLOAK_CLIENT_SECRET")] = None
+    realm: Annotated[str, Field(alias="KEYCLOAK_REALM")]
+    redirect_uri: Annotated[str, Field(alias="KEYCLOAK_REDIRECT_URI")]
+    scope: Annotated[str, Field(alias="KEYCLOAK_SCOPE")] = "openid email profile"
+
+
+class CelerySettings(BaseSettings):
+    """
+    Настройки для распределенной очереди задач Celery.
+    """
+
+    broker_url: Annotated[str, Field(alias="CELERY_BROKER_URL")]
+    result_backend: Annotated[str | None, Field(alias="CELERY_RESULT_BACKEND")] = None
+    task_acks_late: Annotated[bool, Field(alias="CELERY_TASK_ACKS_LATE")] = True
+    task_time_limit: Annotated[int, Field(alias="CELERY_TASK_TIME_LIMIT")] = 300
+    task_soft_time_limit: Annotated[int, Field(alias="CELERY_TASK_SOFT_TIME_LIMIT")] = 270
+    task_max_retries: Annotated[int, Field(alias="CELERY_TASK_MAX_RETRIES")] = 5
+    task_retry_backoff: Annotated[int, Field(alias="CELERY_TASK_RETRY_BACKOFF")] = 2
+    task_retry_jitter: Annotated[bool, Field(alias="CELERY_TASK_RETRY_JITTER")] = True
+    worker_prefetch_multiplier: Annotated[int, Field(alias="CELERY_WORKER_PREFETCH_MULTIPLIER")] = 1

@@ -8,6 +8,8 @@ from config.settings import (
     MinIOSettings as _MinIOSettings,
     QdrantSettings as _QdrantSettings,
     DatetimeSettings as _DatetimeSettings,
+    KeycloakSettings as _KeycloakSettings,
+    CelerySettings as _CelerySettings,
 )
 from config.logging import logger
 
@@ -26,6 +28,8 @@ class Settings:
     minio = _MinIOSettings()
     qdrant = _QdrantSettings()
     datetime = _DatetimeSettings()
+    keycloak = _KeycloakSettings()
+    celery = _CelerySettings()
 
 
 settings = Settings()

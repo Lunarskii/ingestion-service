@@ -29,3 +29,7 @@ class NoTokenProvidedError(UnauthorizedError):
 class TokenExpiredError(UnauthorizedError):
     message = "Token expired"
     error_code = "token_expired"
+
+
+class SignatureHasExpired(UnauthorizedError):
+    ...

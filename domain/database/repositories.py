@@ -4,17 +4,18 @@ import types
 import sys
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import select
 
-from services import Repository
 from domain.database.models import BaseDAO
 from domain.database.exceptions import (
+    DatabaseError,
     EntityNotFoundError,
     ValidationError,
-    DatabaseError,
 )
-from schemas.base import BaseDTO
+from services import Repository
+from schemas import BaseDTO
+from config import logger
 
 
 def _resolve_type_arg(arg: Any, cls: Any) -> type | None:
@@ -100,34 +101,11 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
         """
 
         self.session = session
-
-    @property
-    def __entity(self) -> str:
-        return f"{self.model_type.__tablename__} [{self.model_type.__name__}]"
-
-    def _handle_sqlalchemy_error(
-        self,
-        error: SQLAlchemyError,
-        operation: str,
-    ) -> DatabaseError:
-        """
-        Обрабатывает SQLAlchemy исключения и преобразует их в доменные исключения.
-
-        :param error: SQLAlchemy исключение
-        :param operation: Операция, которая вызвала ошибку
-        :return: Доменное исключение
-        """
-
-        from domain.database.exceptions import handle_sqlalchemy_error
-
-        domain_error: DatabaseError = handle_sqlalchemy_error(
-            error=error,
-            entity_type=self.__entity,
+        self._context_logger = logger.bind(
+            model_type=self.model_type.__name__,
+            schema_type=self.schema_type.__name__,
+            entity_type=self.model_type.__tablename__,
         )
-        if hasattr(domain_error, "message") and domain_error.message:
-            domain_error.message = f"Ошибка при выполнении SQL операции '{operation}': {domain_error.message}"
-
-        return domain_error
 
     async def _get_instance(self, id: Any) -> M:
         """
@@ -141,15 +119,17 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
         try:
             instance = await self.session.get(self.model_type, id)
             if instance is None:
-                raise EntityNotFoundError(
-                    entity_type=self.__entity,
-                    entity_id=id,
-                )
+                self._context_logger.warning(EntityNotFoundError.message)
+                raise EntityNotFoundError()
             return instance
         except SQLAlchemyError as e:
-            raise self._handle_sqlalchemy_error(e, "SELECT")
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
 
-    async def create(self, **kwargs: Any) -> S:
+    async def create(self, **kwargs) -> S:
         """
         Создаёт новую запись в базе данных и возвращает её в виде DTO-схемы.
 
@@ -165,7 +145,11 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             await self.session.flush()
             return self.schema_type.model_validate(instance)
         except SQLAlchemyError as e:
-            raise self._handle_sqlalchemy_error(e, "INSERT")
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
 
     async def get(self, id: Any) -> S:
         """
@@ -185,7 +169,7 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
         self,
         limit: int | None = None,
         offset: int | None = None,
-        **kwargs: Any,
+        **kwargs,
     ) -> list[S]:
         """
         Возвращает список записей, отфильтрованных по переданным критериям.
@@ -207,9 +191,13 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             instances = await self.session.scalars(stmt)
             return list(map(self.schema_type.model_validate, instances))
         except SQLAlchemyError as e:
-            raise self._handle_sqlalchemy_error(e, "SELECT")
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
 
-    async def update(self, id: Any, **kwargs: Any) -> S:
+    async def update(self, id: Any, **kwargs) -> S:
         """
         Обновляет существующую запись заданными полями и возвращает её.
 
@@ -227,17 +215,21 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
 
             for key, value in kwargs.items():
                 if not hasattr(instance, key):
-                    raise ValidationError(
+                    self._context_logger.error(
+                        ValidationError.message,
                         field=key,
-                        value=value,
-                        constraint="",
                     )
+                    raise ValidationError()
                 setattr(instance, key, value)
 
             await self.session.flush()
             return self.schema_type.model_validate(instance)
         except SQLAlchemyError as e:
-            raise self._handle_sqlalchemy_error(e, "UPDATE")
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
 
     async def delete(self, id: Any) -> None:
         """
@@ -253,7 +245,11 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             await self.session.delete(instance)
             await self.session.flush()
         except SQLAlchemyError as e:
-            raise self._handle_sqlalchemy_error(e, "DELETE")
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
 
     async def exists(self, id: Any) -> bool:
         """
@@ -268,7 +264,11 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             instance = await self.session.get(self.model_type, id)
             return instance is not None
         except SQLAlchemyError as e:
-            raise self._handle_sqlalchemy_error(e, "EXISTS")
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
 
     async def count(self) -> int:
         """
@@ -283,4 +283,8 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
             result = await self.session.execute(stmt)
             return len(result.scalars().all())
         except SQLAlchemyError as e:
-            raise self._handle_sqlalchemy_error(e, "COUNT")
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()

@@ -29,6 +29,7 @@ from domain.document.schemas import (
 from domain.database.connection import get_async_scoped_session
 from domain.database.uow import UnitOfWork
 from services import RawStorage
+from tasks.main import extract_text
 
 
 router = APIRouter(prefix="/documents")
@@ -123,3 +124,18 @@ async def download_file(
             "Content-Length": str(len(file_bytes)),
         },
     )
+
+
+@router.get("/{document_id}/status", status_code=status.HTTP_200_OK)
+async def file_status(
+    document_id: str,
+):
+    ...
+
+
+@router.post("/test_route")
+async def test_document_route(
+    file: Annotated[File, Depends(validate_upload_file)],
+):
+    extract_text.delay(file)
+    print("OK")

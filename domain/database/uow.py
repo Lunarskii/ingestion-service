@@ -2,13 +2,17 @@ from abc import (
     ABC,
     abstractmethod,
 )
-from typing import TypeVar
+from typing import (
+    TypeVar,
+    Self,
+)
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
 from domain.database.repositories import AlchemyRepository
-from domain.database.exceptions import handle_sqlalchemy_error
+from domain.database.exceptions import DatabaseError
+from config import logger
 
 
 T = TypeVar("T", bound=AlchemyRepository)
@@ -59,14 +63,15 @@ class UnitOfWork(IUnitOfWork):
     def __init__(self, session: AsyncSession):
         self.session = session
         self._repositories: dict[type[AlchemyRepository], AlchemyRepository] = {}
+        self._context_logger = logger
 
     def get_repository(self, repo_type: type[T]) -> T:
         """
         Получает репозиторий по типу. Если репозиторий еще не создан,
         создает его автоматически.
 
-        :param repo_type: Тип репозитория
-        :return: Экземпляр репозитория
+        :param repo_type: Тип репозитория.
+        :return: Экземпляр репозитория.
         """
 
         if repo_type not in self._repositories:
@@ -81,8 +86,8 @@ class UnitOfWork(IUnitOfWork):
         Этот метод позволяет явно зарегистрировать репозиторий,
         даже если он еще не был запрошен через get_repository.
 
-        :param repo_type: Тип репозитория для регистрации
-        :return: Экземпляр репозитория
+        :param repo_type: Тип репозитория для регистрации.
+        :return: Экземпляр репозитория.
         """
 
         if repo_type not in self._repositories:
@@ -96,7 +101,11 @@ class UnitOfWork(IUnitOfWork):
         try:
             await self.session.commit()
         except SQLAlchemyError as e:
-            raise handle_sqlalchemy_error(e)
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
 
     async def rollback(self) -> None:
         """Откатывает все изменения в базе данных"""
@@ -104,7 +113,11 @@ class UnitOfWork(IUnitOfWork):
         try:
             await self.session.rollback()
         except SQLAlchemyError as e:
-            raise handle_sqlalchemy_error(e)
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
 
     async def close(self) -> None:
         """Закрывает сессию базы данных"""
@@ -112,13 +125,15 @@ class UnitOfWork(IUnitOfWork):
         try:
             await self.session.close()
         except SQLAlchemyError as e:
-            raise handle_sqlalchemy_error(e)
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Self:
         """
-        Открывает транзакцию в базу данных.
-
-        В данный момент просто возвращает UnitOfWork экземпляр.
+        Открывает транзакцию в базе данных.
 
         :return: Этот же экземпляр UnitOfWork.
         :rtype: UnitOfWork
@@ -126,7 +141,7 @@ class UnitOfWork(IUnitOfWork):
 
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """
         Закрывает транзакцию в базе данных.
 
@@ -140,7 +155,11 @@ class UnitOfWork(IUnitOfWork):
             else:
                 await self.commit()
         except SQLAlchemyError as e:
-            raise handle_sqlalchemy_error(e)
+            self._context_logger.error(
+                DatabaseError.message,
+                error_message=str(e),
+            )
+            raise DatabaseError()
         finally:
             await self.close()
 
@@ -154,14 +173,15 @@ class UnitOfWorkFactory:
 
     @staticmethod
     def get_uow(
-        session: AsyncSession, *repo_types: type[AlchemyRepository]
+        session: AsyncSession,
+        *repo_types: type[AlchemyRepository],
     ) -> UnitOfWork:
         """
         Создает Unit of Work с предустановленными репозиториями.
 
-        :param session: Сессия базы данных
+        :param session: Сессия базы данных.
         :type session: AsyncSession
-        :param repo_types: Типы репозиториев для предустановки
+        :param repo_types: Типы репозиториев для предустановки.
         :type repo_types: type[AlchemyRepository]
         :return: UnitOfWork с готовыми репозиториями.
         :rtype: UnitOfWork

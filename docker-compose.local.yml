@@ -48,3 +48,27 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    container_name: keycloak_local
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:172.17.0.1"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: "${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}"
+      KC_DB: "${KC_DB:-postgres}"
+      KC_DB_URL_HOST: "${KC_DB_URL_HOST:-host.docker.internal}"
+      KC_DB_URL_PORT: "${KC_DB_URL_PORT:-5432}"
+      KC_DB_URL_DATABASE: "${KC_DB_URL_DATABASE:-postgres}"
+      KC_DB_USERNAME: "${KC_DB_USERNAME:-postgres}"
+      KC_DB_PASSWORD: "${KC_DB_PASSWORD:-postgres}"
+    command: start-dev
+
+  redis:
+    image: redis:8.2.1
+    container_name: redis_local
+    ports:
+      - "6379:6379"

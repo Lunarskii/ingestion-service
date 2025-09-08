@@ -7,6 +7,7 @@ import asyncio
 
 from domain.embedding import EmbeddingModel
 from domain.text_splitter import TextSplitter
+from domain.security.service import KeycloakClient
 from infrastructure.storage_minio import MinIORawStorage
 from infrastructure.vectorstore_qdrant import QdrantVectorStore
 from stubs import (
@@ -89,6 +90,15 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
             chunk_size=settings.text_splitter.chunk_size,
             chunk_overlap=settings.text_splitter.chunk_overlap,
         ),
+        __init_object(
+            KeycloakClient,
+            url=settings.keycloak.url,
+            client_id=settings.keycloak.client_id,
+            client_secret=settings.keycloak.client_secret,
+            realm=settings.keycloak.realm,
+            redirect_uri=settings.keycloak.redirect_uri,
+            scope=settings.keycloak.scope,
+        )
     ]
 
     (
@@ -96,12 +106,16 @@ async def on_startup_event_handler(app: "FastAPI") -> None:
         vector_store,
         embedding_model,
         text_splitter,
+        keycloak,
     ) = await asyncio.gather(*tasks)
+
+    keycloak.add_swagger_config(app)
 
     app.state.raw_storage = raw_storage  # type: ignore[attr-defined]
     app.state.vector_store = vector_store  # type: ignore[attr-defined]
     app.state.embedding_model = embedding_model  # type: ignore[attr-defined]
     app.state.text_splitter = text_splitter  # type: ignore[attr-defined]
+    app.state.keycloak = keycloak
 
 
 async def on_shutdown_event_handler(app: "FastAPI") -> None:

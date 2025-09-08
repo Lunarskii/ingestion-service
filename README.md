@@ -58,6 +58,15 @@
 - **Параметры**: `document_id` (path).
 - **Ответ**: `200 OK` - потоковый ответ (`StreamingResponse`) с заголовками `Content-Disposition` и `Content-Length`.
 - **Формат ответа**: бинарный поток (например, `application/pdf`).
+- **Пример загрузки через curl**:
+```text
+curl -X GET "http://localhost:8000/v1/documents/f3e73666-2e23-461f-919a-ed420aebb325/download" \
+     -o document.pdf
+     
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 1281k  100 1281k    0     0  2959k      0 --:--:-- --:--:-- --:--:-- 2958k
+```
 - **Возможные ошибки**:
   - `404 Not Found` - документ с таким `document_id` не найден.
 
@@ -102,7 +111,8 @@
     {
       "source_id": "f47ac10b-...",
       "document_name": "invoice.pdf",
-      "document_page": 2,
+      "page_start": 43,
+      "page_end": 44,
       "snippet": "оплатить можно через банк..."
     }
   ],

@@ -18,6 +18,7 @@ from domain.embedding.schemas import (
     Vector,
     VectorMetadata,
 )
+from config import logger
 
 
 class EmbeddingModel:
@@ -118,6 +119,13 @@ class EmbeddingModel:
         self._semaphore = asyncio.BoundedSemaphore(max_concurrency)
         self._acquire_timeout = acquire_timeout
 
+        logger.info(
+            f"Сконфигурирована эмбеддинг модель со следующими значениями: "
+            f"concurrency={max_concurrency}, acquire_timeout={acquire_timeout}",
+            concurrency=max_concurrency,
+            acquire_timeout=acquire_timeout,
+        )
+
     @asynccontextmanager
     async def _concurrency_guard(self) -> None:
         """
@@ -146,8 +154,7 @@ class EmbeddingModel:
         prompt: str | None = None,
         batch_size: int = 32,
         show_progress_bar: bool = False,
-        output_value: Literal["sentence_embedding", "token_embeddings"]
-        | None = "sentence_embedding",
+        output_value: Literal["sentence_embedding", "token_embeddings"] | None = "sentence_embedding",
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
         convert_to_numpy: bool = True,
         convert_to_tensor: bool = False,

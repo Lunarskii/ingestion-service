@@ -132,7 +132,7 @@ class Repository(Protocol):
         - in-memory структурами данных (например, для тестов).
     """
 
-    async def create(self, **kwargs: Any) -> BaseModel:
+    async def create(self, **kwargs) -> BaseModel:
         """
         Создаёт и сохраняет новый объект.
 
@@ -158,7 +158,7 @@ class Repository(Protocol):
         self,
         limit: int | None = None,
         offset: int | None = None,
-        **kwargs: Any,
+        **kwargs,
     ) -> list[BaseModel]:
         """
         Возвращает список объектов с возможностью пагинации и фильтрации.
@@ -174,7 +174,7 @@ class Repository(Protocol):
 
         ...
 
-    async def update(self, key: Any, **kwargs: Any) -> BaseModel:
+    async def update(self, key: Any, **kwargs) -> BaseModel:
         """
         Обновляет существующий объект по ключу.
 

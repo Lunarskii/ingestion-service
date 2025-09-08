@@ -5,18 +5,17 @@ from typing import (
     Iterable,
 )
 
-import bcrypt
 import jwt
 
-from domain.security.schemas import JWTClaims
+from domain.security.schemas import OIDCUser
 from utils.datetime import universal_time
 
 
 def encode_jwt(
-    claims: JWTClaims,
+    claims: OIDCUser,
     private_key: str,
     *,
-    algorithm: str | None = "HS256",
+    algorithm: str | None = "RS256",
     headers: dict[str, Any] | None = None,
     json_encoder: JSONEncoder | None = None,
     expires_in: timedelta | None = None,
@@ -43,7 +42,7 @@ def decode_jwt(
     public_key: str,
     token: str | bytes,
     *,
-    algorithms: list[str] | None = list["HS256"],
+    algorithms: list[str] = ["RS256"],
     options: dict[str, Any] | None = None,
     verify: bool | None = None,
     detached_payload: bytes | None = None,
@@ -51,7 +50,12 @@ def decode_jwt(
     issuer: str | list[str] | None = None,
     leeway: float | timedelta = 0,
     **kwargs: Any,
-) -> JWTClaims:
+) -> OIDCUser:
+    options = options or {
+        "verify_signature": True,
+        "verify_aud": audience is not None,
+        "verify_exp": True,
+    }
     decoded = jwt.decode(
         jwt=token,
         key=public_key,
@@ -64,20 +68,4 @@ def decode_jwt(
         leeway=leeway,
         **kwargs,
     )
-    return JWTClaims.model_validate(decoded)
-
-
-def hash_password(password: str) -> bytes:
-    salt: bytes = bcrypt.gensalt()
-    pwd_bytes: bytes = password.encode()
-    return bcrypt.hashpw(pwd_bytes, salt)
-
-
-def validate_password(
-    plain_password: str,
-    hashed_password: bytes,
-) -> bool:
-    return bcrypt.checkpw(
-        password=plain_password.encode(),
-        hashed_password=hashed_password,
-    )
+    return OIDCUser.model_validate(decoded)
