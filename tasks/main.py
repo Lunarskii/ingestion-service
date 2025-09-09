@@ -1,4 +1,7 @@
+import time
+
 from celery import Celery
+from pydantic import BaseModel
 
 from domain.extraction import (
     extract as extract_from_document,
@@ -6,7 +9,11 @@ from domain.extraction import (
 )
 from domain.document.schemas import File
 from config import settings
-import time
+
+from tasks.preserializers import (
+    PydanticPreserializer,
+    register_preserializer,
+)
 
 
 app = Celery(
@@ -22,12 +29,16 @@ app.conf.update(
     task_retry_backoff=settings.celery.task_retry_backoff,
     task_retry_jitter=settings.celery.task_retry_jitter,
     task_serializer="json",
-    accept_content=["json"],
     result_serializer="json",
+    event_serializer="json",
+    accept_content=["application/json"],
+    result_accept_content=["application/json"],
 )
+register_preserializer(PydanticPreserializer, BaseModel)
 
 
-@app.task
-def extract_text(file: File) -> ExtractedInfo:
-    time.sleep(10)
+@app.task(bind=True)
+def extract_text(self, file: File) -> ExtractedInfo:
+    self.update_state(state="EXTRACTING")
+    time.sleep(30)
     return extract_from_document(file)

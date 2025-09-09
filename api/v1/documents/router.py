@@ -12,6 +12,7 @@ from fastapi import (
     Depends,
 )
 from fastapi.responses import StreamingResponse
+from celery.result import AsyncResult
 
 from api.v1.documents.dependencies import document_service_dependency
 from api.v1.dependencies import raw_storage_dependency
@@ -29,7 +30,10 @@ from domain.document.schemas import (
 from domain.database.connection import get_async_scoped_session
 from domain.database.uow import UnitOfWork
 from services import RawStorage
-from tasks.main import extract_text
+from tasks.main import (
+    app as celery_app,
+    extract_text,
+)
 
 
 router = APIRouter(prefix="/documents")
@@ -137,5 +141,16 @@ async def file_status(
 async def test_document_route(
     file: Annotated[File, Depends(validate_upload_file)],
 ):
-    extract_text.delay(file)
+    extract_text.delay(file=file)
     print("OK")
+
+
+@router.get("/test_route/{task_id}/status")
+async def test_document_route_status(task_id: str):
+    task_result = AsyncResult(task_id, app=celery_app)
+    return {
+        "task_id": task_id,
+        "task_status": task_result.status,
+        "task_state": task_result.state,
+        "task_result": task_result.result if task_result.ready() else None,
+    }
