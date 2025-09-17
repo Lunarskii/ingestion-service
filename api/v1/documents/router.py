@@ -92,9 +92,7 @@ async def upload_file(
     """
 
     document_id = str(uuid.uuid4())
-    bg_tasks.add_task(
-        _bg_process_file,
-        service=service,
+    await service.process(
         file=file,
         document_id=document_id,
         workspace_id=workspace_id,

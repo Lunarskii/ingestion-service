@@ -70,7 +70,7 @@ class EmbeddingSettings(BaseSettings):
     device: Annotated[str | None, Field(alias="EMBEDDING_DEVICE")] = None
     cache_folder: Annotated[str | None, Field(alias="EMBEDDING_CACHE_FOLDER")] = None
     token: Annotated[bool | str | None, Field(alias="EMBEDDING_TOKEN")] = None
-    max_concurrency: Annotated[int, Field(alias="EMBEDDING_MAX_CONCURRENCY")] = 2
+    batch_size: Annotated[int, Field(alias="EMBEDDING_BATCH_SIZE")] = 32
 
 
 class TextSplitterSettings(BaseSettings):
@@ -80,68 +80,6 @@ class TextSplitterSettings(BaseSettings):
 
     chunk_size: Annotated[int, Field(alias="TEXT_SPLITTER_CHUNK_SIZE")] = 500
     chunk_overlap: Annotated[int, Field(alias="TEXT_SPLITTER_CHUNK_OVERLAP")] = 50
-
-
-class StubSettings(BaseSettings):
-    """
-    Настройки хранилищ для локальной разработки.
-    """
-
-    raw_storage_path: Annotated[str, Field(alias="RAW_STORAGE_PATH")] = (
-        "./local_storage/raw/"
-    )
-    index_path: Annotated[str, Field(alias="INDEX_PATH")] = "./local_storage/index/"
-
-
-class MinIOSettings(BaseSettings):
-    """
-    Настройки для файлового S3 хранилища MinIO.
-    """
-
-    endpoint: Annotated[str | None, Field(alias="MINIO_ENDPOINT")] = None
-    bucket_raw: Annotated[str, Field(alias="MINIO_BUCKET_RAW")] = "raw-zone"
-    bucket_silver: Annotated[str, Field(alias="MINIO_BUCKET_SILVER")] = "silver-zone"
-    access_key: Annotated[str | None, Field(alias="MINIO_ACCESS_KEY")] = None
-    secret_key: Annotated[str | None, Field(alias="MINIO_SECRET_KEY")] = None
-    session_token: Annotated[str | None, Field(alias="MINIO_SESSION_TOKEN")] = None
-    secure: Annotated[bool, Field(alias="MINIO_SECURE")] = False
-    region: Annotated[str | None, Field(alias="MINIO_REGION")] = None
-
-    @property
-    def is_configured(self) -> bool:
-        return bool(self.endpoint and self.bucket_raw and self.bucket_silver)
-
-
-class QdrantSettings(BaseSettings):
-    """
-    Настройки для векторного хранилища Qdrant.
-    """
-
-    url: Annotated[str | None, Field(alias="QDRANT_URL")] = None
-    collection: Annotated[str, Field(alias="QDRANT_COLLECTION")] = "notebook_chunks"
-    host: Annotated[str | None, Field(alias="QDRANT_HOST")] = None
-    port: Annotated[int, Field(alias="QDRANT_PORT")] = 6333
-    grpc_port: Annotated[int, Field(alias="QDRANT_GRPC_PORT")] = 6334
-    api_key: Annotated[str | None, Field(alias="QDRANT_API_KEY")] = None
-    use_https: Annotated[bool, Field(alias="QDRANT_USE_HTTPS")] = False
-    prefer_grpc: Annotated[bool, Field(alias="QDRANT_PREFER_GRPC")] = False
-    timeout: Annotated[int | None, Field(alias="QDRANT_TIMEOUT")] = 30
-    vector_size: Annotated[int, Field(alias="QDRANT_VECTOR_SIZE")] = 384
-    distance: Annotated[str, Field(alias="QDRANT_DISTANCE")] = "Cosine"
-
-    @property
-    def is_configured(self) -> bool:
-        return bool(
-            self.collection
-            and (
-                self.url
-                or self.host
-                and self.port
-                or self.host
-                and self.grpc_port
-                and self.prefer_grpc
-            )
-        )
 
 
 class DatetimeSettings(BaseSettings):
@@ -175,6 +113,10 @@ class CelerySettings(BaseSettings):
 
     broker_url: Annotated[str, Field(alias="CELERY_BROKER_URL")]
     result_backend: Annotated[str | None, Field(alias="CELERY_RESULT_BACKEND")] = None
+    enable_utc: Annotated[bool, Field(alias="CELERY_ENABLE_UTC")] = True
+    timezone: Annotated[str | None, Field(alias="CELERY_TIMEZONE")] = "UTC"
+    metrics_host: Annotated[str | None, Field(alias="CELERY_METRICS_HOST")] = None
+    metrics_port: Annotated[int, Field(alias="CELERY_METRICS_PORT")] = 9000
     task_acks_late: Annotated[bool, Field(alias="CELERY_TASK_ACKS_LATE")] = True
     task_time_limit: Annotated[int, Field(alias="CELERY_TASK_TIME_LIMIT")] = 300
     task_soft_time_limit: Annotated[int, Field(alias="CELERY_TASK_SOFT_TIME_LIMIT")] = 270

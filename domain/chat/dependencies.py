@@ -8,7 +8,7 @@ from domain.chat.repositories import (
     ChatMessageRepository,
     ChatMessageSourceRepository,
 )
-from domain.database.dependencies import scoped_session_dependency
+from domain.database.dependencies import async_scoped_session_dependency
 from domain.database.uow import (
     UnitOfWork,
     UnitOfWorkFactory,
@@ -16,7 +16,7 @@ from domain.database.uow import (
 
 
 async def chat_uow_dependency(
-    session: Annotated[AsyncSession, Depends(scoped_session_dependency)],
+    session: Annotated[AsyncSession, Depends(async_scoped_session_dependency)],
 ) -> UnitOfWork:
     """
     Возвращает UnitOfWork с предзарегистрированными репозиториями:

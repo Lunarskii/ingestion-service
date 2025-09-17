@@ -28,23 +28,24 @@ mammoth = "^1.10.0"
 weasyprint = "^66.0"
 minio = "^7.2.16"
 qdrant-client = "^1.15.1"
-aiosqlite = "^0.21.0"
 pydantic = {extras = ["email"], version = "^2.11.7"}
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 celery = {extras = ["redis"], version = "^5.5.3"}
 flower = "^2.0.1"
+prometheus-client = "^0.22.1"
 
 [tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"
 
 [tool.poetry.group.dev.dependencies]
+aiosqlite = "^0.21.0"
 pytest = "^8.4.1"
-black = "^25.1.0"
 pytest-mock = "^3.14.1"
-ruff = "^0.12.2"
 pytest-cov = "^6.2.1"
-reportlab = "^4.4.3"
 pytest-asyncio = "^1.1.0"
+black = "^25.1.0"
+ruff = "^0.12.2"
+reportlab = "^4.4.3"
 
 [build-system]
 requires = ["poetry-core"]

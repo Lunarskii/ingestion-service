@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from domain.database.connection import get_async_scoped_session
 
 
-async def scoped_session_dependency() -> AsyncSession:
+async def async_scoped_session_dependency() -> AsyncSession:
     """
     Зависимость для FastAPI / любых DI-контекстов, предоставляющая scoped AsyncSession.
 

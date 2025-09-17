@@ -74,7 +74,7 @@ class MinIORawStorage(RawStorage):
             self.client.make_bucket(self.bucket_name)
 
     @staticmethod
-    def _normalize_path(path: str):
+    def _normalize_path(path: str) -> str:
         return path.lstrip("/")
 
     def save(self, file_bytes: bytes, path: str) -> None:

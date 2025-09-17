@@ -47,6 +47,12 @@ def serialize_datetime_to_str(
     return datetime.strftime(value, format or settings.datetime.serialization_format)
 
 
+def reset_timezone(value: datetime) -> datetime | None:
+    if value is None:
+        return None
+    return value.replace(tzinfo=None)
+
+
 def parse_iso8824_date(text: str) -> datetime | None:
     """
     Конвертирует строковый формат даты PDF в datetime. Наивный UTC: конвертирует к UTC+0.

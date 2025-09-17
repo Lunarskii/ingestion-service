@@ -243,7 +243,6 @@ class AlchemyRepository[M: BaseDAO, S: BaseDTO](Repository):
         try:
             instance = await self._get_instance(id)
             await self.session.delete(instance)
-            await self.session.flush()
         except SQLAlchemyError as e:
             self._context_logger.error(
                 DatabaseError.message,

@@ -17,7 +17,10 @@ from schemas.base import (
 )
 from schemas.mixins import UUIDMixin
 from utils.file import get_mime_type
-from utils.datetime import serialize_datetime_to_str
+from utils.datetime import (
+    serialize_datetime_to_str,
+    reset_timezone,
+)
 
 
 class File(BaseSchema):
@@ -66,16 +69,21 @@ class File(BaseSchema):
         return get_mime_type(self.content)
 
 
+# TODO upd doc
 class DocumentStatus(str, Enum):
     """
     Перечисление статусов обработки документа.
 
     :cvar success: Успешно.
-    :vartype success: str
     :cvar failed: Неуспешно.
-    :vartype failed: str
     """
 
+    pending: str = "PENDING"
+    queued: str = "QUEUED"
+    running: str = "RUNNING"
+    extracting: str = "EXTRACTING"
+    chunking: str = "CHUNKING"
+    embedding: str = "EMBEDDING"
     success: str = "SUCCESS"
     failed: str = "FAILED"
 
@@ -193,6 +201,4 @@ class DocumentDTO(BaseDTO, UUIDMixin):
 
     @field_serializer("creation_date")
     def reset_timezone(self, value: datetime) -> datetime | None:
-        if value is None:
-            return None
-        return value.replace(tzinfo=None)
+        return reset_timezone(value)

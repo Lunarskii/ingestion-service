@@ -4,9 +4,6 @@ from config.settings import (
     DocumentRestrictionSettings as _DocumentRestrictionSettings,
     EmbeddingSettings as _EmbeddingSettings,
     TextSplitterSettings as _TextSplitterSettings,
-    StubSettings as _StubSettings,
-    MinIOSettings as _MinIOSettings,
-    QdrantSettings as _QdrantSettings,
     DatetimeSettings as _DatetimeSettings,
     KeycloakSettings as _KeycloakSettings,
     CelerySettings as _CelerySettings,
@@ -24,15 +21,13 @@ class Settings:
     document_restriction = _DocumentRestrictionSettings()
     embedding = _EmbeddingSettings()
     text_splitter = _TextSplitterSettings()
-    stub = _StubSettings()
-    minio = _MinIOSettings()
-    qdrant = _QdrantSettings()
     datetime = _DatetimeSettings()
     keycloak = _KeycloakSettings()
     celery = _CelerySettings()
 
 
 settings = Settings()
+
 
 __all__ = [
     "Settings",

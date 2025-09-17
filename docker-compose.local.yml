@@ -6,6 +6,7 @@
 # - В этой конфигурации данные будут храниться на хосте в:
 #     Qdrant: ./qdrant
 #     MinIO: ./minio
+#     Prometheus: ./prometheus
 # - Создайте эти директории на хосте до запуска и установите корректные права:
 #     sudo mkdir ./qdrant ./minio
 #     sudo chown $(id -u):$(id -g) /usr/local/share/qdrant /usr/local/share/minio
@@ -72,3 +73,12 @@ services:
     container_name: redis_local
     ports:
       - "6379:6379"
+
+  prometheus:
+    image: prom/prometheus:v3.6.0-rc.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus:/prometheus

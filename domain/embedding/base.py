@@ -1,10 +1,8 @@
-from contextlib import asynccontextmanager
 from typing import (
     Any,
     Literal,
     Iterable,
 )
-import asyncio
 
 from sentence_transformers import (
     SentenceTransformer,
@@ -18,19 +16,11 @@ from domain.embedding.schemas import (
     Vector,
     VectorMetadata,
 )
-from config import logger
 
 
 class EmbeddingModel:
     """
-    Обертка над SentenceTransformer с ограничением параллелизма.
-
-    Основные возможности
-    -------------------
-    * Инициализация SentenceTransformer с проксированием аргументов конструктора.
-    * Управление максимумом одновременных вызовов ``encode`` через ``asyncio.BoundedSemaphore``.
-    * Асинхронный метод ``encode`` выполняет реальную работу в пуле потоков
-      (``asyncio.to_thread``), так как ``SentenceTransformer.encode`` - синхронная функция.
+    Обертка над SentenceTransformer.
     """
 
     def __init__(
@@ -52,8 +42,7 @@ class EmbeddingModel:
         config_kwargs: dict[str, Any] | None = None,
         model_card_data: SentenceTransformerModelCardData | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-        max_concurrency: int = 1,
-        acquire_timeout: float | None = None,
+        batch_size: int = 32,
     ):
         """
         :param model_name_or_path: Имя/путь к модели для SentenceTransformer.
@@ -90,11 +79,6 @@ class EmbeddingModel:
         :type model_card_data: SentenceTransformerModelCardData | None
         :param backend: Бэкенд выполнения ('torch', 'onnx', 'openvino').
         :type backend: Literal["torch", "onnx", "openvino"]
-        :param max_concurrency: Максимальное число одновременных вызовов ``encode``.
-        :type max_concurrency: int
-        :param acquire_timeout: Таймаут на ожидание семафора при попытке получить слот.
-                                Если None - ждать бесконечно.
-        :type acquire_timeout: float | None
         """
 
         self.model = SentenceTransformer(
@@ -116,43 +100,15 @@ class EmbeddingModel:
             model_card_data=model_card_data,
             backend=backend,
         )
-        self._semaphore = asyncio.BoundedSemaphore(max_concurrency)
-        self._acquire_timeout = acquire_timeout
+        self.batch_size = batch_size
 
-        logger.info(
-            f"Сконфигурирована эмбеддинг модель со следующими значениями: "
-            f"concurrency={max_concurrency}, acquire_timeout={acquire_timeout}",
-            concurrency=max_concurrency,
-            acquire_timeout=acquire_timeout,
-        )
-
-    @asynccontextmanager
-    async def _concurrency_guard(self) -> None:
-        """
-        Асинхронный контекстный менеджер для контроля конкуренции.
-
-        Блокирует вход, ожидая освобождения семафора. Если при создании объекта был
-        передан ``acquire_timeout``, применяется ``asyncio.wait_for`` с указанным таймаутом.
-
-        :raises asyncio.TimeoutError: Если не удалось захватить семафор в отведённый таймаут.
-        """
-
-        if self._acquire_timeout:
-            await asyncio.wait_for(self._semaphore.acquire(), self._acquire_timeout)
-        else:
-            await self._semaphore.acquire()
-        try:
-            yield
-        finally:
-            self._semaphore.release()
-
-    async def encode(
+    def encode(
         self,
         sentences: str | list[str],
         metadata: list[VectorMetadata] | None = None,
         prompt_name: str | None = None,
         prompt: str | None = None,
-        batch_size: int = 32,
+        batch_size: int | None = None,
         show_progress_bar: bool = False,
         output_value: Literal["sentence_embedding", "token_embeddings"] | None = "sentence_embedding",
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
@@ -201,7 +157,6 @@ class EmbeddingModel:
         :param chunk_size: Размер чанка при больших входах.
         :type chunk_size: int | None
         :param kwargs: Дополнительные аргументы, передающиеся в ``SentenceTransformer.encode``.
-        :type kwargs: Any
 
         :return: В зависимости от входных данных:
                  - если ``sentences`` - str: ``list[float]`` (embedding для строки);
@@ -213,25 +168,23 @@ class EmbeddingModel:
         :raises Exception: любые исключения, проброшенные из ``SentenceTransformer.encode``.
         """
 
-        async with self._concurrency_guard():
-            embeddings = await asyncio.to_thread(
-                self.model.encode,
-                sentences=sentences,
-                prompt_name=prompt_name,
-                prompt=prompt,
-                batch_size=batch_size,
-                show_progress_bar=show_progress_bar,
-                output_value=output_value,
-                precision=precision,
-                convert_to_numpy=convert_to_numpy,
-                convert_to_tensor=convert_to_tensor,
-                device=device,
-                normalize_embeddings=normalize_embeddings,
-                truncate_dim=truncate_dim,
-                pool=pool,
-                chunk_size=chunk_size,
-                **kwargs,
-            )
+        embeddings = self.model.encode(
+            sentences=sentences,
+            prompt_name=prompt_name,
+            prompt=prompt,
+            batch_size=batch_size or self.batch_size,
+            show_progress_bar=show_progress_bar,
+            output_value=output_value,
+            precision=precision,
+            convert_to_numpy=convert_to_numpy,
+            convert_to_tensor=convert_to_tensor,
+            device=device,
+            normalize_embeddings=normalize_embeddings,
+            truncate_dim=truncate_dim,
+            pool=pool,
+            chunk_size=chunk_size,
+            **kwargs,
+        )
 
         if isinstance(sentences, str):
             return embeddings.tolist()

@@ -1,5 +1,4 @@
-from typing import TYPE_CHECKING
-from pathlib import Path
+from io import BytesIO
 
 from domain.extraction.base import (
     TextExtractor,
@@ -12,14 +11,12 @@ from domain.extraction.schemas import (
 )
 from domain.extraction.factory import ExtractorFactory
 from domain.extraction.exceptions import ExtractionError
+from utils.file import get_file_extension
 
 
-if TYPE_CHECKING:
-    from domain.document.schemas import File
-
-
+# TODO doc upd
 def extract(
-    file: "File",
+    file: bytes,
     *,
     factory: ExtractorFactory = ExtractorFactory(),
 ) -> ExtractedInfo:
@@ -43,17 +40,15 @@ def extract(
         либо если фабрика выбросила ошибку при попытке получить экстрактор.
     """
 
-    path = Path(file.name)
-    suffixes: list[str] = path.suffixes
-    for suffix in suffixes:
-        try:
-            extractor: TextExtractor = factory.get_extractor(suffix)
-        except ExtractionError:
-            pass
-        else:
-            return extractor.extract(file.file)
+    extension: str = get_file_extension(file)
+    try:
+        extractor: TextExtractor = factory.get_extractor(extension)
+    except ExtractionError:
+        pass
+    else:
+        return extractor.extract(BytesIO(file))
     raise ExtractionError(
-        f"Нет экстрактора для документа '{file.name}' с расширениями {suffixes}"
+        f"Нет экстрактора для документа с расширением {extension}"
     )
 
 

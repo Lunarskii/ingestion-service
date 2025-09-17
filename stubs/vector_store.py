@@ -6,7 +6,6 @@ from typing import Any
 
 from domain.embedding.schemas import Vector
 from services import VectorStore
-from config import settings
 
 
 class JSONVectorStore(VectorStore):
@@ -14,11 +13,7 @@ class JSONVectorStore(VectorStore):
     Заглушка векторного хранилища для локальных тестов и разработки.
     """
 
-    def __init__(
-        self,
-        *,
-        directory: str = settings.stub.index_path,
-    ):
+    def __init__(self, directory: str):
         """
         Проверяет, что `directory` является путем к директории (оканчивается слешем),
         создает её при необходимости.
@@ -32,6 +27,10 @@ class JSONVectorStore(VectorStore):
             raise ValueError(f"Ожидалась директория, но было получено {directory}")
         self.directory: str = directory
         os.makedirs(self.directory, exist_ok=True)
+
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        return path.lstrip("/")
 
     def upsert(self, vectors: list[Vector]) -> None:
         """
@@ -107,11 +106,12 @@ class JSONVectorStore(VectorStore):
         """
 
         if workspace_id:
-            workspace_id = workspace_id.lstrip("/")
+            workspace_id = self._normalize_path(workspace_id)
             if document_id:
-                document_id = document_id.lstrip("/")
+                document_id = self._normalize_path(document_id)
                 full_path: str = os.path.join(
-                    self.directory, f"{workspace_id}/{document_id}.json"
+                    self.directory,
+                    f"{workspace_id}/{document_id}.json",
                 )
                 if os.path.isfile(full_path):
                     os.remove(full_path)

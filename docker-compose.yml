@@ -1,10 +1,10 @@
 services:
-  backend:
-    container_name: backend
+  api:
+    container_name: api
     restart: on-failure
     build:
       context: .
-      dockerfile: docker/backend.dockerfile
+      dockerfile: docker/api.dockerfile
     environment:
       DATABASE_DIALECT: "$DATABASE_DIALECT"
       DATABASE_DRIVER: "$DATABASE_DRIVER"
@@ -15,16 +15,64 @@ services:
       DATABASE_NAME: "$DATABASE_NAME"
     ports:
       - "8000:8000"
+    depends_on:
+      - celery_worker
 
-  ui:
-    container_name: ui
+  celery_worker:
+    container_name: celery_worker
     restart: on-failure
     build:
       context: .
-      dockerfile: docker/ui.dockerfile
-    environment:
-      BACKEND_URL: "${BACKEND_URL:-http://backend:8000}"
-    ports:
-      - "8501:8501"
+      dockerfile: docker/celery.dockerfile
     depends_on:
-      - backend
+      - redis
+        
+#  celery_beat:
+#    container_name: celery_beat
+#    restart: on-failure
+
+#  celery_exporter:
+#    container_name: celery_exporter
+#    restart: on-failure
+
+  flower:
+    image: mher/flower:2.0
+    container_name: flower
+    environment:
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL:-redis://redis:6379/0}"
+      RESULT_BACKEND: "${CELERY_RESULT_BACKEND:-redis://redis:6379/1}"
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:8.2.1
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  prometheus:
+    image: prom/prometheus:v3.6.0-rc.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus:/prometheus
+    depends_on:
+      - api
+      - celery_worker
+
+#  ui:
+#    container_name: ui
+#    restart: on-failure
+#    build:
+#      context: .
+#      dockerfile: docker/ui.dockerfile
+#    environment:
+#      BACKEND_URL: "${BACKEND_URL:-http://backend:8000}"
+#    ports:
+#      - "8501:8501"
+#    depends_on:
+#      - backend

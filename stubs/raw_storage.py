@@ -2,7 +2,6 @@ import os
 import shutil
 
 from services import RawStorage
-from config import settings
 
 
 class FileRawStorage(RawStorage):
@@ -10,11 +9,7 @@ class FileRawStorage(RawStorage):
     Заглушка хранилища сырых файлов для локальных тестов и разработки.
     """
 
-    def __init__(
-        self,
-        *,
-        directory: str = settings.stub.raw_storage_path,
-    ):
+    def __init__(self, directory: str):
         """
         Проверяет, что `directory` является путем к директории (оканчивается слешем),
         создает её при необходимости.
@@ -29,6 +24,16 @@ class FileRawStorage(RawStorage):
         self.directory: str = directory
         os.makedirs(self.directory, exist_ok=True)
 
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        return path.lstrip("/")
+
+    def _build_full_path(self, path: str) -> str:
+        return os.path.join(
+            self.directory,
+            self._normalize_path(path),
+        )
+
     def save(self, file_bytes: bytes, path: str) -> None:
         """
         Сохраняет бинарные данные в файл относительно `self.directory`.
@@ -39,7 +44,7 @@ class FileRawStorage(RawStorage):
         :type path: str
         """
 
-        full_path: str = os.path.join(self.directory, path.lstrip("/"))
+        full_path: str = self._build_full_path(path)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, "wb") as file:
             file.write(file_bytes)
@@ -54,7 +59,7 @@ class FileRawStorage(RawStorage):
         :rtype: bytes
         """
 
-        full_path: str = os.path.join(self.directory, path.lstrip("/"))
+        full_path: str = self._build_full_path(path)
         with open(full_path, "rb") as file:
             return file.read()
 
@@ -67,7 +72,7 @@ class FileRawStorage(RawStorage):
         :type path: str
         """
 
-        full_path: str = os.path.join(self.directory, path.lstrip("/"))
+        full_path: str = self._build_full_path(path)
         if os.path.isdir(full_path):
             shutil.rmtree(full_path)
         elif os.path.isfile(full_path):
@@ -83,5 +88,5 @@ class FileRawStorage(RawStorage):
         :rtype: bool
         """
 
-        full_path: str = os.path.join(self.directory, path.lstrip("/"))
+        full_path: str = self._build_full_path(path)
         return os.path.isfile(full_path)

@@ -49,7 +49,4 @@ COPY --from=builder /app/.venv .venv
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-EXPOSE 8000
-
-# run celery
-#CMD ["gunicorn", "api.main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+CMD ["celery", "-A", "tasks.main.app", "worker", "--concurrency", "4", "&", "celery", "-A", "tasks.main.app", "beat"]
