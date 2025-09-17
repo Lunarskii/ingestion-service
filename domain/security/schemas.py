@@ -1,20 +1,15 @@
 from pydantic import ConfigDict
 
-from schemas.base import BaseSchema
-
-
-class KeycloakError(Exception):
-    """Thrown if any response of keycloak does not match our expectation
-
-    Attributes:
-        status_code (int): The status code of the response received
-        reason (str): The reason why the requests did fail
-    """
-
-    def __init__(self, status_code: int, reason: str):
-        self.status_code = status_code
-        self.reason = reason
-        super().__init__(f"HTTP {status_code}: {reason}")
+from domain.security.exceptions import (
+    status,
+    KeycloakError,
+)
+from schemas import (
+    BaseSchema,
+    BaseDTO,
+    IDMixin,
+    CreatedAtMixin,
+)
 
 
 class OIDCUser(BaseSchema):
@@ -46,14 +41,11 @@ class OIDCUser(BaseSchema):
     def roles(self) -> list[str]:
         """
         Возвращает роли пользователя.
-
-        Returns:
-            List[str]: If the realm access dict contains roles
         """
         if not self.realm_access and not self.resource_access:
             raise KeycloakError(
-                status_code=404,
-                reason="The 'realm_access' and 'resource_access' sections of the provided access token are missing.",
+                message="В предоставленном access токене отсутствуют поля 'realm_access' и 'resource_access'",
+                status_code=status.HTTP_404_NOT_FOUND,
             )
         roles = []
         if self.realm_access:
@@ -62,21 +54,19 @@ class OIDCUser(BaseSchema):
             roles.extend(self.resource_access[self.azp].get("roles", []))
         if not roles:
             raise KeycloakError(
-                status_code=404,
-                reason="The 'realm_access' and 'resource_access' sections of the provided access token did not "
-                       "contain any 'roles'",
+                message="В предоставленном access токене 'realm_access' и 'resource_access' не содержат 'roles'",
+                status_code=status.HTTP_404_NOT_FOUND,
             )
         return roles
 
+
 class OIDCToken(BaseSchema):
-    """Keycloak representation of a token object
-
-    Attributes:
-        access_token (str): An access token
-        refresh_token (str): An a refresh token, default None
-        id_token (str): An issued by the Authorization Server token id, default None
-    """
-
     access_token: str
     refresh_token: str | None = None
     id_token: str | None = None
+
+
+class APIKeysDTO(BaseDTO, IDMixin, CreatedAtMixin):
+    key_hash: bytes
+    label: str
+    is_active: bool

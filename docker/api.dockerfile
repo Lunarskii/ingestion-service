@@ -45,6 +45,7 @@ COPY infrastructure ./infrastructure
 COPY schemas ./schemas
 COPY services ./services
 COPY stubs ./stubs
+COPY utils ./utils
 COPY --from=builder /app/.venv .venv
 
 ENV PATH="/app/.venv/bin:$PATH"

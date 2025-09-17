@@ -1,5 +1,5 @@
 from typing import Any
-import functools
+from functools import cached_property
 
 import requests
 from fastapi import FastAPI
@@ -34,11 +34,11 @@ class KeycloakClient:
         self.timeout: int = timeout
         self.ssl_verification: bool = ssl_verification
 
-    @functools.cached_property
+    @cached_property
     def realm_uri(self) -> str:
         return f"{self.url}/realms/{self.realm}"
 
-    @functools.cached_property
+    @cached_property
     def openid_configuration(self) -> dict:
         response: requests.Response = requests.get(
             url=f"{self.realm_uri}/.well-known/openid-configuration",
@@ -47,15 +47,15 @@ class KeycloakClient:
         )
         return response.json()
 
-    @functools.cached_property
+    @cached_property
     def authorization_uri(self) -> str | None:
         return self.openid_configuration.get("authorization_endpoint")
 
-    @functools.cached_property
+    @cached_property
     def token_uri(self) -> str | None:
         return self.openid_configuration.get("token_endpoint")
 
-    @functools.cached_property
+    @cached_property
     def login_uri(self) -> str:
         params: dict[str, Any] = {
             "client_id": self.client_id,
@@ -65,11 +65,11 @@ class KeycloakClient:
         }
         return f"{self.authorization_uri}?{urlencode(params)}"
 
-    @functools.cached_property
+    @cached_property
     def logout_uri(self) -> str | None:
         return self.openid_configuration.get("end_session_endpoint")
 
-    @functools.cached_property
+    @cached_property
     def public_key(self) -> str:
         response: requests.Response = requests.get(
             url=self.realm_uri,

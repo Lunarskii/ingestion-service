@@ -35,10 +35,5 @@ app.conf.beat_schedule = {
         "args": (),
     },
 }
-app.autodiscover_tasks(
-    [
-        "tasks.metrics",
-        "domain.document.tasks",
-    ],
-)
+app.autodiscover_tasks(["domain.document.tasks"])
 register_preserializer(PydanticPreserializer, BaseModel)

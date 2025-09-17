@@ -8,6 +8,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
 fastapi = "^0.116.0"
+uvicorn = "^0.35.0"
 gunicorn = "^23.0.0"
 pypdf = "^5.7.0"
 langdetect = "^1.0.9"
@@ -19,7 +20,6 @@ sentence-transformers = "^5.0.0"
 python-multipart = "^0.0.20"
 langchain = "^0.3.26"
 python-magic = "^0.4.27"
-uvicorn = "^0.35.0"
 loguru = "^0.7.3"
 alembic = "^1.16.4"
 asyncpg = "^0.30.0"
@@ -31,11 +31,35 @@ qdrant-client = "^1.15.1"
 pydantic = {extras = ["email"], version = "^2.11.7"}
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 celery = {extras = ["redis"], version = "^5.5.3"}
-flower = "^2.0.1"
-prometheus-client = "^0.22.1"
+bcrypt = "^4.3.0"
 
 [tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"
+
+[tool.poetry.group.celery.dependencies]
+pypdf = "^5.7.0"
+langdetect = "^1.0.9"
+python-docx = "^1.2.0"
+python-dateutil = "^2.9.0.post0"
+pydantic-settings = "^2.10.1"
+tokenizers = "0.20.2"
+sentence-transformers = "^5.0.0"
+python-multipart = "^0.0.20"
+langchain = "^0.3.26"
+python-magic = "^0.4.27"
+loguru = "^0.7.3"
+asyncpg = "^0.30.0"
+sqlalchemy = "^2.0.42"
+mammoth = "^1.10.0"
+weasyprint = "^66.0"
+minio = "^7.2.16"
+qdrant-client = "^1.15.1"
+pydantic = {extras = ["email"], version = "^2.11.7"}
+celery = {extras = ["redis"], version = "^5.5.3"}
+
+[tool.poetry.group.celery-exporter.dependencies]
+prometheus-client = "^0.22.1"
+celery = {extras = ["redis"], version = "^5.5.3"}
 
 [tool.poetry.group.dev.dependencies]
 aiosqlite = "^0.21.0"
@@ -46,6 +70,7 @@ pytest-asyncio = "^1.1.0"
 black = "^25.1.0"
 ruff = "^0.12.2"
 reportlab = "^4.4.3"
+flower = "^2.0.1"
 
 [build-system]
 requires = ["poetry-core"]

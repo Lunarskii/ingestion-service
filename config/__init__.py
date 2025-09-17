@@ -1,3 +1,5 @@
+from functools import cached_property
+
 from config.settings import (
     APISettings as _APISettings,
     DatabaseSettings as _DatabaseSettings,
@@ -16,14 +18,37 @@ class Settings:
     Настройки приложения.
     """
 
-    api = _APISettings()
-    db = _DatabaseSettings()
-    document_restriction = _DocumentRestrictionSettings()
-    embedding = _EmbeddingSettings()
-    text_splitter = _TextSplitterSettings()
-    datetime = _DatetimeSettings()
-    keycloak = _KeycloakSettings()
-    celery = _CelerySettings()
+    @cached_property
+    def api(self) -> _APISettings:
+        return _APISettings()
+
+    @cached_property
+    def db(self) -> _DatabaseSettings:
+        return _DatabaseSettings()
+
+    @cached_property
+    def document_restriction(self) -> _DocumentRestrictionSettings:
+        return _DocumentRestrictionSettings()
+
+    @cached_property
+    def embedding(self) -> _EmbeddingSettings:
+        return _EmbeddingSettings()
+
+    @cached_property
+    def text_splitter(self) -> _TextSplitterSettings:
+        return _TextSplitterSettings()
+
+    @cached_property
+    def datetime(self) -> _DatetimeSettings:
+        return _DatetimeSettings()
+
+    @cached_property
+    def keycloak(self) -> _KeycloakSettings:
+        return _KeycloakSettings()
+
+    @cached_property
+    def celery(self) -> _CelerySettings:
+        return _CelerySettings()
 
 
 settings = Settings()

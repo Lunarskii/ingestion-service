@@ -1,105 +1,82 @@
-from typing import Iterable
-import time
-import logging
-import threading
-from urllib.parse import urlparse
+from typing import Any
+from collections import defaultdict
 
-from redis import Redis
 from celery import Celery
-import requests
+from celery.app.control import Inspect
+from kombu.connection import Connection
+from amqp import ChannelError
+from amqp.protocol import queue_declare_ok_t
 
 from celery_exporter import metrics
-from celery_exporter.state import events_state as _events_state
-from config import settings
+from config import logger
 
 
-def _get_redis_client(broker_url: str) -> Redis:
-    return Redis.from_url(broker_url, decode_responses=True)
+def collect_queues_metrics(
+    app: Celery,
+    connection: Connection,
+) -> None:
+    transport = connection.info()["transport"]
+    expected_transports: set[str] = {"redis", "rediss", "amqp", "amqps", "memory", "sentinel"}
+
+    if transport not in expected_transports:
+        logger.warning(
+            f"Отслеживание длины очереди недоступно",
+            transport=transport,
+            expected_transports=expected_transports,
+        )
+
+    inspect: Inspect = app.control.inspect()
+
+    stats = inspect.stats() or {}
+    concurrency_per_worker = {
+        worker: len(stats_["pool"].get("processes", []))
+        for worker, stats_ in stats.items()
+    }
+    processes_per_queue: dict[str, int] = defaultdict(int)
+    workers_per_queue: dict[str, int] = defaultdict(int)
+
+    queues: set[str] = set()
+    active_queues: dict[str, Any] = inspect.active_queues() or {}
+
+    for worker_name, queue_info_list in active_queues.items():
+        for queue_info in queue_info_list:
+            queue: str = queue_info["name"]
+            workers_per_queue[queue] += 1
+            processes_per_queue[queue] += concurrency_per_worker.get(worker_name, 0)
+            queues.add(queue)
+
+    for queue in queues:
+        metrics.active_worker_count.labels(queue).set(workers_per_queue[queue])
+        metrics.active_process_count.labels(queue).set(processes_per_queue[queue])
+
+        if transport in {"amqp", "amqps", "memory"}:
+            queue_info: queue_declare_ok_t | None = _rabbitmq_queue_info(connection, queue)
+            if queue_info:
+                consumer_count: int = queue_info.consumer_count
+                queue_length: int = queue_info.message_count
+            else:
+                consumer_count: int = 0
+                queue_length: int = 0
+
+            metrics.active_consumer_count.labels(queue).set(consumer_count)
+            metrics.queue_depth.labels(queue).set(queue_length)
+        elif transport in {"redis", "rediss", "sentinel"}:
+            queue_length: int = _redis_queue_length(connection, queue)
+            metrics.queue_depth.labels(queue).set(queue_length)
 
 
-def _get_redis_queue_length(redis_client: Redis, queue_name: str) -> int:
+def _rabbitmq_queue_info(connection: Connection, queue: str) -> queue_declare_ok_t | None:
     try:
-        return redis_client.llen(queue_name)
+        return connection.default_channel.queue_declare(
+            queue=queue,
+            passive=True,
+        )
+    except ChannelError as e:
+        raise e
+
+
+def _redis_queue_length(connection: Connection, queue: str) -> int:
+    try:
+        return connection.channel().client.llen(queue)
     except Exception:
         return 0
-
-
-def collect_redis_queues(redis_url: str, queues: Iterable[str]) -> None:
-    redis_client: Redis = _get_redis_client(redis_url)
-    for queue in queues:
-        length: int = _get_redis_queue_length(redis_client, queue)
-        metrics.queue_depth.labels(queue).set(length)
-
-
-# ---- RabbitMQ collector via Management API ----
-def get_rabbit_queue_stats(mgmt_url: str, vhost: str, queue_name: str, user: str, pwd: str) -> dict:
-    url = f"{mgmt_url}/api/queues/{requests.utils.quote(vhost, safe='')}/{requests.utils.quote(queue_name, safe='')}"
-    try:
-        r = requests.get(url, auth=(user, pwd), timeout=5)
-        r.raise_for_status()
-        js = r.json()
-        return {
-            "messages_ready": js.get("messages_ready", 0),
-            "messages_unacknowledged": js.get("messages_unacknowledged", 0),
-            "messages_total": js.get("messages", 0),
-            "consumers": js.get("consumers", 0),
-        }
-    except Exception:
-        logger.exception("Failed to fetch RabbitMQ stats for %s", queue_name)
-        return {"messages_ready": 0, "messages_unacknowledged": 0, "messages_total": 0, "consumers": 0}
-
-def collect_rabbit_queues(mgmt_url: str, vhost: str, queues: Iterable[str], user: str, pwd: str):
-    for q in queues:
-        stats = get_rabbit_queue_stats(mgmt_url, vhost, q, user, pwd)
-        metrics.queue_depth.labels(queue_name=q).set(stats["messages_total"])
-        metrics.active_consumer_count.labels(queue_name=q).set(stats["consumers"])
-        # дополнительно set unack/ready в отдельные gauges при наличии
-
-# ---- Celery inspect-based collector ----
-def collect_inspect_counts(app: Celery):
-    ins = app.control.inspect(timeout=2.0)
-    try:
-        active = ins.active() or {}
-        reserved = ins.reserved() or {}
-        # суммируем количество активных / резервных задач по worker
-        for worker, tasks in active.items():
-            metrics.worker_active_tasks_count.labels(worker).set(len(tasks))
-        # пример: считаем total tasks per worker per status (simplified)
-        # Можно разбить по task_name/worker/status как тебе нужно
-    except Exception:
-        logger.exception("Celery inspect failed")
-
-# ---- Poll loop that orchestrates collectors ----
-def _poll_loop(stop_event: threading.Event):
-    poll_interval = getattr(settings, "metrics_poll_interval", 5)
-    broker = settings.celery.broker_url
-    parsed = urlparse(broker)
-    use_redis = parsed.scheme.startswith("redis")
-    # queues to monitor можно брать из config
-    queues = settings.monitor_queues
-
-    # rabbit config if needed
-    mgmt = getattr(settings, "rabbit_mgmt_url", None)
-    vhost = getattr(settings, "rabbit_vhost", "/")
-    rabbit_user = getattr(settings, "rabbit_user", None)
-    rabbit_pwd = getattr(settings, "rabbit_pwd", None)
-
-    app = Celery()  # или импортируй существующий app
-
-    while not stop_event.is_set():
-        try:
-            if use_redis:
-                collect_redis_queues(broker, queues)
-            elif mgmt:
-                collect_rabbit_queues(mgmt, vhost, queues, rabbit_user, rabbit_pwd)
-            # общие collectors
-            collect_inspect_counts(app)
-        except Exception:
-            logger.exception("Collector loop failed")
-        stop_event.wait(poll_interval)
-
-def start_pollers_in_thread() -> threading.Event:
-    stop = threading.Event()
-    t = threading.Thread(target=_poll_loop, args=(stop,), daemon=True)
-    t.start()
-    return stop

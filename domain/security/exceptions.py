@@ -5,15 +5,15 @@ from exceptions.base import (
 
 
 class UnauthorizedError(ApplicationError):
-    message = 'Unauthorized'
+    message = 'Не авторизован'
     error_code = "unauthorized"
     status_code = status.HTTP_401_UNAUTHORIZED
-    headers = {"WWW-Authenticate": "Bearer"}
 
 
-class InvalidTokenError(UnauthorizedError):
-    message = "Invalid token"
-    error_code = "invalid_token"
+class InvalidKeyError(UnauthorizedError):
+    message = "Недействительный ключ авторизации"
+    error_code = "invalid_key"
+    status_code = status.HTTP_403_FORBIDDEN
 
 
 class InvalidTokenTypeError(UnauthorizedError):
@@ -33,3 +33,8 @@ class TokenExpiredError(UnauthorizedError):
 
 class SignatureHasExpired(UnauthorizedError):
     ...
+
+
+class KeycloakError(ApplicationError):
+    message = "Ошибка при работе с Keycloak"
+    error_code = "keycloak_error"

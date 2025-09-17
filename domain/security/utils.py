@@ -6,6 +6,7 @@ from typing import (
 )
 
 import jwt
+import bcrypt
 
 from domain.security.schemas import OIDCUser
 from utils.datetime import universal_time
@@ -69,3 +70,20 @@ def decode_jwt(
         **kwargs,
     )
     return OIDCUser.model_validate(decoded)
+
+
+def hash_value(value: str) -> bytes:
+    """
+    Примечание: Ограничение 72 байта. Если значение больше, то будет обрезано.
+    """
+
+    salt: bytes = bcrypt.gensalt()
+    value_bytes: bytes = value.encode()
+    return bcrypt.hashpw(value_bytes, salt)
+
+
+def validate_value(
+    plain_value: str,
+    hashed_value: bytes,
+) -> bool:
+    return bcrypt.checkpw(plain_value.encode(), hashed_value)
