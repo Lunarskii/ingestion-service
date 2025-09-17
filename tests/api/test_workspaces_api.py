@@ -11,14 +11,14 @@ import pytest
 
 from tests.conftest import ValueGenerator
 from tests.mock_utils import assert_called_once_with
-from api.main import app
-from api.v1.dependencies import (
+from app.main import app
+from app.api.v1 import (
     raw_storage_dependency,
     vector_store_dependency,
 )
-from domain.workspace.schemas import WorkspaceDTO
-from domain.workspace.repositories import WorkspaceRepository
-from domain.workspace.dependencies import workspace_uow_dependency
+from app.domain import WorkspaceDTO
+from app.domain import WorkspaceRepository
+from app.domain import workspace_uow_dependency
 
 
 mock_workspace_repo = create_autospec(WorkspaceRepository, instance=True)

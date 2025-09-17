@@ -1,0 +1,205 @@
+import uuid
+from enum import Enum
+from typing import Annotated
+
+from pydantic import Field
+
+from app.schemas import (
+    BaseSchema,
+    BaseDTO,
+)
+from app.schemas import (
+    IDMixin,
+    UUIDMixin,
+    CreatedAtMixin,
+)
+
+
+class ChatRole(str, Enum):
+    """
+    Перечисление ролей участников чата.
+
+    :cvar user: Пользователь.
+    :vartype user: str
+    :cvar assistant: Ассистент/LLM
+    :vartype assistant: str
+    """
+
+    user = "user"
+    assistant = "assistant"
+
+
+class ChatMessageSource(BaseSchema):
+    """
+    Схема источника (фрагмента документа).
+
+    :ivar source_id: Идентификатор источника (документа).
+    :vartype source_id: str
+    :ivar document_name: Имя документа.
+    :vartype document_name: str
+    :ivar page_start: Страница, на которой находится начало источника (фрагмента документа).
+    :vartype page_start: int
+    :ivar page_end: Страница, на которой находится конец источника (фрагмента документа).
+    :vartype page_end: int
+    :ivar snippet: Фрагмент.
+    :vartype snippet: str
+    """
+
+    source_id: str
+    document_name: str
+    page_start: int
+    page_end: int
+    snippet: str
+
+
+class ChatMessage(BaseSchema, CreatedAtMixin):
+    """
+    Схема представления сообщения чат-сессии.
+
+    :ivar id: Идентификатор сообщения (UUID в строковом виде).
+    :vartype id: str
+    :ivar session_id: Идентификатор чат-сессии, к которой относится сообщение.
+    :vartype session_id: str
+    :ivar role: Роль автора (:class:`ChatRole`).
+    :vartype role: ChatRole
+    :ivar content: Текст сообщения.
+    :vartype content: str
+    :ivar sources: Список источников, связанных с сообщением (если имеются).
+    :vartype sources: list[ChatMessageSource] | None
+    :ivar created_at: Время создания сообщения.
+    :vartype created_at: datetime
+    """
+
+    # TODO скорее всего нужно убрать default_factory, потому что эта схема возвращает уже существующие данные из DTO
+    id: Annotated[
+        str,
+        Field(
+            serialization_alias="message_id",
+            default_factory=lambda: str(uuid.uuid4()),  # type: ignore
+        ),
+    ]
+    session_id: str
+    role: ChatRole
+    content: str
+    sources: list[ChatMessageSource] = []
+
+
+class ChatSession(BaseSchema, CreatedAtMixin):
+    """
+    Схема представления чат-сессии.
+
+    :ivar id: Идентификатор сессии (UUID в строковом виде).
+    :vartype id: str
+    :ivar workspace_id: Идентификатор рабочего пространства, к которому относится сессия.
+    :vartype workspace_id: str
+    :ivar created_at: Время создания сессии.
+    :vartype created_at: datetime
+    """
+
+    id: Annotated[
+        str,
+        Field(
+            serialization_alias="session_id",
+            default_factory=lambda: str(uuid.uuid4()),  # type: ignore
+        ),
+    ]
+    workspace_id: str
+
+
+class RAGRequest(BaseSchema):
+    """
+    Схема запроса к RAGService.
+
+    :ivar question: Текст вопроса пользователя.
+    :vartype question: str
+    :ivar workspace_id: Идентификатор рабочего пространства.
+    :vartype workspace_id: str
+    :ivar session_id: Идентификатор сессии.
+    :vartype session_id: str | None
+    :ivar top_k: Количество релевантных источников (фрагментов) для поиска в RAG.
+    :vartype top_k: int
+    """
+
+    question: str
+    workspace_id: str
+    session_id: str | None = None
+    top_k: int = 3
+
+
+class RAGResponse(BaseSchema):
+    """
+    Схема ответа от RAGService.
+
+    :ivar answer: Сгенерированный ответ на вопрос.
+    :vartype answer: str
+    :ivar sources: Список источников (фрагментов), на которых основан ответ.
+    :vartype sources: list[Source]
+    :ivar session_id: Идентификатор сессии.
+    :vartype session_id: str
+    """
+
+    answer: str
+    sources: list[ChatMessageSource]
+    session_id: str
+
+
+class ChatSessionDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
+    """
+    DTO (Data Transfer Object) для представления чат-сессии.
+
+    :ivar id: Идентификатор сессии (UUID в строковом виде).
+    :vartype id: str
+    :ivar workspace_id: Идентификатор рабочего пространства, к которому относится сессия.
+    :vartype workspace_id: str
+    :ivar created_at: Время создания сессии.
+    :vartype created_at: datetime
+    """
+
+    workspace_id: str
+
+
+class ChatMessageDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
+    """
+    DTO (Data Transfer Object) для представления сообщения чата.
+
+    :ivar id: Идентификатор сообщения (UUID в строковом виде).
+    :vartype id: str
+    :ivar session_id: Идентификатор чат-сессии, к которой относится сообщение.
+    :vartype session_id: str
+    :ivar role: Роль автора (:class:`ChatRole`).
+    :vartype role: ChatRole
+    :ivar content: Текст сообщения.
+    :vartype content: str
+    :ivar created_at: Время создания сообщения.
+    :vartype created_at: datetime
+    """
+
+    session_id: str
+    role: ChatRole
+    content: str
+
+
+class ChatMessageSourceDTO(BaseDTO, IDMixin):
+    """
+    DTO (Data Transfer Object) для представления схемы источника (фрагмента документа).
+
+    :ivar source_id: Идентификатор источника (UUID в строковом виде).
+    :vartype source_id: str
+    :ivar message_id: Идентификатор сообщения (UUID в строковом виде).
+    :vartype message_id: str
+    :ivar document_name: Имя документа.
+    :vartype document_name: str
+    :ivar page_start: Страница, на которой находится начало источника (фрагмента документа).
+    :vartype page_start: int
+    :ivar page_end: Страница, на которой находится конец источника (фрагмента документа).
+    :vartype page_end: int
+    :ivar snippet: Фрагмент.
+    :vartype snippet: str
+    """
+
+    source_id: str
+    message_id: str
+    document_name: str
+    page_start: int
+    page_end: int
+    snippet: str

@@ -35,17 +35,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+COPY app ./app
 WORKDIR /app
-
-COPY api ./api
-COPY config ./config
-COPY domain ./domain
-COPY exceptions ./exceptions
-COPY infrastructure ./infrastructure
-COPY schemas ./schemas
-COPY services ./services
-COPY stubs ./stubs
-COPY utils ./utils
 COPY --from=builder /app/.venv .venv
 
 ENV PATH="/app/.venv/bin:$PATH"

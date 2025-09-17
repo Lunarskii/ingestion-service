@@ -14,31 +14,31 @@ import docx
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.pagesizes import A4
 
-from domain.document.service import DocumentService
-from domain.document.schemas import (
+from app.domain import DocumentService
+from app.domain import (
     File,
     Document,
     DocumentStatus,
 )
-from domain.chat.service import (
+from app.domain import (
     RAGService,
 )
-from domain.chat.repositories import (
+from app.domain import (
     ChatSessionRepository,
     ChatMessageRepository,
 )
-from domain.workspace.repositories import WorkspaceRepository
-from services import (
+from app.domain import WorkspaceRepository
+from app.services import (
     RawStorage,
     VectorStore,
 )
-from domain.embedding import (
+from app.domain import (
     VectorMetadata,
     Vector,
 )
-from domain.database.uow import UnitOfWork
-from domain.embedding import EmbeddingModel
-from domain.text_splitter import TextSplitter
+from app.domain import UnitOfWork
+from app.domain import EmbeddingModel
+from app.domain import TextSplitter
 
 
 class ValueGenerator:

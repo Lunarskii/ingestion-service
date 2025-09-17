@@ -1,8 +1,8 @@
 import pytest
 
 from tests.conftest import ValueGenerator
-from infrastructure.storage_minio import MinIORawStorage
-from config import settings
+from app.infrastructure import MinIORawStorage
+from app.config import settings
 
 
 @pytest.fixture

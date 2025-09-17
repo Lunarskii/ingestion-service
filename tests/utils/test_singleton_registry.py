@@ -3,7 +3,7 @@ import asyncio
 import pytest
 import pytest_asyncio
 
-from utils.singleton import singleton_registry
+from app.utils import singleton_registry
 
 
 class TestSingletonRegistry:

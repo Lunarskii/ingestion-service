@@ -11,7 +11,7 @@ from celery_exporter import (
     collectors,
 )
 from tasks.main import app
-from config import logger
+from app.config import logger
 
 
 class Exporter:
@@ -26,6 +26,7 @@ class Exporter:
         protocol: int = ssl.PROTOCOL_TLS_SERVER,
         client_auth_required: bool = False,
     ):
+        print(f"{host}:{port}")
         try:
             start_http_server(
                 port=port,
@@ -44,7 +45,7 @@ class Exporter:
                 prometheus_port=port,
             )
         except Exception as e:
-            logger.exception(
+            logger.error(
                 "Не удалось запустить HTTP-сервер Prometheus-метрик",
                 error_message=str(e),
             )

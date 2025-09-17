@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from api.main import app
+from app.main import app
 
 
 async def _fake_to_thread(func, *args, **kwargs):

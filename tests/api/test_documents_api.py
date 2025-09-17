@@ -15,24 +15,24 @@ import pytest
 
 from tests.conftest import ValueGenerator
 from tests.mock_utils import assert_called_once_with
-from api.main import app
-from api.v1.dependencies import (
+from app.main import app
+from app.api.v1 import (
     document_service_dependency,
     raw_storage_dependency,
 )
-from api.v1.documents.dependencies import validate_upload_file
-from api.v1.documents.exceptions import (
+from app.api.v1.documents.dependencies import validate_upload_file
+from app.api.v1.documents.exceptions import (
     UnsupportedFileTypeError,
     FileTooLargeError,
     DocumentNotFoundError,
 )
-from domain.document.schemas import (
+from app.domain import (
     DocumentDTO,
     Document,
     DocumentStatus,
 )
-from domain.document.repositories import DocumentRepository
-from domain.document.dependencies import document_uow_dependency
+from app.domain import DocumentRepository
+from app.domain import document_uow_dependency
 
 
 mock_document_repo = create_autospec(DocumentRepository, instance=True)

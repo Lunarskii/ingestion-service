@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from utils.datetime import (
+from app.utils import (
     parse_iso8824_date,
     parse_date,
 )

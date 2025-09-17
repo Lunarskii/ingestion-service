@@ -2,12 +2,12 @@ import pytest
 import numpy
 
 from tests.conftest import ValueGenerator
-from domain.embedding import (
+from app.domain import (
     EmbeddingModel,
     Vector,
     VectorMetadata,
 )
-from config import settings
+from app.config import settings
 
 
 @pytest.fixture

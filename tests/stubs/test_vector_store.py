@@ -4,8 +4,8 @@ import json
 import pytest
 
 from tests.conftest import ValueGenerator
-from stubs import JSONVectorStore
-from domain.embedding.schemas import (
+from app.stubs import JSONVectorStore
+from app.domain import (
     VectorMetadata,
     Vector,
 )

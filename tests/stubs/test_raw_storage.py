@@ -3,7 +3,7 @@ import os
 import pytest
 
 from tests.conftest import ValueGenerator
-from stubs import FileRawStorage
+from app.stubs import FileRawStorage
 
 
 class TestFileRawStorage:

@@ -9,21 +9,21 @@ import pytest
 
 from tests.conftest import ValueGenerator
 from tests.mock_utils import assert_called_once_with
-from domain.document.service import DocumentService
-from domain.document.schemas import (
+from app.domain import DocumentService
+from app.domain import (
     File,
     DocumentStatus,
 )
-from domain.document.repositories import DocumentRepository
-from domain.embedding import (
+from app.domain import DocumentRepository
+from app.domain import (
     VectorMetadata,
     Vector,
 )
-from domain.text_splitter import (
+from app.domain import (
     Chunk,
     PageSpan,
 )
-from domain.extraction import (
+from app.domain import (
     extract as extract_from_document,
     Page,
     ExtractedInfo,

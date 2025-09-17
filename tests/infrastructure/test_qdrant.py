@@ -1,9 +1,9 @@
 import pytest
 
 from tests.conftest import ValueGenerator
-from domain.embedding import Vector
-from infrastructure.vectorstore_qdrant import QdrantVectorStore
-from config import settings
+from app.domain import Vector
+from app.infrastructure import QdrantVectorStore
+from app.config import settings
 
 
 @pytest.fixture

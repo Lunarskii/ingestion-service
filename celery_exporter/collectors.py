@@ -8,7 +8,7 @@ from amqp import ChannelError
 from amqp.protocol import queue_declare_ok_t
 
 from celery_exporter import metrics
-from config import logger
+from app.config import logger
 
 
 def collect_queues_metrics(

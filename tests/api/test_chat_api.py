@@ -11,10 +11,10 @@ import pytest
 
 from tests.conftest import ValueGenerator
 from tests.mock_utils import assert_called_once_with
-from api.main import app
-from api.v1.dependencies import rag_service_dependency
-from domain.chat.dependencies import chat_uow_dependency
-from domain.chat.schemas import (
+from app.main import app
+from app.api.v1 import rag_service_dependency
+from app.domain import chat_uow_dependency
+from app.domain import (
     RAGRequest,
     RAGResponse,
     ChatSessionDTO,
@@ -25,7 +25,7 @@ from domain.chat.schemas import (
     ChatMessageSourceDTO,
     ChatMessageSource,
 )
-from domain.chat.repositories import (
+from app.domain import (
     ChatSessionRepository,
     ChatMessageRepository,
     ChatMessageSourceRepository,

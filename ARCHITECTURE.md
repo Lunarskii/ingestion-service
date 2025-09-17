@@ -352,22 +352,23 @@ sequenceDiagram
 - В этом файле создать класс `S3RawStorage`, который реализует протокол `RawStorage` (т.е. имеет методы интерфейса `RawStorage`).
 
 ```python
-from services import RawStorage
+from app.services import RawStorage
+
 
 class S3RawStorage(RawStorage):
-   def __init__(self, bucket_name: str):
-      self.s3_client = ...
-      self.bucket_name = bucket_name
+  def __init__(self, bucket_name: str):
+    self.s3_client = ...
+    self.bucket_name = bucket_name
 
-   def save(self, file_bytes: bytes, path: str) -> None:
-      self.s3_client.put(
-         bucket=self.bucket_name, 
-         key=path, 
-         data=file_bytes,
-      )
+  def save(self, file_bytes: bytes, path: str) -> None:
+    self.s3_client.put(
+      bucket=self.bucket_name,
+      key=path,
+      data=file_bytes,
+    )
 
-     # ...
-     # другие методы
+  # ...
+  # другие методы
 ```
 
 2. **Обновить конфигурацию:**
@@ -379,12 +380,14 @@ class S3Settings(BaseSettings):
 ```
 
 - Добавить инициализацию конфига в `config/__init__.py`
+
 ```python
-from config.settings import (
+from app.config.settings import (
     APISettings as _APISettings,
     # ...
     S3Settings as _S3Settings,
 )
+
 
 class Settings:
     api = _APISettings()
@@ -397,29 +400,30 @@ class Settings:
 
 ```python
 from typing import Coroutine
-from config import settings
-from stubs import FileRawStorage
-from infrastructure.s3_storage import S3RawStorage # Импортируем новый класс
+from app.config import settings
+from app.stubs import FileRawStorage
+from app.infrastructure import S3RawStorage  # Импортируем новый класс
+
 
 async def on_startup_event_handler(app: "FastAPI") -> None:
-    def __init_object(cls, *args, **kwargs) -> Coroutine:
-        ...
-  
-    if settings.minio.is_configured:
-        ...
-    elif settings.s3.s3_bucket:
-        raw_storage_coro = __init_object(
-            S3RawStorage,
-            # любые другие keyword аргументы, если есть в конфиге
-            bucket_name=settings.s3.s3_bucket,
-        )
-    else:
-        raw_storage_coro = __init_object(FileRawStorage)
+  def __init_object(cls, *args, **kwargs) -> Coroutine:
+    ...
 
-    tasks: list[Coroutine] = [
-        raw_storage_coro,
-        # ...
-    ]
+  if settings.minio.is_configured:
+    ...
+  elif settings.s3.s3_bucket:
+    raw_storage_coro = __init_object(
+      S3RawStorage,
+      # любые другие keyword аргументы, если есть в конфиге
+      bucket_name=settings.s3.s3_bucket,
+    )
+  else:
+    raw_storage_coro = __init_object(FileRawStorage)
+
+  tasks: list[Coroutine] = [
+    raw_storage_coro,
+    # ...
+  ]
 ```
 
 Теперь, просто изменив переменную окружения `S3_BUCKET=bucket_name`, все приложение начнет использовать 
@@ -434,42 +438,44 @@ S3 вместо локального хранилища, без единого �
 - В этом классе реализовать метод `_extract(...)`
 
 ```python
-from domain.extraction.schemas import (
-    Page,
-    ExtractedInfo,
+from app.domain.extraction import (
+  Page,
+  ExtractedInfo,
 )
 
-class XlsxExtractor(TextExtractor):
-    def _extract(self, document: IO[bytes]) -> ExtractedInfo:
-        document = openpyxl.load_workbook(document)
-        metadata = document.properties
-        pages: list[Page] = ... # текст, разбитый постранично
 
-        return ExtractedInfo(
-            pages=pages,
-            document_page_count=len(pages),
-            author=metadata.creator,
-            creation_date=metadata.created,
-        )
+class XlsxExtractor(TextExtractor):
+  def _extract(self, document: IO[bytes]) -> ExtractedInfo:
+    document = openpyxl.load_workbook(document)
+    metadata = document.properties
+    pages: list[Page] = ...  # текст, разбитый постранично
+
+    return ExtractedInfo(
+      pages=pages,
+      document_page_count=len(pages),
+      author=metadata.creator,
+      creation_date=metadata.created,
+    )
 ```
    
 2. **Обновить фабрику экстракторов `domain/extraction/factory.py`:**
 - Добавить в `ExtractorFactory._map` новый экстрактор, необходимый для обработки документов данного типа, чтобы функция `ExtractorFactory.get_extractor(...)` возвращала его, когда потребуется.
 
 ```python
-from domain.extraction.base import (
-    TextExtractor,
-    PdfExtractor,
-    # ...
-    XlsxExtractor,
+from app.domain.extraction import (
+  TextExtractor,
+  PdfExtractor,
+  # ...
+  XlsxExtractor,
 )
 
+
 class ExtractorFactory:
-    _map: dict[str, type[TextExtractor]] = {
-        "pdf": PdfExtractor,
-        # ...
-        "xlsx": XlsxExtractor,
-    }
+  _map: dict[str, type[TextExtractor]] = {
+    "pdf": PdfExtractor,
+    # ...
+    "xlsx": XlsxExtractor,
+  }
 ```
    
 Теперь из документов типа XLSX тоже можно будет извлечь текст и необходимые метаданные.

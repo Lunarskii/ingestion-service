@@ -6,13 +6,7 @@ services:
       context: .
       dockerfile: docker/api.dockerfile
     environment:
-      DATABASE_DIALECT: "$DATABASE_DIALECT"
-      DATABASE_DRIVER: "$DATABASE_DRIVER"
-      DATABASE_USERNAME: "$DATABASE_USERNAME"
-      DATABASE_PASSWORD: "$DATABASE_PASSWORD"
-      DATABASE_HOST: "$DATABASE_HOST"
-      DATABASE_PORT: "$DATABASE_PORT"
-      DATABASE_NAME: "$DATABASE_NAME"
+      DATABASE_URL: "${DATABASE_URL}"
     ports:
       - "8000:8000"
     depends_on:
@@ -23,17 +17,27 @@ services:
     restart: on-failure
     build:
       context: .
-      dockerfile: docker/celery.dockerfile
+      dockerfile: docker/celery_worker.dockerfile
     depends_on:
       - redis
         
-#  celery_beat:
-#    container_name: celery_beat
-#    restart: on-failure
+  celery_beat:
+    container_name: celery_beat
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: docker/celery_beat.dockerfile
+    depends_on:
+      - celery_worker
 
-#  celery_exporter:
-#    container_name: celery_exporter
-#    restart: on-failure
+  celery_exporter:
+    container_name: celery_exporter
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: docker/celery_exporter.dockerfile
+    ports:
+      - "9000:9000"
 
   flower:
     image: mher/flower:2.0
@@ -59,10 +63,9 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus:/prometheus
+      - prometheus_data:/prometheus
     depends_on:
-      - api
-      - celery_worker
+      - celery_exporter
 
 #  ui:
 #    container_name: ui
@@ -76,3 +79,6 @@ services:
 #      - "8501:8501"
 #    depends_on:
 #      - backend
+
+volumes:
+  prometheus_data:

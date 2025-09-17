@@ -36,7 +36,7 @@ bcrypt = "^4.3.0"
 [tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"
 
-[tool.poetry.group.celery.dependencies]
+[tool.poetry.group.celery-worker.dependencies]
 pypdf = "^5.7.0"
 langdetect = "^1.0.9"
 python-docx = "^1.2.0"
@@ -55,6 +55,9 @@ weasyprint = "^66.0"
 minio = "^7.2.16"
 qdrant-client = "^1.15.1"
 pydantic = {extras = ["email"], version = "^2.11.7"}
+celery = {extras = ["redis"], version = "^5.5.3"}
+
+[tool.poetry.group.celery-beat.dependencies]
 celery = {extras = ["redis"], version = "^5.5.3"}
 
 [tool.poetry.group.celery-exporter.dependencies]

@@ -14,15 +14,15 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.exc import SQLAlchemyError
 
-from domain.database.repositories import AlchemyRepository
-from domain.database.models import BaseDAO
-from domain.database.mixins import IDMixin
-from domain.database.exceptions import (
+from app.domain import AlchemyRepository
+from app.domain import BaseDAO
+from app.domain import IDMixin
+from app.domain import (
     DatabaseError,
     EntityNotFoundError,
     ValidationError,
 )
-from schemas.base import BaseDTO
+from app.schemas import BaseDTO
 
 
 @pytest.fixture(scope="session")

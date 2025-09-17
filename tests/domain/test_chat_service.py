@@ -8,8 +8,8 @@ import pytest
 
 from tests.conftest import ValueGenerator
 from tests.mock_utils import assert_called_once_with
-from domain.chat.service import RAGService
-from domain.chat.schemas import (
+from app.domain import RAGService
+from app.domain import (
     RAGRequest,
     ChatMessageSource,
     RAGResponse,
@@ -17,17 +17,17 @@ from domain.chat.schemas import (
     ChatRole,
     ChatMessageDTO,
 )
-from domain.chat.exceptions import RAGError
-from domain.chat.repositories import (
+from app.domain import RAGError
+from app.domain import (
     ChatSessionRepository,
     ChatMessageRepository,
     ChatMessageSourceRepository,
 )
-from domain.embedding import (
+from app.domain import (
     VectorMetadata,
     Vector,
 )
-from stubs import llm_stub
+from app.stubs import llm_stub
 
 
 mock_chat_session_repo = create_autospec(ChatSessionRepository, instance=True)

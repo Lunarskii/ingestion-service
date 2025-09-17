@@ -5,7 +5,7 @@ from tasks.preserializers import (
     PydanticPreserializer,
     register_preserializer,
 )
-from config import settings
+from app.config import settings
 
 
 app = Celery(
@@ -35,5 +35,5 @@ app.conf.beat_schedule = {
         "args": (),
     },
 }
-app.autodiscover_tasks(["domain.document.tasks"])
+app.autodiscover_tasks(["app.domain.document.tasks"])
 register_preserializer(PydanticPreserializer, BaseModel)

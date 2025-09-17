@@ -3,7 +3,7 @@ from io import BytesIO
 
 import pytest
 
-from domain.extraction import (
+from app.domain import (
     TextExtractor,
     PdfExtractor,
     DocxExtractor,
