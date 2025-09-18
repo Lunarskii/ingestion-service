@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.domain.database.repositories import AlchemyRepository
 from app.domain.database.exceptions import DatabaseError
-from app.config import logger
+from config import logger
 
 
 T = TypeVar("T", bound=AlchemyRepository)

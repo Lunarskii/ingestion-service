@@ -7,7 +7,7 @@ from app.domain import (
     Vector,
     VectorMetadata,
 )
-from app.config import settings
+from config import settings
 
 
 @pytest.fixture

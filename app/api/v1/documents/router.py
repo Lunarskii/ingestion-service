@@ -61,6 +61,7 @@ async def upload_file(
         DocumentService,
         Depends(document_service_dependency),
     ],
+    uow: Annotated[UnitOfWork, Depends(document_uow_dependency)],
 ) -> dict[str, Any]:
     """
     Принимает файл для обработки и запускает обработку в фоновом режиме.
@@ -68,10 +69,11 @@ async def upload_file(
     """
 
     document_id = str(uuid.uuid4())
-    await service.process(
+    await service.save_document(
         file=file,
         document_id=document_id,
         workspace_id=workspace_id,
+        uow=uow,
     )
     return {"document_id": document_id}
 

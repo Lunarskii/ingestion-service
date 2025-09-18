@@ -1,6 +1,6 @@
 from celery_exporter.exporter import Exporter
 
-from app.config import settings
+from config import settings
 
 
 exporter = Exporter()

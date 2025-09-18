@@ -5,7 +5,7 @@ from tasks.preserializers import (
     PydanticPreserializer,
     register_preserializer,
 )
-from app.config import settings
+from config import settings
 
 
 app = Celery(

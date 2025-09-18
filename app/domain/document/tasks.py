@@ -123,7 +123,7 @@ def extract_text_and_metadata_from_document(self, document_id: str) -> None:
         DocumentDTO,
     )
     from app.services import RawStorage
-    from app.config.adapters import (
+    from config.adapters import (
         raw_storage_adapter,
         silver_storage_adapter,
     )
@@ -189,7 +189,7 @@ def detect_language(
 ) -> None:
     from app.domain.document.repositories import DocumentRepository
     from app.domain.document.schemas import DocumentDTO
-    from app.config.adapters import silver_storage_adapter
+    from config.adapters import silver_storage_adapter
     from app.services import RawStorage
     import langdetect
 
@@ -236,8 +236,8 @@ def split_pages_on_chunks(
         DocumentDTO,
     )
     from app.services import RawStorage
-    from app.config.adapters import silver_storage_adapter
-    from app.config import settings
+    from config.adapters import silver_storage_adapter
+    from config import settings
     from app.domain.text_splitter import TextSplitter
     from app.domain.extraction import Page
 
@@ -297,8 +297,8 @@ def vectorize_chunks(
         Vector,
         VectorMetadata,
     )
-    from app.config.adapters import vector_store_adapter
-    from app.config import settings
+    from config.adapters import vector_store_adapter
+    from config import settings
     from app.services import VectorStore
 
     uow: "UnitOfWork" = self.uow

@@ -382,7 +382,7 @@ class S3Settings(BaseSettings):
 - Добавить инициализацию конфига в `config/__init__.py`
 
 ```python
-from app.config.settings import (
+from config.settings import (
     APISettings as _APISettings,
     # ...
     S3Settings as _S3Settings,
@@ -400,30 +400,30 @@ class Settings:
 
 ```python
 from typing import Coroutine
-from app.config import settings
+from config import settings
 from app.stubs import FileRawStorage
 from app.infrastructure import S3RawStorage  # Импортируем новый класс
 
 
 async def on_startup_event_handler(app: "FastAPI") -> None:
-  def __init_object(cls, *args, **kwargs) -> Coroutine:
-    ...
+    def __init_object(cls, *args, **kwargs) -> Coroutine:
+        ...
 
-  if settings.minio.is_configured:
-    ...
-  elif settings.s3.s3_bucket:
-    raw_storage_coro = __init_object(
-      S3RawStorage,
-      # любые другие keyword аргументы, если есть в конфиге
-      bucket_name=settings.s3.s3_bucket,
-    )
-  else:
-    raw_storage_coro = __init_object(FileRawStorage)
+    if settings.minio.is_configured:
+        ...
+    elif settings.s3.s3_bucket:
+        raw_storage_coro = __init_object(
+            S3RawStorage,
+            # любые другие keyword аргументы, если есть в конфиге
+            bucket_name=settings.s3.s3_bucket,
+        )
+    else:
+        raw_storage_coro = __init_object(FileRawStorage)
 
-  tasks: list[Coroutine] = [
-    raw_storage_coro,
-    # ...
-  ]
+    tasks: list[Coroutine] = [
+        raw_storage_coro,
+        # ...
+    ]
 ```
 
 Теперь, просто изменив переменную окружения `S3_BUCKET=bucket_name`, все приложение начнет использовать 

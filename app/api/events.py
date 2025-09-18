@@ -8,8 +8,8 @@ import asyncio
 from app.domain.embedding.base import EmbeddingModel
 from app.domain.text_splitter.base import TextSplitter
 from app.domain.security.service import KeycloakClient
-from app.config import settings
-from app.config.adapters import (
+from config import settings
+from config.adapters import (
     raw_storage_adapter,
     vector_store_adapter,
 )

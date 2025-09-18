@@ -17,7 +17,7 @@ from app.domain.database.uow import UnitOfWork
 from app.domain.embedding.schemas import Vector
 from app.stubs import llm_stub
 from app.services import VectorStore
-from app.config import logger
+from config import logger
 
 
 class RAGService:
@@ -86,7 +86,7 @@ class RAGService:
 
         try:
             context_logger.info("Векторизация вопроса")
-            embedding: list[float] = await self.embedding_model.encode(
+            embedding: list[float] = self.embedding_model.encode(
                 sentences=request.question,
             )
 

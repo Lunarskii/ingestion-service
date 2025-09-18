@@ -6,7 +6,7 @@ from app.domain.document.schemas import (
 from app.domain.document.repositories import DocumentRepository
 from app.domain.database.uow import UnitOfWork
 from app.services import RawStorage
-from app.config import logger
+from config import logger
 
 
 class DocumentService:

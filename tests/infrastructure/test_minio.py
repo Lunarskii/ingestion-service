@@ -2,7 +2,7 @@ import pytest
 
 from tests.conftest import ValueGenerator
 from app.infrastructure import MinIORawStorage
-from app.config import settings
+from config import settings
 
 
 @pytest.fixture

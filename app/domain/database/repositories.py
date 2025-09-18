@@ -15,7 +15,7 @@ from app.domain.database.exceptions import (
 )
 from app.services import Repository
 from app.schemas import BaseDTO
-from app.config import logger
+from config import logger
 
 
 def _resolve_type_arg(arg: Any, cls: Any) -> type | None:

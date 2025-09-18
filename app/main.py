@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from app.api.exc_handlers import setup_exception_handlers
 from app.api.events import setup_event_handlers
 from app.api.v1 import router as v1_router
-from app.config import settings
+from config import settings
 
 
 app = FastAPI(

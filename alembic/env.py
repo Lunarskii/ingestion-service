@@ -6,7 +6,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
-from app.config import settings
+from config import settings
 from app.domain.database.models import BaseDAO
 from app.domain.chat import models as chat_models  # noqa
 from app.domain.workspace import models as workspace_models  # noqa

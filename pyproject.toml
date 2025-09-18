@@ -58,10 +58,12 @@ pydantic = {extras = ["email"], version = "^2.11.7"}
 celery = {extras = ["redis"], version = "^5.5.3"}
 
 [tool.poetry.group.celery-beat.dependencies]
+pydantic = {extras = ["email"], version = "^2.11.7"}
 celery = {extras = ["redis"], version = "^5.5.3"}
 
 [tool.poetry.group.celery-exporter.dependencies]
 prometheus-client = "^0.22.1"
+pydantic = {extras = ["email"], version = "^2.11.7"}
 celery = {extras = ["redis"], version = "^5.5.3"}
 
 [tool.poetry.group.dev.dependencies]

@@ -9,7 +9,7 @@ from app.api.v1.ops.utils import (
     check_celery_workers,
 )
 from tasks.main import app as celery_app
-from app.config import settings
+from config import settings
 
 
 router = APIRouter(prefix="/ops")

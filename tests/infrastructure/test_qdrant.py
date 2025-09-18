@@ -3,7 +3,7 @@ import pytest
 from tests.conftest import ValueGenerator
 from app.domain import Vector
 from app.infrastructure import QdrantVectorStore
-from app.config import settings
+from config import settings
 
 
 @pytest.fixture

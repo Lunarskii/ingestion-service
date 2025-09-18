@@ -1,6 +1,6 @@
 from functools import cached_property
 
-from app.config.settings import (
+from config.settings import (
     APISettings as _APISettings,
     DatabaseSettings as _DatabaseSettings,
     DocumentRestrictionSettings as _DocumentRestrictionSettings,
@@ -10,7 +10,7 @@ from app.config.settings import (
     KeycloakSettings as _KeycloakSettings,
     CelerySettings as _CelerySettings,
 )
-from app.config.logging import logger
+from config.logging import logger
 
 
 class Settings:

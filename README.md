@@ -319,7 +319,7 @@ API будет доступен по адресу http://127.0.0.1:8000.
 Или используйте gunicorn для запуска с несколькими рабочими процессами.
 ```bash
 # <pr_num> требуется изменить на необходимое количество рабочих процессов 
-poetry run gunicorn api.main:app --workers <pr_num> --worker-class uvicorn.workers.UvicornWorker
+poetry run gunicorn app.main:app --workers <pr_num> --worker-class uvicorn.workers.UvicornWorker
 ```
 Рекомендуемое количество процессов - (2 * количество_ядер_CPU + 1)
 

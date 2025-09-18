@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import (
     async_scoped_session,
 )
 
-from app.config import settings
+from config import settings
 
 
 def get_async_engine(**kwargs: Any) -> AsyncEngine:

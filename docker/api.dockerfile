@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     rm -rf /var/lib/apt/lists/*
 
 COPY app ./app
+COPY config ./config
 WORKDIR /app
 COPY --from=builder /app/.venv .venv
 

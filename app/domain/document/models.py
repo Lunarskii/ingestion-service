@@ -23,6 +23,7 @@ class DocumentDAO(BaseDAO, UUIDMixin):
     author: Mapped[str] = mapped_column(nullable=True)
     creation_date: Mapped[datetime] = mapped_column(nullable=True)
     raw_storage_path: Mapped[str]
+    silver_storage_path: Mapped[str] = mapped_column(nullable=True)
     size_bytes: Mapped[int]
     ingested_at: Mapped[datetime]
     status: Mapped[DocumentStatus] = mapped_column(

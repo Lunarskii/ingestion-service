@@ -11,7 +11,7 @@ from celery_exporter import (
     collectors,
 )
 from tasks.main import app
-from app.config import logger
+from config import logger
 
 
 class Exporter:

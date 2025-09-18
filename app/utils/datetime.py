@@ -7,7 +7,7 @@ from datetime import (
 
 from dateutil import parser as dateutil_parser
 
-from app.config import settings
+from config import settings
 
 
 def local_time() -> datetime:

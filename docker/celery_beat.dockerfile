@@ -22,6 +22,7 @@ RUN poetry config virtualenvs.in-project true && \
 FROM python:3.12-slim-bookworm AS production
 
 COPY app ./app
+COPY config ./config
 COPY tasks ./tasks
 COPY --from=builder /app/.venv .venv
 
