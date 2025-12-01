@@ -14,7 +14,6 @@ pypdf = "^5.7.0"
 langdetect = "^1.0.9"
 python-docx = "^1.2.0"
 python-dateutil = "^2.9.0.post0"
-pydantic-settings = "^2.10.1"
 tokenizers = "0.20.2"
 sentence-transformers = "^5.0.0"
 python-multipart = "^0.0.20"
@@ -29,19 +28,24 @@ weasyprint = "^66.0"
 minio = "^7.2.16"
 qdrant-client = "^1.15.1"
 pydantic = {extras = ["email"], version = "^2.11.7"}
+pydantic-settings = "^2.10.1"
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 celery = {extras = ["redis"], version = "^5.5.3"}
-bcrypt = "^4.3.0"
+ollama = "^0.5.4"
+argon2-cffi = "^25.1.0"
+openai = "^2.6.0"
+tiktoken = "^0.12.0"
+spacy = "^3.8.11"
 
 [tool.poetry.group.ui.dependencies]
 streamlit = "^1.47.0"
 
 [tool.poetry.group.celery-worker.dependencies]
+fastapi = "^0.116.0"
 pypdf = "^5.7.0"
 langdetect = "^1.0.9"
 python-docx = "^1.2.0"
 python-dateutil = "^2.9.0.post0"
-pydantic-settings = "^2.10.1"
 tokenizers = "0.20.2"
 sentence-transformers = "^5.0.0"
 python-multipart = "^0.0.20"
@@ -55,16 +59,40 @@ weasyprint = "^66.0"
 minio = "^7.2.16"
 qdrant-client = "^1.15.1"
 pydantic = {extras = ["email"], version = "^2.11.7"}
+pydantic-settings = "^2.10.1"
 celery = {extras = ["redis"], version = "^5.5.3"}
+pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 
 [tool.poetry.group.celery-beat.dependencies]
 pydantic = {extras = ["email"], version = "^2.11.7"}
+pydantic-settings = "^2.10.1"
+loguru = "^0.7.3"
 celery = {extras = ["redis"], version = "^5.5.3"}
 
 [tool.poetry.group.celery-exporter.dependencies]
 prometheus-client = "^0.22.1"
 pydantic = {extras = ["email"], version = "^2.11.7"}
+pydantic-settings = "^2.10.1"
+loguru = "^0.7.3"
 celery = {extras = ["redis"], version = "^5.5.3"}
+
+[tool.poetry.group.kafka-consumer.dependencies]
+uvicorn = "^0.35.0"
+gunicorn = "^23.0.0"
+python-dateutil = "^2.9.0.post0"
+asyncpg = "^0.30.0"
+sqlalchemy = "^2.0.42"
+pydantic = {extras = ["email"], version = "^2.11.7"}
+pydantic-settings = "^2.10.1"
+loguru = "^0.7.3"
+aiokafka = "^0.12.0"
+prometheus-client = "^0.22.1"
+python-magic = "^0.4.27"
+pypdf = "^5.7.0"
+python-docx = "^1.2.0"
+mammoth = "^1.10.0"
+weasyprint = "^66.0"
+pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 
 [tool.poetry.group.dev.dependencies]
 aiosqlite = "^0.21.0"
@@ -72,6 +100,7 @@ pytest = "^8.4.1"
 pytest-mock = "^3.14.1"
 pytest-cov = "^6.2.1"
 pytest-asyncio = "^1.1.0"
+testcontainers = "^4.13.2"
 black = "^25.1.0"
 ruff = "^0.12.2"
 reportlab = "^4.4.3"

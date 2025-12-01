@@ -1,0 +1,332 @@
+# Правила для авто-классификации документов по темам (rule-based).
+# Поля:
+#  - topic: код темы (соответствует topics.yml)
+#  - keywords: список ключевых слов/фраз (простое вхождение, нечувствительно к регистру)
+#  - regex: список регулярных выражений (PCRE-подобные, флаги не указываются)
+#  - negative_keywords: слова/фразы, которые аннулируют совпадение
+#  - weight: общий множитель для правил (float)
+#  - body_weight: вес для совпадения в body (тексте документа)
+#  - min_score: порог (score) для пометки документа этой темой
+
+- topic: "governance"
+  keywords:
+    - "управление информационной безопасностью"
+    - "информационная безопасность"
+    - "кибербезопасность"
+    - "infosec"
+    - "cybersecurity"
+    - "security governance"
+    - "политика безопасности"
+  regex:
+    - "(стратеги(я|ческ).{0,30}безопасн)"
+    - "governance"
+
+- topic: "governance.planning"
+  keywords:
+    - "планирование"
+    - "дорожная карта"
+    - "roadmap"
+    - "стратегия"
+    - "kpi"
+    - "план действий"
+    - "plan"
+  regex:
+    - "(план(ирование|ов)?|дорожная карта|roadmap|plan of action)"
+
+- topic: "governance.org"
+  keywords:
+    - "организационная структура"
+    - "роль"
+    - "ответственность"
+    - "комитет"
+    - "ответственный"
+    - "raci"
+  regex:
+    - "(организац|штатн|структур).{0,30}(безопасн|кибер|ИБ|КБ)"
+
+- topic: "governance.methodology"
+  keywords:
+    - "политика безопасности"
+    - "процедура"
+    - "стандарт"
+    - "регламент"
+    - "инструкция"
+    - "policy"
+  regex:
+    - "(политик[аи]|процедур|регламент|политика безопасности)"
+
+- topic: "governance.projects"
+  keywords:
+    - "управление проектом"
+    - "проект внедрения"
+    - "project management"
+    - "PMO"
+    - "roadmap"
+  regex:
+    - "(управлени(е|ю) проект(ом|а|ы)|project management|pmo)"
+
+- topic: "governance.services"
+  keywords:
+    - "сервис безопасности"
+    - "sla"
+    - "сервисная поддержка"
+    - "service management"
+  regex:
+    - "(sla|service level agreement|сервис(ная|ы) поддержк)"
+
+- topic: "governance.reporting"
+  keywords:
+    - "отчётность"
+    - "kpi"
+    - "метрика"
+    - "комплаенс"
+    - "отчет"
+    - "reporting"
+  regex:
+    - "(kpi|kri|отчётн|report(ing)?)"
+
+- topic: "security.architecture"
+  keywords:
+    - "архитектур"
+    - "архитектура безопасности"
+    - "security architecture"
+    - "design"
+  regex:
+    - "(архитектур.*безопасн|security architecture|архитектура)"
+
+- topic: "endpoint-security"
+  keywords:
+    - "эндпойнт"
+    - "endpoint"
+    - "edr"
+    - "антивирус"
+    - "mobile"
+    - "iot"
+    - "защита конечных устройств"
+  regex:
+    - "(EDR|антивирус|endpoint|mobile device|IoT|IoT device)"
+
+- topic: "infrastructure-security"
+  keywords:
+    - "сервер"
+    - "виртуализац"
+    - "kubernetes"
+    - "hypervisor"
+    - "контейнер"
+    - "infrastructure security"
+  regex:
+    - "(сервер(ы)?|виртуализац|hypervisor|kubernetes|container|инфраструктур.*безопасн)"
+
+- topic: "data-security"
+  keywords:
+    - "данные"
+    - "шифрован"
+    - "dlp"
+    - "маскир"
+    - "tokenization"
+    - "защита данных"
+    - "data protection"
+  regex:
+    - "(DLP|шифр|шифрован|data protection|защита данных|маск)"
+
+- topic: "network-security"
+  keywords:
+    - "сеть"
+    - "фаервол"
+    - "межсетевой"
+    - "IDS"
+    - "IPS"
+    - "segmentation"
+  regex:
+    - "(межсетев|фаервол|firewall|IDS|IPS|сегментирован|segmentation)"
+
+- topic: "cloud-security"
+  keywords:
+    - "облак"
+    - "cloud"
+    - "aws"
+    - "azure"
+    - "gcp"
+    - "s3"
+    - "bucket"
+  regex:
+    - "(облачн|cloud|aws|azure|gcp|s3|bucket|iam role)"
+
+- topic: "identity-access"
+  keywords:
+    - "iam"
+    - "rbac"
+    - "mfa"
+    - "saml"
+    - "oauth"
+    - "ldap"
+    - "управление доступом"
+  regex:
+    - "(IAM|RBAC|MFA|SAML|OAuth|управлени.*доступом)"
+
+- topic: "cryptography"
+  keywords:
+    - "шифр"
+    - "крипто"
+    - "pki"
+    - "сертификат"
+    - "ключ"
+    - "эп"
+    - "электронная подпись"
+  regex:
+    - "(PKI|RSA|AES|шифр|сертификат|электронн.*подпис)"
+
+- topic: "ai-security"
+  keywords:
+    - "модель"
+    - "machine learning"
+    - "ai security"
+    - "poisoning"
+    - "adversarial"
+    - "инференс"
+    - "data poisoning"
+  regex:
+    - "(adversarial|poison(ing)?|model tamper|инференс|защита.*модель)"
+
+- topic: "security-lifecycle"
+  keywords:
+    - "внедрение"
+    - "эксплуатация"
+    - "поддержка"
+    - "обновлен"
+    - "decommission"
+    - "жизненный цикл"
+  regex:
+    - "(внедр|эксплуат|обновлен|вывод из эксплуатации|decommission|lifecycle)"
+
+- topic: "security.operations"
+  keywords:
+    - "soc"
+    - "operation"
+    - "операционн"
+    - "операционная безопасность"
+    - "security operations"
+  regex:
+    - "(SOC|SIEM|операционн.*безопасн|security operations|ops)"
+
+- topic: "asset-management"
+  keywords:
+    - "инвентар"
+    - "asset"
+    - "inventory"
+    - "патч"
+    - "patching"
+    - "управление активами"
+  regex:
+    - "(инвентар|asset inventory|patch manag|патч(инг|и?нг)?)"
+
+- topic: "pentest-redblue"
+  keywords:
+    - "penetration"
+    - "pentest"
+    - "red team"
+    - "blue team"
+    - "bug bounty"
+    - "тестирование на проникновение"
+  regex:
+    - "(penetration test|pentest|red team|blue team|bug bounty|пентест)"
+
+- topic: "soc"
+  keywords:
+    - "siem"
+    - "splunk"
+    - "elk"
+    - "kibana"
+    - "корреляция"
+    - "логирование"
+  regex:
+    - "(SIEM|Splunk|ELK|kibana|корреляц|лог(ирование)?)"
+
+- topic: "incident-response"
+  keywords:
+    - "инцидент"
+    - "response"
+    - "playbook"
+    - "runbook"
+    - "реакция на инцидент"
+    - "containment"
+  regex:
+    - "(инцидент|incident response|playbook|runbook|containment|forensics)"
+
+- topic: "threat-intel"
+  keywords:
+    - "threat"
+    - "threat intelligence"
+    - "ioc"
+    - "mitre"
+    - "att&ck"
+    - "cve"
+    - "выявление угроз"
+  regex:
+    - "(threat intelligence|IOC|MITRE|ATTACK|ATT&CK|CVE|threat hunting)"
+
+- topic: "risk-management"
+  keywords:
+    - "риск"
+    - "risk"
+    - "kri"
+    - "оценка риска"
+    - "risk appetite"
+    - "вероятность"
+    - "impact"
+  regex:
+    - "(оценк.*риска|risk assessment|kri|risk appetite|risk management)"
+
+- topic: "secure-development"
+  keywords:
+    - "sdlc"
+    - "secure development"
+    - "owasp"
+    - "code review"
+    - "sast"
+    - "dast"
+    - "безопасная разработка"
+  regex:
+    - "(OWASP|SSDLC|sast|dast|code review|secure coding)"
+
+- topic: "change-control"
+  keywords:
+    - "ci/cd"
+    - "deploy"
+    - "контроль изменений"
+    - "pipeline"
+    - "gitops"
+  regex:
+    - "(CI/CD|continuous integration|deploy|change control|контроль изменений)"
+
+- topic: "human-security"
+  keywords:
+    - "фишинг"
+    - "awareness"
+    - "обучение"
+    - "онбординг"
+    - "offboarding"
+    - "security awareness"
+  regex:
+    - "(фишинг|awareness|обучени|тренинг|осведомленность)"
+
+- topic: "physical-security"
+  keywords:
+    - "физическая безопасность"
+    - "доступ в помещение"
+    - "cctv"
+    - "контроль доступа"
+    - "badge"
+  regex:
+    - "(физическ.*безопасн|контрол.*доступ|CCTV|видеонаблюдени|контроль доступа)"
+
+- topic: "forensics"
+  keywords:
+    - "forensic"
+    - "судебн"
+    - "доказ"
+    - "chain of custody"
+    - "hash"
+    - "цифровая криминалистика"
+  regex:
+    - "(судебн|forensic|chain of custody|доказательств|экспертиз)"

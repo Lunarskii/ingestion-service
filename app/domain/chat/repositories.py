@@ -1,15 +1,17 @@
 from sqlalchemy import select
 
-from app.domain.database.repositories import AlchemyRepository
+from app.adapters.sqlalchemy_repository import AlchemyRepository
 from app.domain.chat.models import (
     ChatSessionDAO,
     ChatMessageDAO,
-    ChatMessageSourceDAO,
+    RetrievalSourceDAO,
+    RetrievalChunkDAO,
 )
 from app.domain.chat.schemas import (
     ChatSessionDTO,
     ChatMessageDTO,
-    ChatMessageSourceDTO,
+    RetrievalSourceDTO,
+    RetrievalChunkDTO,
 )
 
 
@@ -39,11 +41,8 @@ class ChatMessageRepository(AlchemyRepository[ChatMessageDAO, ChatMessageDTO]):
         применяя ограничение.
 
         :param session_id: Идентификатор чат-сессии.
-        :type session_id: str
         :param limit: Количество последних сообщений для получения.
-        :type limit: int
         :return: Список DTO-схем соответствующих сообщений.
-        :rtype: list[ChatMessageDTO]
         """
 
         stmt = (
@@ -60,9 +59,7 @@ class ChatMessageRepository(AlchemyRepository[ChatMessageDAO, ChatMessageDTO]):
         Возвращает всю историю сообщений для указанной чат-сессии в хронологическом порядке.
 
         :param session_id: Идентификатор чат-сессии.
-        :type session_id: str
         :return: Список DTO-схем соответствующих сообщений.
-        :rtype: list[ChatMessageDTO]
         """
 
         stmt = (
@@ -74,11 +71,9 @@ class ChatMessageRepository(AlchemyRepository[ChatMessageDAO, ChatMessageDTO]):
         return list(map(self.schema_type.model_validate, instances))
 
 
-class ChatMessageSourceRepository(
-    AlchemyRepository[ChatMessageSourceDAO, ChatMessageSourceDTO]
-):
-    """
-    Репозиторий для работы с источниками сообщений.
-    """
+class RetrievalSourceRepository(AlchemyRepository[RetrievalSourceDAO, RetrievalSourceDTO]):
+    ...
 
+
+class RetrievalChunkRepository(AlchemyRepository[RetrievalChunkDAO, RetrievalChunkDTO]):
     ...

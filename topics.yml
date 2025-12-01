@@ -1,0 +1,115 @@
+- code: "governance"
+  title: "Управление ИБ"
+  description: "Ключевые политики, стратегия и операционное управление информационной/кибербезопасностью"
+
+- code: "governance.planning"
+  title: "Планирование и контроль ИБ"
+  description: "От стратегии до реализации: планирование, контроль и аудит программ ИБ"
+
+- code: "governance.org"
+  title: "Организационная структура ИБ"
+  description: "Роли, ответственности, комитеты и функции безопасности в организации"
+
+- code: "governance.methodology"
+  title: "Политики и процедуры (методология)"
+  description: "Политики безопасности, процедуры, стандарты и регламенты"
+
+- code: "governance.projects"
+  title: "Управление проектами ИБ"
+  description: "Процессы управления проектами по внедрению мер ИБ"
+
+- code: "governance.services"
+  title: "Управление сервисами ИБ"
+  description: "Оперативное управление сервисами безопасности (SLA, поддержка)"
+
+- code: "governance.reporting"
+  title: "Отчётность и KPI ИБ"
+  description: "Метрики, отчёты, KPI и комплаенс-отчётность"
+
+- code: "security.architecture"
+  title: "Техническая защита и архитектура"
+  description: "Принципы архитектуры и проектирование средств защиты"
+
+- code: "endpoint-security"
+  title: "Защита конечных устройств"
+  description: "Эндпойнты, мобильные устройства, IoT"
+
+- code: "infrastructure-security"
+  title: "Защита инфраструктуры и серверов"
+  description: "Серверы, виртуализация, платформы, БД"
+
+- code: "data-security"
+  title: "Защита данных"
+  description: "Классификация, шифрование, DLP, резервное копирование"
+
+- code: "network-security"
+  title: "Сетевая безопасность"
+  description: "Сегментация, межсетевые экраны, IDS/IPS"
+
+- code: "cloud-security"
+  title: "Безопасность облака"
+  description: "Контроль и архитектура в облачных средах"
+
+- code: "identity-access"
+  title: "Управление идентификацией и доступом (IAM)"
+  description: "RBAC, управление привилегиями, биометрия"
+
+- code: "cryptography"
+  title: "Криптография и PKI"
+  description: "Ключи, сертификаты, ЭЦП"
+
+- code: "ai-security"
+  title: "Защита ИИ"
+  description: "Безопасность моделей, данных и инференса"
+
+- code: "security-lifecycle"
+  title: "Жизненный цикл средств защиты"
+  description: "Выбор, внедрение, обновление и выведение из эксплуатации"
+
+- code: "security.operations"
+  title: "Операционная ИБ"
+  description: "SOC, мониторинг и ежедневные операции"
+
+- code: "asset-management"
+  title: "Управление активами и патчинг"
+  description: "Инвентаризация, управление уязвимостями и обновления"
+
+- code: "pentest-redblue"
+  title: "Тестирование и Red/Blue-команды"
+  description: "Сканирование, pentest, bug bounty, red/blue team"
+
+- code: "soc"
+  title: "SOC и мониторинг событий"
+  description: "Логирование, корреляция, анализ событий"
+
+- code: "incident-response"
+  title: "Управление инцидентами"
+  description: "Идентификация, реагирование, восстановление и разбор инцидентов"
+
+- code: "threat-intel"
+  title: "Управление угрозами и разведка"
+  description: "Threat intelligence, threat hunting, CVE-анализ"
+
+- code: "risk-management"
+  title: "Управление рисками ИБ"
+  description: "Оценка риска, KRI/KPI, риск-модель, риск-аппетит"
+
+- code: "secure-development"
+  title: "Безопасная разработка (SSDLC)"
+  description: "Практики безопасного SDLC, код-ревью, OWASP Top-10"
+
+- code: "change-control"
+  title: "Контроль изменений и деплой"
+  description: "CI/CD безопасность, управление конфигурациями"
+
+- code: "human-security"
+  title: "Безопасность персонала и осведомлённость"
+  description: "HR-процессы, обучение, фишинговые кампании и культура безопасности"
+
+- code: "physical-security"
+  title: "Физическая и инфраструктурная безопасность"
+  description: "Доступ к помещениям, защита оборудования, условия эксплуатации"
+
+- code: "forensics"
+  title: "Цифровая криминалистика и взаимодействие с правоохранителями"
+  description: "Forensics, сбор доказательств, правовые взаимодействия"

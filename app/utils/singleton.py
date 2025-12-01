@@ -67,7 +67,7 @@ class SingletonRegistry:
         Получаем экземпляр singleton для ключа ``key``.
 
         :param key: Ключ, по которому хранится экземпляр.
-        :type key: Key
+
         :return: Экземпляр.
         :raises KeyError: Если для нормализованного ключа не существует экземпляра.
         """
@@ -96,16 +96,12 @@ class SingletonRegistry:
             - await registry.create(MyModel, run_in_thread=False)  # вызовет MyModel() в event loop
 
         :param key: Ключ, по которому будет храниться экземпляр.
-        :type key: Key
         :param factory: Вызываемая функция или корутина, которая создает экземпляр.
-        :type factory: Callable[..., Any] | None
         :param args: Аргументы для фабрики.
-        :type args: Any
         :param run_in_thread: Если фабрика является обычным блокирующим вызовом и значение run_in_thread равно True, то
             фабрика будет запущена в отдельном потоке через asyncio.to_thread. Если значение False, то фабрика будет
             запущена в текущем потоке цикла обработки событий.
         :param kwargs: keyword-аргументы для фабрики.
-        :type kwargs: Any
         """
 
         if factory is None:

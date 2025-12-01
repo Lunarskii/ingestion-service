@@ -14,7 +14,7 @@ from app.domain.database.mixins import (
 
 
 if TYPE_CHECKING:
-    from app.domain import ChatSessionDAO
+    from app.domain.chat.models import ChatSessionDAO
 
 
 class WorkspaceDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
@@ -22,11 +22,8 @@ class WorkspaceDAO(BaseDAO, UUIDMixin, CreatedAtMixin):
     DAO (ORM) модель, представляющая рабочее пространство (workspace).
 
     :ivar id: Идентификатор рабочего пространства.
-    :vartype id: UUID
     :ivar name: Человеко-читаемое уникальное имя пространства.
-    :vartype name: str
     :ivar created_at: Время создания рабочего пространства.
-    :vartype created_at: datetime
     """
 
     __tablename__ = "workspaces"

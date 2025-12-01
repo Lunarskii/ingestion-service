@@ -1,11 +1,13 @@
 FROM python:3.12-bookworm AS builder
 
-RUN apt-get update && apt-get install --no-install-recommends -y \
-    build-essential curl && \
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y build-essential curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ENV POETRY_VERSION=1.8.2
-RUN curl -sSL https://install.python-poetry.org | python3 -
+#RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.2 python3 -
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir "poetry==1.8.2" && \
+    ln -s /usr/local/bin/poetry /root/.local/bin/poetry || true
 
 ENV PATH="/root/.local/bin:$PATH"
 
@@ -21,12 +23,14 @@ RUN poetry config virtualenvs.in-project true && \
 
 FROM python:3.12-slim-bookworm AS production
 
+WORKDIR /app
+
 COPY app ./app
-COPY config ./config
-COPY tasks ./tasks
-COPY celery_exporter ./celery_exporter
-COPY --from=builder /app/.venv .venv
+COPY services ./services
+COPY --from=builder /app/.venv /app/.venv
 
-ENV PATH=".venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["python", "-m", "celery_exporter.main"]
+EXPOSE 9091
+
+CMD ["python", "-m", "services.celery_exporter.main"]

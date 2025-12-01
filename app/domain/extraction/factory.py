@@ -1,5 +1,5 @@
-from app.domain.extraction.base import (
-    TextExtractor,
+from app.domain.extraction.extractors import (
+    DocumentExtractor,
     PdfExtractor,
     DocxExtractor,
 )
@@ -12,13 +12,13 @@ class ExtractorFactory:
     Использует внутреннюю карту ``_map``, связывающую расширения с классами-реализациями.
     """
 
-    _map: dict[str, type[TextExtractor]] = {
+    _map: dict[str, type[DocumentExtractor]] = {
         "pdf": PdfExtractor,
         "docx": DocxExtractor,
     }
 
     @classmethod
-    def get_extractor(cls, extension: str) -> TextExtractor:
+    def get_extractor(cls, extension: str) -> DocumentExtractor:
         """
         Возвращает экстрактор, подходящий для обработки файла с заданным расширением.
 
@@ -26,14 +26,13 @@ class ExtractorFactory:
         точки, точка будет отброшена.
 
         :param extension: Расширение файла (с точкой или без).
-        :type extension: str
+
         :return: Экземпляр класса, наследник ``TextExtractor``, подходящий для данного формата.
-        :rtype: TextExtractor
         :raises ExtractError: Если нет зарегистрированного экстрактора для переданного расширения.
         """
 
-        extension = extension.lstrip(".")
-        extractor_cls: type[TextExtractor] = cls._map.get(extension)
+        extension: str = extension.lstrip(".")
+        extractor_cls: type[DocumentExtractor] | None = cls._map.get(extension)
         if not extractor_cls:
             raise ExtractionError(f"Нет экстрактора для расширения '{extension}'")
         return extractor_cls()

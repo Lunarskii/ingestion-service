@@ -1,6 +1,5 @@
-from fastapi import status
-
 from app.exceptions.base import ApplicationError
+from app import status
 
 
 class DatabaseError(ApplicationError):
@@ -9,12 +8,13 @@ class DatabaseError(ApplicationError):
 
 
 class EntityNotFoundError(DatabaseError):
+    message = "Записи в базе данных не существует"
     error_code = "database_entity_not_found"
     status_code = status.HTTP_404_NOT_FOUND
 
 
 class DuplicateEntityError(DatabaseError):
-    message = "Такая запись в базе данных уже существует"
+    message = "Запись в базе данных уже существует"
     error_code = "database_unique_constraint_error"
     status_code = status.HTTP_409_CONFLICT
 

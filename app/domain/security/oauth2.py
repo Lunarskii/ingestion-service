@@ -6,6 +6,11 @@ from app.domain.security.transports import Transport
 
 
 class OAuth2PasswordBearer(BaseOAuth2PasswordBearer):
+    """
+    Поток OAuth2 для аутентификации с использованием Bearer токена, полученного с помощью пароля.
+    Экземпляр этого класса может использоваться как FastAPI зависимость.
+    """
+
     def __init__(
         self,
         token_url: str,

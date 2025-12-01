@@ -1,0 +1,336 @@
+# docker-compose.dev.yml — локальная конфигурация для разработки / тестирования.
+# Этот файл использует **bind mounts** — данные будут храниться в указанных папках на хосте.
+# Использование: docker compose -f docker-compose.dev.yml up -d
+# TODO исправить описание
+
+volumes:
+  dev_qdrant_data:
+  dev_minio_data:
+  dev_prometheus_data:
+  dev_postgres_data:
+  dev_ollama_data:
+#  dev_kafka_data:
+
+networks:
+  dev_network:
+    driver: bridge
+  bot_net:
+    name: bot_net
+    external: true
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: dev_qdrant
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/collections"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - dev_qdrant_data:/qdrant/storage
+    networks:
+      - bot_net
+
+  minio:
+    image: minio/minio:latest
+    container_name: dev_minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: "access_key"
+      MINIO_ROOT_PASSWORD: "secret_key"
+      MINIO_COMPRESSION_ENABLE: "on"
+      MINIO_COMPRESSION_EXTENSIONS: ".pdf"
+      MINIO_COMPRESSION_MIME_TYPES: "application/pdf"
+    command: server /data --address ":9000" --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - dev_minio_data:/data
+    networks:
+      - bot_net
+
+  #  keycloak:
+  #    image: quay.io/keycloak/keycloak:26.3
+  #    container_name: dev_keycloak
+  #    restart: unless-stopped
+  #    environment:
+  #      KC_BOOTSTRAP_ADMIN_USERNAME: "admin"
+  #      KC_BOOTSTRAP_ADMIN_PASSWORD: "admin"
+  #      KC_DB: "postgres"
+  #      KC_DB_URL_HOST: "postgres"
+  #      KC_DB_URL_PORT: "5432"
+  #      KC_DB_URL_DATABASE: "postgres"
+  #      KC_DB_USERNAME: "postgres"
+  #      KC_DB_PASSWORD: "postgres"
+  #    command: start-dev
+  #    networks:
+  #      - dev_network
+  #    depends_on:
+  #      - postgres
+
+  redis:
+    image: redis:8.2.1
+    container_name: dev_redis
+    networks:
+      - bot_net
+
+  #  prometheus:
+  #    image: prom/prometheus:v3.6.0-rc.1
+  #    container_name: dev_prometheus
+  #    ports:
+  #      - "9090:9090"
+  #    volumes:
+  #      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #      - dev_prometheus_data:/prometheus
+  #    networks:
+  #      - dev_network
+
+  #  flower:
+  #    image: mher/flower:2.0
+  #    container_name: dev_flower
+  #    environment:
+  #      CELERY_BROKER_URL: "redis://redis:6379/0"
+  #      RESULT_BACKEND: "redis://redis:6379/1"
+  #    ports:
+  #      - "5555:5555"
+  #    depends_on:
+  #      - redis
+  #    networks:
+  #      - dev_network
+
+  postgres:
+    image: postgres:18rc1-alpine
+    container_name: dev_postgres
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "postgres"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "shared_buffers=1GB"
+      - "-c"
+      - "effective_cache_size=4GB"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "maintenance_work_mem=512MB"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "temp_file_limit=10GB"
+      - "-c"
+      - "log_min_duration_statement=200ms"
+      - "-c"
+      - "idle_in_transaction_session_timeout=3600s"
+      - "-c"
+      - "lock_timeout=1s"
+      - "-c"
+      - "statement_timeout=60s"
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+      - "-c"
+      - "pg_stat_statements.max=10000"
+      - "-c"
+      - "pg_stat_statements.track=all"
+    networks:
+      - bot_net
+
+  ollama:
+    image: ollama/ollama:0.12.1-rc0
+    container_name: dev_ollama
+    restart: on-failure
+    environment:
+      OLLAMA_HOST: "0.0.0.0"
+    volumes:
+      - dev_ollama_data:/root/.ollama
+    networks:
+      - bot_net
+
+  #  kafka:
+  #    image: apache/kafka:latest
+  #    container_name: dev_kafka
+  #    restart: unless-stopped
+  #    environment:
+  #      KAFKA_NODE_ID: 1
+  #      KAFKA_PROCESS_ROLES: broker,controller
+  #      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:19092
+  #      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:19092
+  #      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  #      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+  #      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+  #      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  #      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  #      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  #      KAFKA_NUM_PARTITIONS: 3
+  #      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+  #    ports:
+  #      - "9092:9092"
+  #      - "19092:19092"
+  #    volumes:
+  #      - dev_kafka_data:/var/lib/kafka/data
+  #    networks:
+  #      - dev_network
+  #
+  #  kafka-ui:
+  #    image: provectuslabs/kafka-ui:latest
+  #    container_name: dev_kafka_ui
+  #    restart: unless-stopped
+  #    environment:
+  #      KAFKA_CLUSTERS_0_NAME: "local"
+  #      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:9092"
+  #    ports:
+  #      - "8081:8080"
+  #    networks:
+  #      - dev_network
+  #    depends_on:
+  #      - kafka
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.dockerfile
+    container_name: dev_api
+    restart: on-failure
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@postgres:5432/postgres"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "access_key"
+      MINIO_SECRET_KEY: "secret_key"
+      QDRANT_URL: "http://qdrant:6333"
+      QDRANT_TIMEOUT: "1800"
+      QDRANT_COLLECTION: "test_labse"
+      QDRANT_VECTOR_SIZE: "768"
+      EMBEDDING_MODEL_NAME: "sentence-transformers/LaBSE"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/1"
+      KEYCLOAK_URL: "http://keycloak:8080"
+      KEYCLOAK_CLIENT_ID: "ingestion-service"
+      KEYCLOAK_CLIENT_SECRET: "admin"
+      KEYCLOAK_REALM: "test-realm"
+      KEYCLOAK_REDIRECT_URI: "http://api:8000/v1/auth/callback"
+      API_KEY_REQUIRED: "False"
+      API_AUTH_REQUIRED: "False"
+      # OLLAMA_HOST: "ollama:11434"
+      # OLLAMA_MODEL: "llama3.1:8b-instruct-q4_K_M"
+      # OLLAMA_TIMEOUT_SECONDS: "1800"
+      OPENAI_URL: "https://openrouter.ai/api/v1"
+      OPENAI_API_KEY: "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"
+      OPENAI_MODEL: "tngtech/deepseek-r1t-chimera:free"
+      OPENAI_TIMEOUT_SECONDS: "1800"
+    ports:
+      - "8099:8000"
+    networks:
+      - bot_net
+    depends_on:
+      - celery_worker
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: docker/celery_worker.dockerfile
+    container_name: dev_celery_worker
+    restart: on-failure
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@postgres:5432/postgres"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "access_key"
+      MINIO_SECRET_KEY: "secret_key"
+      QDRANT_URL: "http://qdrant:6333"
+      QDRANT_TIMEOUT: "1800"
+      QDRANT_COLLECTION: "test_labse"
+      QDRANT_VECTOR_SIZE: "768"
+      EMBEDDING_MODEL_NAME: "sentence-transformers/LaBSE"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/1"
+      CELERY_TASK_TIME_LIMIT: "1800"
+      CELERY_TASK_SOFT_TIME_LIMIT: "1800"
+    networks:
+      - bot_net
+    depends_on:
+      - redis
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: docker/celery_beat.dockerfile
+    container_name: dev_celery_beat
+    restart: on-failure
+    environment:
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/1"
+    networks:
+      - bot_net
+    depends_on:
+      - celery_worker
+
+  #  celery_exporter:
+  #    build:
+  #      context: .
+  #      dockerfile: docker/celery_exporter.dockerfile
+  #    container_name: dev_celery_exporter
+  #    restart: on-failure
+  #    environment:
+  #      CELERY_BROKER_URL: "redis://redis:6379/0"
+  #      CELERY_RESULT_BACKEND: "redis://redis:6379/1"
+  #      CELERY_METRICS_HOST: "localhost"
+  #      CELERY_METRICS_PORT: "9091"
+  #    ports:
+  #      - "9091:9091"
+  #    networks:
+  #      - dev_network
+
+  ui:
+    build:
+      context: .
+      dockerfile: docker/ui.dockerfile
+    container_name: dev_ui
+    restart: on-failure
+    environment:
+      BACKEND_URL: "http://api:8000"
+    ports:
+      - "8501:8501"
+    networks:
+      - bot_net
+    depends_on:
+      - api
+
+#  kafka_consumer:
+#    build:
+#      context: .
+#      dockerfile: docker/kafka_consumer.dockerfile
+#    container_name: dev_kafka_consumer
+#    restart: on-failure
+#    environment:
+#      KAFKA_BROKER: "kafka:9092"
+#      KAFKA_TOPIC_DOC_NEW: "cti.doc.new.v1"
+#      KAFKA_GROUP_ID: "iuwc-kb-consumer"
+#      KAFKA_MAX_RETRIES: "3"
+#      KAFKA_RETRY_BACKOFF_MS: "500"
+#      PROMETHEUS_MULTIPROC_DIR: "/prometheus_multiproc"
+#      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@postgres:5432/postgres"
+#    ports:
+#      - "9093:9093"
+#    tmpfs:
+#      - /prometheus_multiproc:rw,mode=1777
+#    networks:
+#      - dev_network

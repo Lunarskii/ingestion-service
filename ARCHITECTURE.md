@@ -2,7 +2,116 @@
 
 ## Архитектурные слои
 
-### **`api` (Слой API)**
+### **`app/core` (Конфигурация и логирование)**
+- **Ответственность**:
+  - Загрузка конфигурации из окружения/файлов (Pydantic `BaseSettings`).
+  - Настройка логгера (структурированное логирование).
+- **Ключевые модули**:
+  - `config.py`: Конфигурации (`PostgreSQL`, `SentenceTransformer`, `TextSplitter` и т.п.)
+  - `logging.py`: Настройка логгера (структурированные сообщения, логирование в файл).
+- **Особенности**:
+  - Настройки компонентов, например `APISettings`, `CelerySettings` и др. не парсятся из ENV при импорте модуля. Используется @cached_property, и пока настройки не потребуются (вызов settings.api), они не будут инициализированы.
+  - В модуле логгера есть перехватчик логов различных библиотек, есть возможность их отключить или отправить в другой канал.
+
+### **`app/domain` (Бизнес-логика)**
+- **Ответственность**:
+  - Вся бизнес-логика и модели предметной области (DAO, DTO, схемы), репозитории, сервисы.
+- **Ключевые пакеты**:
+  - `chat`: RAG-логика, управление сессиями, сообщениями.
+  - `classifier`: Классификатор тем
+  - `database`: Общая бд-логика (подключения, миксины (Mixins), модели).
+  - `document`: Обработка документов.
+  - `embedding`: Работа с эмбеддингами, векторами.
+  - `extraction`: Экстракторы текста (PDF, DOCX, ...)
+  - `security`: Безопасность, API-ключи, аутентификация/авторизация, Keycloak.
+  - `text_splitter`: Разделители страниц, текста на чанки (фрагменты).
+  - `workspace`: Работа с рабочими пространствами.
+- **Ключевые правила**:
+  - Изолирован от инфраструктуры: все зависимости (хранилище, векторный индекс) принимаются через интерфейсы/протоколы.
+  - Преобразование ORM <-> DTO выполняется через Pydantic `from_attributes`/`model_validate`.
+
+### **`app/exceptions` (Исключения)**
+- **Ответственность**:
+  - Доменные исключения и их иерархия.
+  - Используются в сервисах, переводятся в HTTP-ошибки на уровне `api/exc_handlers.py`.
+- **Ключевые модули**:
+  - `base.py`: базовые исключения.
+
+### **`app/infrastructure` (Инфраструктура)**
+- **Ответственность**:
+  - Реальные реализации контрактов `services/interfaces.py`, например `MinIORawStorage`, `QdrantVectorStore` и т.п.
+- **Ключевые модули**:
+  - `llm_client_ollama.py`: Реализация интерфейса `LLMClient` на базе Ollama.
+  - `repository_sqlalchemy.py`: Реализация интерфейса `Repository` на базе БД.
+  - `storage_minio.py`: Реализация интерфейса `RawStorage` на базе MinIO файлового хранилища.
+  - `vectorstore_qdrant.py`: Реализация интерфейса `VectorStore` на базе Qdrant векторного хранилища.
+
+### **`app/interfaces` (Абстракции / Интерфейсы)**
+- **Ответственность**:
+  - Описание `Protocol`-интерфейсов для хранения (`RawStorage`, `VectorStore`, `Repository`) и других внешних сервисов.
+  - Используются в `domain` для типизации и DI.
+- **Ключевые модули**:
+  - `llm_client.py`: Контракт `LLMClient` для работы с LLM (генерация ответа и др.).
+  - `raw_storage.py`: Контракт `RawStorage` для работы с файловыми хранилищами (`MinIO`, `AWS S3` и др.).
+  - `repository.py`: Контракт `Repository` для работы с часто востребованными данными (`PostgreSQL` и др. хранилища).
+  - `vector_store.py`: Контракт `VectorStore` для работы с векторными хранилищами (`Qdrant`, `Pinecone` и др.)
+
+### **`app/metrics` (Метрики / Инструменты для сбора метрик)**
+- **Ответственность**:
+  - Локальное хранение метрик - не в хранилище, просто в модуле.
+  - Сбор метрик, если возможен.
+  - Инструменты для сбора метрик.
+- **Ключевые пакеты**:
+  - `celery`: Celery метрики, оркестратор для сбора метрик.
+    - **Особенности**:
+      - Метрики собираются автоматически при запуске оркестратора.
+      - Не требуется интеграция в коде, так как используется обмен данными с Celery.
+  - `kafka`: Kafka метрики.
+    - **Особенности**:
+      - Не используется реестр метрик (`CollectorRegistry`), так как использование предполагается в режиме мультипроцесса.
+
+### **`app/schemas` (Схемы / DTO)**
+- **Ответственность**:
+  - Определение `Pydantic`-моделей для DTO (Data Transfer Objects) и общих схем данных.
+  - Унификация контрактов данных между слоями.
+  - Упрощение преобразования ORM-моделей в DTO через `from_attributes`.
+  - Предоставление "сырого" дампа данных (`model_raw_dump`), минуя сериализацию `Pydantic`.
+- **Ключевые модули**:
+  - `base.py`: базовые классы `BaseSchema` и `BaseDTO` с общими настройками конфигурации Pydantic.
+  - `mixins.py`: набор mixin-классов (`UUIDMixin`, `CreatedAtMixin`, `UpdatedAtMixin`, `TimestampMixin`), добавляющих общие поля (идентификаторы, временные метки).
+
+### **`app/stubs` (Заглушки для локальной разработки и тестирования)**
+- **Ответственность**
+  - Лёгкие, файл-системные реализации интерфейсов для разработки: `LLMClient`, `FileRawStorage`, `JSONVectorStore`.
+  - Используются в `config/adapters.py` при отсутствии production конфигурации, например `MinIO`.
+- **Ключевые модули**:
+  - `llm_client.py`: LLM заглушка.
+  - `raw_storage.py`: Заглушка для хранения исходных документов в локальном файловом хранилище.
+  - `vector_store.py`: Заглушка для хранения векторов в локальном файловом хранилище.
+
+### **`app/utils` (Утилиты)**
+- **Ответственность**
+  - Реализация общих утилит, например получение универсального времени без временной зоны.
+  - Используются во всем приложении.
+- **Ключевые модули**:
+  - `datetime.py`: Утилиты для работы с datetime, сериализацией datetime, десериализацией (конвертирование из строки в datetime).
+  - `file.py`: Утилиты для работы с файлами: определение MIME-типа, расширения файла.
+    - **Особенности**:
+      - Содержит переменную _types_map, в которой находится маппинг MIME -> EXTENSION. Библиотека mimetypes может содержать неполный набор MIME-типов в некоторых операционных системах.
+      - Если требуются дополнительные анализаторы типов, можно дополнить _types_map своими.
+  - `health.py`: Утилиты для получения состояния сервисов (Redis, Celery и др.).
+  - `sequence.py`: Утилиты для работы с последовательностями. В данный момент содержит только функцию `chunked` для разбиения списка на чанки (несколько списков с определенным размером).
+  - `singleton.py`: Реестр синглтонов.
+
+###  **`app/workflows` (Рабочие процессы)**
+- **Ответственность**:
+  - Длинные пайплайны обработки
+- **Ключевые модули**:
+  - `document.py`: Пайплайн обработки документа.
+    - **Особенности**:
+      - Используется в Celery, другие сценарии не рекомендуются.
+
+### **`services/api` (API)**
 - **Ответственность**:
   - Приём HTTP-запросов
   - Валидация входа
@@ -11,115 +120,70 @@
   - События приложения (например, startup/shutdown).
   - Внедрение зависимостей (FastAPI dependencies)
   - Регистрация обработчиков ошибок.
+  - Инициализация приложения.
+- **Ключевые пакеты**:
+  - `routers`: Роутеры, эндпоинты, зависимости.
 - **Ключевые модули**:
-  - `api/main.py`: создание FastAPI клиента, точки монтирования роутеров и обработчиков (ошибок, событий).
-  - `api/events.py`: обработчики событий, инициализация глобальных ресурсов (app.state).
-  - `api/exc_handlers.py`: перевод доменных ошибок в HTTP-ответы.
-  - `api/v1/*.py`: роутеры/эндпоинты, зависимости.
+  - `events.py`: Обработчики событий, инициализация глобальных ресурсов (app.state).
+  - `exc_handlers.py`: Перевод доменных ошибок в HTTP-ответы.
+  - `main.py`: Инициализация FastAPI приложения, точка монтирования роутеров и обработчиков ошибок/событий.
+  - `routes.py`: Промежуточная точка сбора роутеров с разных маршрутов, безопасность роутеров.
 - **Особенности**:
   - Не содержит бизнес-логики - вызывает сервисы из `domain`.
-  - Использует фоновые задачи для долгих (тяжелых) операций (загрузка/обработка документов).
-  - В app.state находятся глобальные ресурсы (например, `RawStorage`, `VectorStore`, ...).
+  - Есть события on_startup и on_shutdown для обработки синхронизаций и т.п. случаев.
 
-### **`config` (Конфигурация и логирование)**
+### **`services/celery_exporter` (Celery метрики)**
 - **Ответственность**:
-  - Загрузка конфигурации из окружения/файлов (Pydantic `BaseSettings`).
-  - Настройка логгера (структурированное логирование).
+  - Инициализация и запуск сервера метрик.
 - **Ключевые модули**:
-  - `config/settings.py`: конфигурации (`MinIO`, `PostgreSQL`, `SentenceTransformer`, `TextSplitter` и т.п.)
-  - `config/logging.py`: настройка logger (структурированные сообщения, логирование в файл).
+  - `main.py`: Инициализация и запуск Exporter (оркестратор Celery метрик).
 
-### **`domain` (Слой бизнес-логики)**
+### **`services/celery_worker` (Celery worker / Celery задачи)**
 - **Ответственность**:
-  - Вся бизнес-логика и модели предметной области (DAO, DTO, схемы), репозитории, сервисы.
+  - Инициализация приложения.
+  - Реализация пресериализаторов для интеграций с различными типами данных.
+  - Выполнение тяжелых задач.
 - **Ключевые пакеты**:
-  - `domain/chat`: RAG-логика, управление сессиями, сообщениями.
-  - `domain/database`: общая бд-логика (подключения, миксины (Mixins), модели, репозитории, UoW).
-  - `domain/document`: обработка документов.
-  - `domain/extraction`: экстракторы текста (PDF, DOCX, ...)
-  - `domain/workspace`: работа с рабочими пространствами.
-  - `domain/embedding`: работа с эмбеддингами, векторами.
-  - `domain/text_splitter`: разделители страниц, текста на чанки (фрагменты).
-- **Ключевые правила**:
-  - Изолирован от инфраструктуры: все зависимости (хранилище, векторный индекс, репозитории) принимаются через интерфейсы/протоколы.
-  - Преобразование ORM <-> DTO выполняется через Pydantic `from_attributes`/`model_validate`.
+  - `tasks`: Задачи различных компонентов сервиса, например пайплайн обработки документа или синхронизация топиков с БД.
+- **Ключевые модули**:
+  - `main.py`: Инициализация Celery приложения, настройки планировщика задач.
+  - `preserializers`: Пресериализаторы для поддержки интеграций различных типов с Celery. В данный момент реализована только поддержка Pydantic.
 
-### **`exceptions` (Исключения)**
+### **`services/kafka_consumer` (Kafka потребители)**
 - **Ответственность**:
-  - Доменные исключения и их иерархия.
-  - Используются в сервисах, переводятся в HTTP-ошибки на уровне `api/exc_handlers.py`.
+  - 
+- **Ключевые пакеты**:
+  - `consumers`: Обработчики сообщений.
 - **Ключевые модули**:
-  - `exceptions/base.py`: базовые исключения.
-
-### **`infrastructure` (Инфраструктура)**
-- **Ответственность**:
-  - Реальные реализации контрактов `services/interfaces.py`, например `MinIORawStorage`, `QdrantVectorStore` и т.п.
-- **Ключевые модули**:
-  - `infrastructure/storage_minio.py`: реализация интерфейса `RawStorage` на базе MinIO файлового хранилища.
-  - `infrastructure/vectorstore_qdrant.py`: реализация интерфейса `VectorStore` на базе Qdrant векторного хранилища.
-
-### **`schemas` (Схемы / DTO)**
-- **Ответственность**:
-  - Определение `Pydantic`-моделей для DTO (Data Transfer Objects) и общих схем данных.
-  - Унификация контрактов данных между слоями.
-  - Упрощение преобразования ORM-моделей в DTO через `from_attributes`.
-  - Предоставление "сырого" дампа данных (`model_raw_dump`), минуя сериализацию `Pydantic`.
-- **Ключевые модули**:
-  - `schemas/base.py`: базовые классы `BaseSchema` и `BaseDTO` с общими настройками конфигурации Pydantic.
-  - `schemas/mixins.py`: набор mixin-классов (`UUIDMixin`, `CreatedAtMixin`, `UpdatedAtMixin`, `TimestampMixin`), добавляющих общие поля (идентификаторы, временные метки).
-
-### **`services` (Абстракции / Интерфейсы)**
-- **Ответственность**:
-  - Описание `Protocol`-интерфейсов для хранения (`RawStorage`, `VectorStore`, `Repository`) и других внешних сервисов.
-  - Используются в `domain` для типизации и DI.
-- **Ключевые модули**:
-  - `services/interfaces.py`: интерфейсы.
-
-### **`stubs` (Заглушки для локальной разработки и тестирования)**
-- **Ответственность**
-  - Лёгкие, файл-системные реализации интерфейсов для разработки: `FileRawStorage`, `JSONVectorStore`.
-  - Используются в on_startup событии при отсутствии production конфигурации (например, `settings.minio`).
-- **Ключевые модули**:
-  - `stubs/raw_storage.py`: заглушка хранилища сырых файлов.
-  - `stubs/vector_store.py`: заглушка векторного хранилища.
-  - `stubs/llm_stub.py`: LLM заглушка.
-
-### **`utils` (Утилиты)**
-- **Ответственность**
-  - Реализация общих утилит, например получение универсального времени без временной зоны.
-  - Используются во всем приложении.
-- **Ключевые модули**:
-  - `utils/datetime.py`: утилиты для конвертирования времени из строки в datetime и обратно и т.п.
-  - `utils/file.py`: утилиты для работы с файлами: определение MIME-типа, расширения файла.
-  - `utils/singleton.py`: реестр синглтонов.
+  - `main.py`: Инициализация приложения и само приложение.
+  - `worker.py`: Kafka Worker.
 
 ## Технологии
 
 ### API / Web
 - `FastAPI`
-  - **Роль**: основной web/HTTP фреймворк (ASGI) — маршрутизация, валидация входных данных, OpenAPI, инъекции зависимостей.
-  - **Почему выбран**: быстрый разработческий цикл, асинхронная архитектура, богатый встроенный функционал (docs, DI).
+  - **Роль**: Основной web/HTTP фреймворк (ASGI) - маршрутизация, валидация входных данных, OpenAPI, инъекции зависимостей.
+  - **Почему выбран**: Быстрый разработческий цикл, асинхронная архитектура, богатый встроенный функционал (docs, DI).
   - **Альтернативы**:
-    - `Flask`: синхронный
-    - `Django REST Framework`: более монолитное решение
+    - `Flask`: Синхронный.
+    - `Django REST Framework`: Более монолитное решение.
   - **Примечания**:
     - Запуск под ASGI (`Uvicorn` / `Gunicorn`).
     - На продакшене рекомендуется `Gunicorn` + `Uvicorn workers` (`uvloop`).
 - `Uvicorn`
   - **Роль**: ASGI сервер приложения.
 - `Gunicorn`
-  - **Роль**: менеджер процессов для продакшн-развёртывания.
+  - **Роль**: Менеджер процессов для продакшн-развёртывания.
 - `python-multipart`:
-  - **Роль**: прием `multipart/form-data` (файловые загрузки) в `FastAPI`.
+  - **Роль**: Прием `multipart/form-data` (файловые загрузки) в `FastAPI`.
   - **Примечания**:
     - Загрузки больших файлов нагружают память/диск.
 
 ### Application / Services / Background
-- `FastAPI BackgroundTasks`
-  - **Роль**: в текущей реализации используется для неблокирующего запуска задач обработки документов.
-  - **Примечания**:
-    - Удобно для прототипа.
-    - При росте нагрузки стоит переносить обработку в очередь задач (`Celery` / `RQ` / `Kafka + workers`).
+- `Celery`
+  - **Роль**: Перенос нагрузки на API в очередь задач.
+  - **Альтернативы**:
+    - `FastAPI BackgroundTasks`: Легкий в использовании, но слабый функционал. API загружено, снижается производительность.
 
 ### Database / Persistence
 - `SQLAlchemy (async)` + `asyncpg`
@@ -137,7 +201,7 @@
     - Держать миграции в VCS.
     - Применять миграции в CI/CD пайплайне перед деплоем.
 
-### Raw file storage
+### File storage
 - `MinIO` (client: `minio`)
   - **Роль**: S3-совместимое хранилище для сырых загруженных файлов.
   - **Почему выбран**:
@@ -149,8 +213,43 @@
     - `Google Cloud Storage`
     - `AWS S3`
     - `Azure Blob Storage`
-- `FileRawStorage` (stub)
+- `LocalFileStorage` (stub)
   - **Роль**: локальная файловая реализация для разработки и тестов.
+  - **Примечания**:
+    - Не используйте в продакшене.
+
+### Vector embeddings / ML
+- `sentence-transformers`
+  - **Роль**: Получение эмбеддингов для документов/вопросов.
+  - **Почему выбран**:
+    - Простая интеграция.
+    - Локальное исполнение моделей.
+    - Гибкость.
+  - **Альтернативы**;
+    - Внешние сервисы (например, OpenAI)
+    - Удаленный эмбеддинг микросервис.
+- `Qdrant` (client: `qdrant-client`)
+  - **Роль**: Векторное хранилище, поиск схожих векторов.
+  - **Почему выбран**:
+    - Семантический поиск.
+    - Обнаружение аномалий.
+    - Продвинутый поиск по векторному сходству.
+    - Гибкая фильтрация по метаданным.
+    - Легко разворачивается локально.
+- `JSONVectorStore` (stub)
+  - **Роль**: Локальная файловая реализация индексов для разработки и тестов.
+  - **Примечания**:
+    - Не используйте в продакшене.
+
+### LLM
+- `Ollama` (client: `ollama`)
+  - **Роль**: Локальный запуск LLM.
+  - **Почему выбран**:
+    - Локальное выполнение.
+    - Простота использования.
+    - Расширяемость.
+- `StubLLMClient` (stub)
+  - **Роль**: Локальная заглушка для разработки и тестов.
   - **Примечания**:
     - Не используйте в продакшене.
 
@@ -161,7 +260,7 @@
     - `PyPDF2`, `PyPDF3`, `PyPDF4`
     - `pdfplumber`
   - **Примечания**:
-    - Сложные PDF (с изображениями) потребуют OCR — это вне текущей реализации.
+    - Сложные PDF (с изображениями) потребуют OCR - это вне текущей реализации.
 - `python-docx`
   - **Роль**: извлечение текста и метаданных из DOCX.
 - `mammoth` + `weasyprint`
@@ -186,21 +285,6 @@
   - **Примечания**:
     - Модель статистическая - может иногда ошибаться, предусмотреть fallback.
 
-### Vector embeddings / ML
-- `sentence-transformers`
-  - **Роль**: получение эмбеддингов для документов/вопросов.
-  - **Почему выбран**:
-    - Простая интеграция.
-    - Локальное исполнение моделей.
-    - Гибкость.
-  - **Альтернативы**;
-    - Внешние сервисы (например, OpenAI)
-    - Удаленный эмбеддинг микросервис.
-- `JSONVectorStore` (stub)
-  - **Роль**: локальная файловая реализация индексов для разработки и тестов.
-  - **Рекомендации**:
-    - В продакшене поменять на Qdrant, Pinecone или др.
-
 ### Serialization / Validation / DTOs
 - `pydantic`
   - **Роль**: схемы/DTO, валидация.
@@ -215,6 +299,25 @@
   - **Примечания**:
     - Интегрировать с сервисами для сбора, хранения, обработки и анализа логов.
     - (Дополнительно) при развитии проекта добавить метрики (например, Prometheus + OpenTelemetry).
+
+### Security / JWT
+- `argon2` (client: `argon2-cffi`)
+  - **Роль**: Хэширование API-ключей.
+  - **Почему выбран**:
+    - Гибкость настройки параметров (память, итерации, параллелизм) позволяет адаптировать алгоритм под конкретные нужды.
+    - Устойчивость к атакам с использованием специализированного оборудования (GPU, ASIC, FPGA).
+    - Современное решение.
+  - **Альтернативы**:
+    - `bcrypt`: Легкий для использования, но ограничение 72 байта, больше не безопасно.
+- `pyjwt`
+  - **Роль**: Работа с JWT-токенами.
+  - **Почему выбран**:
+    - Простота использования и интуитивный API
+    - Широкий выбор алгоритмов шифрования
+  - **Альтернативы**:
+    - `authlib`
+    - `python-jose`
+    - `itsdangerous`
 
 Точные версии зависимостей закреплены в pyproject.toml. Обратитесь к этому файлу для получения точных версий.
 
@@ -253,22 +356,68 @@ erDiagram
     documents {
         UUID id PK
         UUID workspace_id FK
-        string name
+        string source_id
+        UUID run_id
+        string sha256
+        string raw_url
+        string title
+        string media_type
         string detected_language
-        int page_count
+        integer page_count
         string author
         datetime creation_date
         string raw_storage_path
-        int size_bytes
+        string silver_storage_path
+        integer size_bytes
+        datetime fetched_at
+        datetime stored_at
         datetime ingested_at
-        enum status "SUCCESS, FAILED"
+        enum status "PENDING, QUEUED, PROCESSING, SUCCESS, FAILED, SKIPPED"
         string error_message
+    }
+    
+    document_events {
+        integer id PK
+        UUID document_id "uq_document_events_document_id_stage"
+        UUID trace_id
+        enum stage "EXTRACTING, CHUNKING, EMBEDDING, CLASSIFICATION, LANG_DETECT, uq_document_events_document_id_stage"
+        enum status "PENDING, QUEUED, PROCESSING, SUCCESS, FAILED, SKIPPED"
+        datetime started_at
+        datetime finished_at
+        float duration_ms
+    }
+    
+    topics {
+        integer id PK
+        string code "unique"
+        string title
+        string description
+        bool is_active
+    }
+    
+    document_topics {
+        integer id PK
+        UUID document_id FK
+        integer topic_id FK
+        integer score
+        enum source "rules, ml, manual"
+        datetime created_at
+    }
+    
+    api_keys {
+        integer id PK
+        string key_hash
+        string label
+        bool is_active
+        datetime created_at
     }
 
     workspaces ||--o{ documents : "ON DELETE CASCADE"
     workspaces ||--o{ chat_sessions : "ON DELETE CASCADE"
     chat_sessions ||--o{ chat_messages : "ON DELETE CASCADE"
     chat_messages ||--o{ chat_message_sources : "ON DELETE CASCADE"
+    topics ||--o{ document_topics : "ON DELETE CASCADE"
+    documents ||--o{ document_topics : "ON DELETE CASCADE"
 ```
 
 ## Схема работы чат-сессий
@@ -279,7 +428,7 @@ sequenceDiagram
     participant RAGService
     participant EmbeddingModel
     participant VectorStore
-    participant LLM as LLM (stub/client)
+    participant LLM
     participant DB as Database
 
     Client->>API: POST /v1/chat/ask {question, workspace_id, top_k, session_id?}
@@ -347,12 +496,12 @@ sequenceDiagram
 
 **Пример: Добавление поддержки S3 для `RawStorage`**
 
-1. **Создать новую реализацию:**
+1. **Создать новую реализацию**:
 - Создать файл, например, `./infrastructure/s3_storage.py`.
 - В этом файле создать класс `S3RawStorage`, который реализует протокол `RawStorage` (т.е. имеет методы интерфейса `RawStorage`).
 
 ```python
-from app.services import RawStorage
+from app.interfaces import RawStorage
 
 
 class S3RawStorage(RawStorage):
@@ -371,69 +520,64 @@ class S3RawStorage(RawStorage):
   # другие методы
 ```
 
-2. **Обновить конфигурацию:**
-- Добавить в `config/settings.py` класс, наследованный от `BaseSettings`, необходимый для новой реализации (например, `S3Settings(BaseSettings)`).
+2. **Обновить конфигурацию**:
+- Добавить в `app/core/config.py` класс, наследованный от `BaseSettings`, необходимый для новой реализации (например, `S3Settings(BaseSettings)`).
 - Добавить в новую реализацию конфига переменные для подключения к хранилищу (например, `s3_bucket`).
 ```python
 class S3Settings(BaseSettings):
     s3_bucket: Annotated[str | None, Field(alias="S3_BUCKET")] = None
 ```
 
-- Добавить инициализацию конфига в `config/__init__.py`
+- Добавить инициализацию конфига в том же файле в `Settings(BaseSettings)`
 
 ```python
-from config.settings import (
-    APISettings as _APISettings,
-    # ...
-    S3Settings as _S3Settings,
-)
+from functools import cached_property
+
+
+class S3Settings(BaseSettings):
+    s3_bucket: Annotated[str | None, Field(alias="S3_BUCKET")] = None
 
 
 class Settings:
-    api = _APISettings()
+    @cached_property
+    def api(self):
+        return APISettings()
+
     # ...
-    s3 = _S3Settings()
+    @cached_property
+    def s3(self):
+        return S3Settings()
 ```
 
-3. **Обновить `api/events.py`:**
-- Добавить логику в `on_startup_event_handler(app: "FastAPI")`, чтобы функция устанавливала зависимость raw_storage, если `settings.s3_bucket` установлен.
+3. **Обновить `app/defaults.py`**:
 
 ```python
-from typing import Coroutine
-from config import settings
-from app.stubs import FileRawStorage
+from functools import partial
+from app.core import settings
 from app.infrastructure import S3RawStorage  # Импортируем новый класс
 
 
-async def on_startup_event_handler(app: "FastAPI") -> None:
-    def __init_object(cls, *args, **kwargs) -> Coroutine:
-        ...
-
-    if settings.minio.is_configured:
-        ...
-    elif settings.s3.s3_bucket:
-        raw_storage_coro = __init_object(
+if settings.minio.is_configured:
+    ...
+elif settings.s3.s3_bucket:
+    _raw_storage_factory = LazyFactory(
+        partial(
             S3RawStorage,
             # любые другие keyword аргументы, если есть в конфиге
             bucket_name=settings.s3.s3_bucket,
         )
-    else:
-        raw_storage_coro = __init_object(FileRawStorage)
-
-    tasks: list[Coroutine] = [
-        raw_storage_coro,
-        # ...
-    ]
+    )
+else:
+    ...
 ```
 
 Теперь, просто изменив переменную окружения `S3_BUCKET=bucket_name`, все приложение начнет использовать 
-S3 вместо локального хранилища, без единого изменения в `domain/` или `api/` слоях, за исключением 
-самих синглтонов в `api/events.py`.
+S3 вместо локального хранилища, без единого изменения в `domain/` или `api/` слоях.
 
 **Пример: Добавление поддержки новых документов для `TextExtractor`**
 
 1. **Создать новую реализацию:**
-- Создать новый класс в `domain/extraction/base.py`, например, `XlsxExtractor`.
+- Создать новый класс в `app/domain/extraction/base.py`, например, `XlsxExtractor`.
 - Этот класс будет использовать библиотеку `openpyxl` для взаимодействия с XLSX документами.
 - В этом классе реализовать метод `_extract(...)`
 
@@ -458,24 +602,24 @@ class XlsxExtractor(TextExtractor):
     )
 ```
    
-2. **Обновить фабрику экстракторов `domain/extraction/factory.py`:**
+2. **Обновить фабрику экстракторов `app/domain/extraction/factory.py`:**
 - Добавить в `ExtractorFactory._map` новый экстрактор, необходимый для обработки документов данного типа, чтобы функция `ExtractorFactory.get_extractor(...)` возвращала его, когда потребуется.
 
 ```python
 from app.domain.extraction import (
-  TextExtractor,
-  PdfExtractor,
-  # ...
-  XlsxExtractor,
+    DocumentExtractor,
+    PdfExtractor,
+    # ...
+    XlsxExtractor,
 )
 
 
 class ExtractorFactory:
-  _map: dict[str, type[TextExtractor]] = {
-    "pdf": PdfExtractor,
-    # ...
-    "xlsx": XlsxExtractor,
-  }
+    _map: dict[str, type[DocumentExtractor]] = {
+        "pdf": PdfExtractor,
+        # ...
+        "xlsx": XlsxExtractor,
+    }
 ```
    
 Теперь из документов типа XLSX тоже можно будет извлечь текст и необходимые метаданные.

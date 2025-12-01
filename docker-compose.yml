@@ -1,52 +1,101 @@
+volumes:
+  prometheus_data:
+
+networks:
+  api_network:
+  redis_network:
+
 services:
   api:
-    container_name: api
-    restart: on-failure
     build:
       context: .
       dockerfile: docker/api.dockerfile
+    container_name: api
+    restart: on-failure
     environment:
       DATABASE_URL: "${DATABASE_URL}"
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+      QDRANT_URL: "${QDRANT_URL}"
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+      CELERY_RESULT_BACKEND: "${CELERY_RESULT_BACKEND}"
+      KEYCLOAK_URL: "${KEYCLOAK_URL}"
+      KEYCLOAK_CLIENT_ID: "${KEYCLOAK_CLIENT_ID}"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET}"
+      KEYCLOAK_REALM: "${KEYCLOAK_REALM}"
+      KEYCLOAK_REDIRECT_URI: "${KEYCLOAK_REDIRECT_URI}"
+      API_KEY_REQUIRED: "${API_KEY_REQUIRED}"
+      OLLAMA_HOST: "${OLLAMA_HOST}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL}"
+      OLLAMA_TIMEOUT_SECONDS: "${OLLAMA_TIMEOUT_SECONDS}"
     ports:
       - "8000:8000"
+    networks:
+      - api_network
+      - redis_network
     depends_on:
       - celery_worker
 
   celery_worker:
-    container_name: celery_worker
-    restart: on-failure
     build:
       context: .
       dockerfile: docker/celery_worker.dockerfile
+    container_name: celery_worker
+    restart: on-failure
+    environment:
+      DATABASE_URL: "${DATABASE_URL}"
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+      QDRANT_URL: "${QDRANT_URL}"
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+      CELERY_RESULT_BACKEND: "${CELERY_RESULT_BACKEND}"
+    networks:
+      - redis_network
     depends_on:
       - redis
-        
+
   celery_beat:
-    container_name: celery_beat
-    restart: on-failure
     build:
       context: .
       dockerfile: docker/celery_beat.dockerfile
+    container_name: celery_beat
+    restart: on-failure
+    environment:
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+      CELERY_RESULT_BACKEND: "${CELERY_RESULT_BACKEND}"
+    networks:
+      - redis_network
     depends_on:
       - celery_worker
 
   celery_exporter:
-    container_name: celery_exporter
-    restart: on-failure
     build:
       context: .
       dockerfile: docker/celery_exporter.dockerfile
+    container_name: celery_exporter
+    restart: on-failure
+    environment:
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+      CELERY_RESULT_BACKEND: "${CELERY_RESULT_BACKEND}"
+      CELERY_METRICS_HOST: "${CELERY_METRICS_HOST}"
+      CELERY_METRICS_PORT: "${CELERY_METRICS_PORT}"
     ports:
-      - "9000:9000"
+      - "9091:9091"
+    networks:
+      - redis_network
 
   flower:
     image: mher/flower:2.0
     container_name: flower
     environment:
-      CELERY_BROKER_URL: "${CELERY_BROKER_URL:-redis://redis:6379/0}"
-      RESULT_BACKEND: "${CELERY_RESULT_BACKEND:-redis://redis:6379/1}"
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+      RESULT_BACKEND: "${CELERY_RESULT_BACKEND}"
     ports:
       - "5555:5555"
+    networks:
+      - redis_network
     depends_on:
       - redis
 
@@ -55,6 +104,8 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
+    networks:
+      - redis_network
 
   prometheus:
     image: prom/prometheus:v3.6.0-rc.1
@@ -67,18 +118,17 @@ services:
     depends_on:
       - celery_exporter
 
-#  ui:
-#    container_name: ui
-#    restart: on-failure
-#    build:
-#      context: .
-#      dockerfile: docker/ui.dockerfile
-#    environment:
-#      BACKEND_URL: "${BACKEND_URL:-http://backend:8000}"
-#    ports:
-#      - "8501:8501"
-#    depends_on:
-#      - backend
-
-volumes:
-  prometheus_data:
+  ui:
+    build:
+      context: .
+      dockerfile: docker/ui.dockerfile
+    container_name: ui
+    restart: on-failure
+    environment:
+      BACKEND_URL: "${BACKEND_URL:-http://api:8000}"
+    ports:
+      - "8501:8501"
+    networks:
+      - api_network
+    depends_on:
+      - api

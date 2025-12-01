@@ -1,34 +1,16 @@
-from typing import Annotated
-
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.domain.chat.repositories import (
-    ChatSessionRepository,
-    ChatMessageRepository,
-    ChatMessageSourceRepository,
-)
-from app.domain.database.dependencies import async_scoped_session_dependency
-from app.domain.database.uow import (
-    UnitOfWork,
-    UnitOfWorkFactory,
+from app.domain.chat.service import (
+    RAGService,
+    ChatService,
 )
 
 
-async def chat_uow_dependency(
-    session: Annotated[AsyncSession, Depends(async_scoped_session_dependency)],
-) -> UnitOfWork:
+async def rag_service_dependency() -> RAGService:
     """
-    Возвращает UnitOfWork с предзарегистрированными репозиториями:
-        * ``ChatSessionRepository``
-        * ``ChatMessageRepository``
-        * ``ChatMessageSourceRepository``
+    Создаёт и возвращает экземпляр сервиса :class:`RAGService`.
     """
 
-    async with UnitOfWorkFactory.get_uow(
-        session,
-        ChatSessionRepository,
-        ChatMessageRepository,
-        ChatMessageSourceRepository,
-    ) as uow:
-        yield uow
+    return RAGService()
+
+
+async def chat_service_dependency() -> ChatService:
+    return ChatService()

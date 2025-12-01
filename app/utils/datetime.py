@@ -7,7 +7,7 @@ from datetime import (
 
 from dateutil import parser as dateutil_parser
 
-from config import settings
+from app.core import settings
 
 
 def local_time() -> datetime:
@@ -15,7 +15,6 @@ def local_time() -> datetime:
     Возвращает текущее локальное время.
 
     :return: Текущая локальная дата и время (без явного указания временной зоны).
-    :rtype: datetime
     """
 
     return datetime.now()
@@ -26,7 +25,6 @@ def universal_time() -> datetime:
     Возвращает текущую UTC-временную метку без информации о временной зоне.
 
     :return: Текущее UTC-время с обнулённой tzinfo (naive datetime).
-    :rtype: datetime
     """
 
     return datetime.now(UTC).replace(tzinfo=None)
@@ -38,8 +36,12 @@ def serialize_datetime_to_str(
 ) -> str | None:
     """
     Сериализация datetime в строку.
-
     Формат задается из конфига или аргумента функции.
+
+    :param value: Дата и время, которые нужно сериализовать в строку.
+    :param format: Формат, в который нужно сериализовать.
+
+    :return: Сериализованные в строку дата и время.
     """
 
     if value is None:
@@ -47,7 +49,15 @@ def serialize_datetime_to_str(
     return datetime.strftime(value, format or settings.datetime.serialization_format)
 
 
-def reset_timezone(value: datetime) -> datetime | None:
+def reset_timezone(value: datetime | None) -> datetime | None:
+    """
+    Сбрасывает временную зону на None.
+
+    :param value: Дата и время, в которых нужно сбросить временную зону.
+
+    :return: Дата и время без tzinfo.
+    """
+
     if value is None:
         return None
     return value.replace(tzinfo=None)
@@ -58,9 +68,8 @@ def parse_iso8824_date(text: str) -> datetime | None:
     Конвертирует строковый формат даты PDF в datetime. Наивный UTC: конвертирует к UTC+0.
 
     :param text: Дата в строковом формате
-    :type text: str
+
     :return: Дата в формате datetime
-    :rtype: datetime
     """
 
     if not text or (text := text.strip()) is None:
@@ -111,9 +120,8 @@ def parse_date(text: str) -> datetime | None:
     Конвертирует строковый формат PDF, ISO и неструктурированных дат в datetime.
 
     :param text: Дата в строковом формате
-    :type text: str
+
     :return: Дата в формате datetime
-    :rtype: datetime
     """
 
     if not text or (text := text.strip()) is None:

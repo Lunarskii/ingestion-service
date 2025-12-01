@@ -1,23 +1,41 @@
-from app.domain.embedding.base import EmbeddingModel
+from typing import (
+    Callable,
+    AsyncContextManager,
+)
+import json
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.domain.chat.prompt_builder import PromptBuilder
 from app.domain.chat.schemas import (
     RAGRequest,
     RAGResponse,
-    ChatMessageSource,
+    ChatSession,
+    ChatSessionDTO,
+    ChatMessage,
     ChatMessageDTO,
     ChatRole,
-    ChatSessionDTO,
+    RetrievalSource,
+    RetrievalChunk,
+    RetrievalSourceDTO,
+    RetrievalChunkDTO,
 )
 from app.domain.chat.repositories import (
     ChatSessionRepository,
     ChatMessageRepository,
-    ChatMessageSourceRepository,
+    RetrievalChunkRepository,
+    RetrievalSourceRepository,
 )
 from app.domain.chat.exceptions import RAGError
-from app.domain.database.uow import UnitOfWork
-from app.domain.embedding.schemas import Vector
-from app.stubs import llm_stub
-from app.services import VectorStore
-from config import logger
+from app.domain.database.dependencies import async_scoped_session_ctx
+from app.workflows.chat import search_sources, rerank
+from app.interfaces import (
+    VectorStorage,
+    LLMClient,
+    EmbeddingModel,
+)
+from app.defaults import defaults
+from app.core import logger
 
 
 class RAGService:
@@ -32,25 +50,14 @@ class RAGService:
         4. Получение ответа от LLM и сохранение сообщений в базе данных.
     """
 
-    def __init__(
-        self,
-        vector_store: VectorStore,
-        embedding_model: EmbeddingModel,
-    ):
-        """
-        :param vector_store: Сервис векторного поиска/хранения.
-        :type vector_store: VectorStore
-        :param embedding_model: Модель для кодирования входных вопросов в векторы.
-        :type embedding_model: SentenceTransformer
-        """
-
-        self.vector_store = vector_store
-        self.embedding_model = embedding_model
-
     async def ask(
         self,
         request: RAGRequest,
-        uow: UnitOfWork,
+        *,
+        embedding_model: EmbeddingModel = defaults.embedding_model,
+        llm_client: LLMClient = defaults.llm_client,
+        vector_storage: VectorStorage = defaults.vector_storage,
+        session_ctx: Callable[[], AsyncContextManager["AsyncSession"]] = async_scoped_session_ctx,
     ) -> RAGResponse:
         """
         Обрабатывает входящий запрос и возвращает сгенерированный ответ и список источников.
@@ -64,20 +71,25 @@ class RAGService:
             6. Формирование ответа.
 
         :param request: Схема запроса.
-        :type request: RAGRequest
-        :param uow: UnitOfWork - менеджер транзакции и фабрика репозиториев.
-        :type uow: UnitOfWork
+        :param embedding_model: Embedding модель.
+        :param llm_client: Клиент для работы с LLM.
+        :param vector_storage: Векторное хранилище.
+        :param session_ctx: Асинхронный контекстный менеджер, возвращающий сессию AsyncSession.
+                            Функция не коммитит изменения, поэтому ваш асинхронный контекстный
+                            менеджер должен содержать commit() и rollback() обработку, если
+                            требуется.
+
         :return: Ответ в виде :class:`RAGResponse`, содержащий текст ответа, источники и session_id.
-        :rtype: RAGResponse
         :raises RAGError: При любых ошибках внутри RAG-пайплайна.
         """
 
         if not request.session_id:
-            chat_sessions_repo = uow.get_repository(ChatSessionRepository)
-            session: ChatSessionDTO = await chat_sessions_repo.create(
-                workspace_id=request.workspace_id,
-            )
-            request.session_id = session.id
+            async with session_ctx() as session:
+                repo = ChatSessionRepository(session)
+                chat_session: ChatSessionDTO = await repo.create(
+                    workspace_id=request.workspace_id,
+                )
+            request.session_id = chat_session.id
 
         context_logger = logger.bind(
             workspace_id=request.workspace_id,
@@ -86,55 +98,104 @@ class RAGService:
 
         try:
             context_logger.info("Векторизация вопроса")
-            embedding: list[float] = self.embedding_model.encode(
-                sentences=request.question,
-            )
+            embedding: list[float] = embedding_model.encode(request.question)
 
             context_logger.info("Формирование списка источников")
-            sources: list[ChatMessageSource] = self._generate_sources(
-                embedding=embedding,
-                top_k=request.top_k,
-                workspace_id=request.workspace_id,
-            )
-
-            context_logger.info("Формирование контекста для LLM")
-            prompt: str = await self._generate_prompt(
-                uow=uow,
-                session_id=request.session_id,
+            sources: list[RetrievalSource] = await search_sources(
                 question=request.question,
-                sources=sources,
+                embedding=embedding,
+                workspace_id=request.workspace_id,
+                top_k="all",  # TODO временно
+                vector_storage=vector_storage,
+                session_ctx=session_ctx,
             )
 
-            context_logger.info("Получение ответа от LLM")
-            answer: str = llm_stub.generate(prompt)
+            # context_logger.info("Реранжирование источников")
+            # sources = rerank(
+            #     question=request.question,
+            #     sources=sources,
+            #     top_k=None,
+            # )
+
+            chunks: list[RetrievalChunk] = []
+
+            for source in sources:
+                for chunk in source.chunks:
+                    if len(chunks) < 100:
+                        chunks.append(chunk)
+                    else:
+                        break
+
+            with open("chunks.json", "w", encoding="utf-8") as f:
+                f.write(json.dumps([chunk.model_dump() for chunk in chunks]))
+
+            answer = ""
+
+            # context_logger.info("Формирование контекста для LLM")
+            # builder = PromptBuilder(8192)
+            # prompts: list[str] = builder.build(
+            #     question=request.question,
+            #     context=[
+            #         chunk.text
+            #         for source in sources
+            #         for chunk in source.chunks
+            #         if chunk.text is not None
+            #     ],
+            # )
+            #
+            # # TODO temp debug
+            # sources_total: int = 0
+            # for source in sources:
+            #     sources_total += len(source.chunks)
+            # context_logger.info(f"Получено {sources_total} источников, составлено {len(prompts)} промптов")
+            #
+            # context_logger.info(f"Получение ответа от LLM")
+            # while len(prompts) >= 2:
+            #     answers: list[str] = list(map(llm_client.generate, prompts))
+            #     prompts = builder.build(
+            #         question=request.question,
+            #         context=answers,
+            #     )
+            # if not prompts:
+            #     raise RAGError("Нет релевантных источников для ответа")
+            # answer: str = llm_client.generate(prompts[0])
         except Exception as e:
             context_logger.error(RAGError.message, error_message=str(e))
             raise RAGError()
 
-        context_logger.info("Сохранение сообщений в базе данных")
-        chat_message_repo = uow.get_repository(ChatMessageRepository)
-        await chat_message_repo.create(
-            session_id=request.session_id,
-            role=ChatRole.user,
-            content=request.question,
-        )
-        assistant_message: ChatMessageDTO = await chat_message_repo.create(
-            session_id=request.session_id,
-            role=ChatRole.assistant,
-            content=answer,
-        )
-
-        context_logger.info("Сохранение источников ответа в базе данных")
-        chat_message_source_repo = uow.get_repository(ChatMessageSourceRepository)
-        for source in sources:
-            await chat_message_source_repo.create(
-                source_id=source.source_id,
-                message_id=assistant_message.id,
-                document_name=source.document_name,
-                page_start=source.page_start,
-                page_end=source.page_end,
-                snippet=source.snippet,
+        async with session_ctx() as session:
+            context_logger.info("Сохранение сообщений в базе данных")
+            repo = ChatMessageRepository(session)
+            await repo.create(
+                session_id=request.session_id,
+                role=ChatRole.user,
+                content=request.question,
             )
+            assistant_message: ChatMessageDTO = await repo.create(
+                session_id=request.session_id,
+                role=ChatRole.assistant,
+                content=answer,
+            )
+
+            context_logger.info("Сохранение источников ответа в базе данных")
+            retrieval_source_repo = RetrievalSourceRepository(session)
+            retrieval_chunk_repo = RetrievalChunkRepository(session)
+            for source in sources:
+                retrieval_source: RetrievalSourceDTO = await retrieval_source_repo.create(
+                    source_id=source.source_id,
+                    message_id=assistant_message.id,
+                    title=source.title,
+                )
+                for chunk in source.chunks:
+                    await retrieval_chunk_repo.create(
+                        retrieval_source_id=retrieval_source.id,
+                        chunk_id=chunk.chunk_id,
+                        page_start=chunk.page_start,
+                        page_end=chunk.page_end,
+                        retrieval_score=chunk.retrieval_score,
+                        reranked_score=chunk.reranked_score,
+                        combined_score=chunk.combined_score,
+                    )
 
         return RAGResponse(
             answer=answer,
@@ -142,95 +203,182 @@ class RAGService:
             session_id=request.session_id,
         )
 
-    def _generate_sources(
+    # async def _generate_prompt(
+    #     self,
+    #     session_id: str,
+    #     question: str,
+    #     sources: list[ChatMessageSource],
+    #     *,
+    #     session_ctx: Callable[[], AsyncContextManager["AsyncSession"]] = async_scoped_session_ctx,
+    # ) -> str:
+    #     """
+    #     Составляет текст промпта для LLM на основе найденных фрагментов и истории чата.
+    #
+    #     Описание
+    #     --------
+    #     - Получает последние сообщения из репозитория сообщений ``ChatMessageRepository``.
+    #     - Собирает текстовые сниппеты найденных источников и историю сообщений.
+    #     - Склеивает их в итоговый промпт, который предназначен для передачи в LLM.
+    #
+    #     :param session_id: Идентификатор текущей сессии.
+    #     :param question: Текст вопроса.
+    #     :param sources: Список источников.
+    #     :param session_ctx: Асинхронный контекстный менеджер, возвращающий сессию AsyncSession.
+    #                         Функция не коммитит изменения, поэтому ваш асинхронный контекстный
+    #                         менеджер должен содержать commit() и rollback() обработку, если
+    #                         требуется.
+    #
+    #     :return: Промпт.
+    #     """
+    #
+    #     source_context: str = "\n".join([source.snippet for source in sources])
+    #     async with session_ctx() as session:
+    #         repo = ChatMessageRepository(session)
+    #         recent_messages: list[
+    #             ChatMessageDTO
+    #         ] = await repo.get_recent_messages(
+    #             session_id=session_id,
+    #             limit=settings.chat.chat_history_memory_limit,
+    #         )
+    #     message_context: str = "\n".join(
+    #         [message.content for message in recent_messages]
+    #     )
+    #     context: str = "\n".join([source_context, message_context])
+    #
+    #     return "\n".join(
+    #         [
+    #             "Основываясь на следующем контексте, ответь на вопрос.",
+    #             "---",
+    #             "Вопрос:",
+    #             question,
+    #             "---",
+    #             "Контекст:",
+    #             context,
+    #         ],
+    #     )
+
+
+class ChatService:
+    """
+    Сервис-обёртка для логики работы с чат-сессиями и сообщениями.
+    """
+
+    async def get_sessions(
         self,
-        embedding: list[float],
-        top_k: int,
         workspace_id: str,
-    ) -> list[ChatMessageSource]:
+        *,
+        session_ctx: Callable[[], AsyncContextManager["AsyncSession"]] = async_scoped_session_ctx,
+    ) -> list[ChatSession]:
         """
-        Преобразует результаты поиска в список источников.
+        Возвращает список чат-сессий для заданного рабочего пространства.
 
-        :param embedding: Вектор запроса.
-        :type embedding: list[float]
-        :param top_k: Максимальное количество возвращаемых источников.
-        :type top_k: int
         :param workspace_id: Идентификатор рабочего пространства.
-        :type workspace_id: str
-        :return: Список источников.
-        :rtype: list[ChatMessageSource]
+        :param session_ctx: Асинхронный контекстный менеджер, возвращающий сессию AsyncSession.
+                            Функция не коммитит изменения, поэтому ваш асинхронный контекстный
+                            менеджер должен содержать commit() и rollback() обработку, если
+                            требуется.
         """
 
-        retrieved_vectors: list[Vector] = self.vector_store.search(
-            embedding=embedding,
-            top_k=top_k,
-            workspace_id=workspace_id,
-        )
-        return [
-            ChatMessageSource(
-                source_id=vector.metadata.document_id,
-                document_name=vector.metadata.document_name,
-                page_start=vector.metadata.page_start,
-                page_end=vector.metadata.page_end,
-                snippet=vector.metadata.text,
+        async with session_ctx() as session:
+            repo = ChatSessionRepository(session)
+            sessions: list[ChatSessionDTO] = await repo.get_n(
+                workspace_id=workspace_id,
             )
-            for vector in retrieved_vectors
-        ]
+        return [self._map_session(session) for session in sessions]
 
-    async def _generate_prompt(
+    async def get_messages(
         self,
-        uow: UnitOfWork,
         session_id: str,
-        question: str,
-        sources: list[ChatMessageSource] | None = None,
-    ) -> str:
+        *,
+        session_ctx: Callable[[], AsyncContextManager["AsyncSession"]] = async_scoped_session_ctx,
+    ) -> list[ChatMessage]:
         """
-        Составляет текст промпта для LLM на основе найденных фрагментов и истории чата.
+        Возвращает историю сообщений + вложенные источники указанной чат-сессии в хронологическом порядке.
 
-        Описание
-        --------
-        * Получает последние сообщения из репозитория сообщений ``ChatMessageRepository``.
-        * Собирает текстовые сниппеты найденных источников и историю сообщений.
-        * Склеивает их в итоговый промпт, который предназначен для передачи в LLM.
-
-        :param uow: UnitOfWork для доступа к репозиторию сообщений.
-        :type uow: UnitOfWork
-        :param session_id: Идентификатор текущей сессии.
-        :type session_id: str
-        :param question: Текст вопроса.
-        :type question: str
-        :param sources: Список источников.
-        :type sources: list[ChatMessageSource] | None
-        :return: Текст промпта.
-        :rtype: str
-
-        :note:
-            Текущее ограничение количества сообщений из истории сообщений задано хардкодом (`limit=4`).
-            Можно вынести в параметр конфигурации при необходимости.
+        :param session_id: Идентификатор чат-сессии.
+        :param session_ctx: Асинхронный контекстный менеджер, возвращающий сессию AsyncSession.
+                            Функция не коммитит изменения, поэтому ваш асинхронный контекстный
+                            менеджер должен содержать commit() и rollback() обработку, если
+                            требуется.
         """
 
-        source_context: str = "\n".join([source.snippet for source in sources])
-        chat_message_repo: ChatMessageRepository = uow.get_repository(
-            ChatMessageRepository
-        )
-        recent_messages: list[
-            ChatMessageDTO
-        ] = await chat_message_repo.get_recent_messages(
-            session_id=session_id,
-            limit=4,
-        )  # TODO мб нужно как-то вынести limit (n)
-        message_context: str = "\n".join(
-            [message.content for message in recent_messages]
+        async with session_ctx() as session:
+            chat_message_repo = ChatMessageRepository(session)
+            messages: list[ChatMessageDTO] = await chat_message_repo.get_messages(
+                session_id=session_id,
+            )
+
+            retrieval_source_repo = RetrievalSourceRepository(session)
+            retrieval_chunk_repo = RetrievalChunkRepository(session)
+
+            async def get_chunks_by_source_id(source_id: int) -> list[RetrievalChunk]:
+                retrieval_chunks: list[RetrievalChunkDTO] = await retrieval_chunk_repo.get_n(
+                    retrieval_source_id=source_id,
+                )
+                return [
+                    RetrievalChunk(
+                        chunk_id=retrieval_chunk.chunk_id,
+                        page_start=retrieval_chunk.page_start,
+                        page_end=retrieval_chunk.page_end,
+                        retrieval_score=retrieval_chunk.retrieval_score,
+                        reranked_score=retrieval_chunk.reranked_score,
+                        combined_score=retrieval_chunk.combined_score,
+                    )
+                    for retrieval_chunk in retrieval_chunks
+                ]
+
+            async def get_sources_by_message_id(message_id: str) -> list[RetrievalSource]:
+                retrieval_sources: list[RetrievalSourceDTO] = await retrieval_source_repo.get_n(
+                    message_id=message_id,
+                )
+                return [
+                    RetrievalSource(
+                        source_id=retrieval_source.source_id,
+                        title=retrieval_source.title,
+                        chunks=await get_chunks_by_source_id(retrieval_source.id),
+                    )
+                    for retrieval_source in retrieval_sources
+                ]
+
+            return [
+                ChatMessage(
+                    id=message.id,
+                    session_id=message.session_id,
+                    role=message.role,
+                    content=message.content,
+                    sources=await get_sources_by_message_id(message.id),
+                    created_at=message.created_at,
+                )
+                for message in messages
+            ]
+
+    @staticmethod
+    def _map_session(dto: ChatSessionDTO) -> ChatSession:
+        return ChatSession(
+            id=dto.id,
+            workspace_id=dto.workspace_id,
+            created_at=dto.created_at,
         )
 
-        return "\n".join(
-            [
-                "Основываясь на следующем контексте, ответь на вопрос.",
-                "---",
-                "Контекст:",
-                "\n".join([source_context, message_context]),
-                "---",
-                "Вопрос:",
-                question,
-            ],
-        )
+    # @staticmethod
+    # def _map_message(
+    #     dto: ChatMessageDTO,
+    #     sources: list[ChatMessageSourceDTO],
+    # ) -> ChatMessage:
+    #     return ChatMessage(
+    #         id=dto.id,
+    #         session_id=dto.session_id,
+    #         role=dto.role,
+    #         content=dto.content,
+    #         sources=[
+    #             ChatMessageSource(
+    #                 source_id=source.source_id,
+    #                 document_name=source.document_name,
+    #                 page_start=source.page_start,
+    #                 page_end=source.page_end,
+    #                 snippet=source.snippet,
+    #             )
+    #             for source in sources
+    #         ],
+    #         created_at=dto.created_at,
+    #     )

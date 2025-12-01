@@ -1,18 +1,26 @@
+from typing import (
+    TYPE_CHECKING,
+    Any,
+)
 from asyncio import current_task
-from typing import Any
 
 from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    AsyncEngine,
     create_async_engine,
     async_sessionmaker,
     async_scoped_session,
 )
 
-from config import settings
+from app.core import settings
 
 
-def get_async_engine(**kwargs: Any) -> AsyncEngine:
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import (
+        AsyncSession,
+        AsyncEngine,
+    )
+
+
+def get_async_engine(**kwargs: Any) -> "AsyncEngine":
     """
     Создаёт и возвращает асинхронный SQLAlchemy ``AsyncEngine``.
 
@@ -20,9 +28,7 @@ def get_async_engine(**kwargs: Any) -> AsyncEngine:
     параметры имеют приоритет и будут добавлены к конфигурации движка.
 
     :param kwargs: Дополнительные аргументы для ``create_async_engine``.
-    :type kwargs: dict[str, Any]
     :return: Экземпляр ``AsyncEngine``, сконфигурированный через ``config.settings``.
-    :rtype: AsyncEngine
     """
 
     return create_async_engine(
@@ -35,9 +41,9 @@ def get_async_engine(**kwargs: Any) -> AsyncEngine:
 
 
 def get_async_session_factory(
-    engine: AsyncEngine,
+    engine: "AsyncEngine",
     **kwargs: Any,
-) -> async_sessionmaker[AsyncSession]:
+) -> async_sessionmaker["AsyncSession"]:
     """
     Создаёт фабрику асинхронных сессий (``async_sessionmaker``) для переданного движка.
 
@@ -45,11 +51,8 @@ def get_async_session_factory(
     Любые переданные через ``kwargs`` параметры имеют приоритет и будут добавлены к конфигурации фабрики сессии.
 
     :param engine: Экземпляр ``AsyncEngine``, к которому будут привязаны сессии.
-    :type engine: AsyncEngine
     :param kwargs: Дополнительные аргументы для ``async_sessionmaker``.
-    :type kwargs: dict[str, Any]
     :return: Сконфигурированная фабрика сессий ``async_sessionmaker[AsyncSession]``.
-    :rtype: async_sessionmaker[AsyncSession]
     """
 
     return async_sessionmaker(
@@ -61,13 +64,13 @@ def get_async_session_factory(
     )
 
 
-async_engine: AsyncEngine = get_async_engine()
-async_session_factory: async_sessionmaker[AsyncSession] = get_async_session_factory(
+async_engine: "AsyncEngine" = get_async_engine()
+async_session_factory: async_sessionmaker["AsyncSession"] = get_async_session_factory(
     async_engine
 )
 
 
-def get_async_scoped_session() -> async_scoped_session[AsyncSession]:
+def get_async_scoped_session() -> async_scoped_session["AsyncSession"]:
     """
     Возвращает scoped (контекстно-зависимую) фабрику сессий для асинхронного контекста.
 
@@ -75,7 +78,6 @@ def get_async_scoped_session() -> async_scoped_session[AsyncSession]:
     на асинхронную задачу.
 
     :returns: Обёртка ``async_scoped_session``, использующая ``current_task`` как функцию области видимости.
-    :rtype: async_scoped_session
     """
 
     return async_scoped_session(

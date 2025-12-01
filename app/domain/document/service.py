@@ -1,205 +1,246 @@
+from typing import (
+    Callable,
+    AsyncContextManager,
+)
+from uuid import uuid4
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.domain.document.schemas import (
     File,
+    DocumentStage,
     DocumentStatus,
+    Document,
     DocumentDTO,
+    DocumentEventDTO,
 )
-from app.domain.document.repositories import DocumentRepository
-from app.domain.database.uow import UnitOfWork
-from app.services import RawStorage
-from config import logger
+from app.domain.document.repositories import (
+    DocumentRepository,
+    DocumentEventRepository,
+)
+from app.domain.document.exceptions import (
+    DocumentNotFoundError,
+    ValidationError,
+    DuplicateDocumentError,
+)
+from app.domain.document.validators import (
+    ChainValidator,
+    ExtensionValidator,
+    SizeValidator,
+)
+from app.domain.database.dependencies import async_scoped_session_ctx
+from app.domain.database.exceptions import EntityNotFoundError
+from app.interfaces import FileStorage
+from app.defaults import defaults
+from app.core import (
+    settings,
+    logger,
+)
 
 
 class DocumentService:
-    """
-    Сервис, управляющий полным циклом обработки загруженных документов.
-    """
+    def __init__(self):
+        self.validator = ChainValidator(
+            (
+                ExtensionValidator(allowed_extensions=settings.document_restriction.allowed_extensions),
+                SizeValidator(max_size_bytes=settings.document_restriction.max_upload_mb * 1024 * 1024),
+            ),
+        )
 
-    def __init__(
+    async def get_documents(
         self,
-        raw_storage: RawStorage,
-    ):
+        workspace_id: str,
+        *,
+        session_ctx: Callable[[], AsyncContextManager["AsyncSession"]] = async_scoped_session_ctx,
+    ) -> list[Document]:
         """
-        :param raw_storage: Экземпляр сервиса для сохранения сырых файлов.
-        :type raw_storage: RawStorage
+        Возвращает список документов в заданном рабочем пространстве.
+
+        :param workspace_id: Идентификатор рабочего пространства.
+        :param session_ctx: Асинхронный контекстный менеджер, возвращающий сессию AsyncSession.
+                            Функция не коммитит изменения, поэтому ваш асинхронный контекстный
+                            менеджер должен содержать commit() и rollback() обработку, если
+                            требуется.
         """
 
-        self.raw_storage = raw_storage
+        async with session_ctx() as session:
+            repo = DocumentRepository(session)
+            documents: list[DocumentDTO] = await repo.get_n(workspace_id=workspace_id)
+        return [Document.from_dto(document) for document in documents]
+
+    async def get_document_file(
+        self,
+        document_id: str,
+        *,
+        raw_storage: FileStorage = defaults.raw_storage,
+        session_ctx: Callable[[], AsyncContextManager["AsyncSession"]] = async_scoped_session_ctx,
+    ) -> File:
+        """
+        Возвращает файл (байты документа + название документа) по идентификатору документа.
+
+        :param document_id: Идентификатор документа.
+        :param raw_storage: Сырое хранилище, откуда будет извлечен файл.
+        :param session_ctx: Асинхронный контекстный менеджер, возвращающий сессию AsyncSession.
+                            Функция не коммитит изменения, поэтому ваш асинхронный контекстный
+                            менеджер должен содержать commit() и rollback() обработку, если
+                            требуется.
+        """
+
+        try:
+            async with session_ctx() as session:
+                repo = DocumentRepository(session)
+                document: DocumentDTO = await repo.get(document_id)
+        except EntityNotFoundError:
+            raise DocumentNotFoundError()
+
+        document_bytes: bytes = raw_storage.get(document.raw_storage_path)
+        return File(
+            content=document_bytes,
+            name=document.title,
+        )
+
+    async def save_document_metadata(
+        self,
+        document: DocumentDTO,
+        *,
+        session_ctx: Callable[[], AsyncContextManager["AsyncSession"]] = async_scoped_session_ctx,
+    ) -> Document:
+        """
+        Сохраняет метаданные документа в базу данных для последующего ожидания обработки.
+
+        :param document: Метаданные документа.
+        :param session_ctx: Асинхронный контекстный менеджер, возвращающий сессию AsyncSession.
+                            Функция не коммитит изменения, поэтому ваш асинхронный контекстный
+                            менеджер должен содержать commit() и rollback() обработку, если
+                            требуется.
+        """
+
+        _logger = logger.bind(
+            document_id=document.id,
+            workspace_id=document.workspace_id,
+            trace_id=document.trace_id,
+        )
+
+        async with session_ctx() as session:
+            repo = DocumentRepository(session)
+
+            _logger.info("Проверка документа на дубликат")
+            if await repo.get_n(
+                workspace_id=document.workspace_id,
+                sha256=document.sha256,
+            ):
+                _logger.info("Документ является дубликатом, пропуск")
+                raise DuplicateDocumentError()
+
+            _logger.info("Сохранение документа в базу данных")
+            document = await repo.create(**document.model_dump())
+        return Document.from_dto(document)
 
     async def save_document(
         self,
         file: File,
-        document_id: str,
         workspace_id: str,
-        uow: UnitOfWork,
-    ) -> None:
+        *,
+        document_id: str | None = None,
+        trace_id: str | None = None,
+        raw_storage: FileStorage = defaults.raw_storage,
+    ) -> Document:
         """
-        Сохраняет исходный документ в ``RawStorage``.
-        Сохраняет метаданные документа в базу данных для последующего ожидания обработки.
+        Сохраняет исходный документ в RawStorage (Сырое хранилище документов).
 
         :param file: Схема файла, содержащая его байты и метаданные.
-        :param document_id: Идентификатор документа.
         :param workspace_id: Идентификатор рабочего пространства.
-        :param uow: UnitOfWork - менеджер транзакции и фабрика репозиториев.
+        :param document_id: Идентификатор документа.
+        :param trace_id: Корреляционный идентификатор запроса/задачи.
+        :param raw_storage: Сырое хранилище, куда будет сохранен документ.
+
+        :return: Метаданные документа.
         """
 
-        context_logger = logger.bind(
+        if not document_id:
+            document_id = str(uuid4())
+        if not trace_id:
+            trace_id = str(uuid4())
+
+        _logger = logger.bind(
             document_id=document_id,
             workspace_id=workspace_id,
+            trace_id=trace_id,
         )
+
+        _logger.info("Проверка на тип и размер документа")
+        try:
+            self.validator(file.content)
+        except ValidationError as e:
+            _logger.error(
+                "Документ не прошел проверку на тип и размер файла",
+                error_message=str(e),
+            )
+            raise
 
         document = DocumentDTO(
             id=document_id,
             workspace_id=workspace_id,
-            name=file.name,
+            source_id="manual:upload",
+            trace_id=trace_id,
+            sha256=file.sha256,
+            title=file.name,
             media_type=file.type,
             raw_storage_path=f"{workspace_id}/{document_id}{file.extension}",
-            silver_storage_path=f"{workspace_id}/{document_id}.json",
             size_bytes=file.size,
             status=DocumentStatus.pending,
         )
 
         try:
-            context_logger.info(
+            _logger.info(
                 "Сохранение исходного документа",
                 raw_storage_path=document.raw_storage_path,
             )
-            self.raw_storage.save(file.content, document.raw_storage_path)
+            raw_storage.save(file.content, document.raw_storage_path)
         except Exception as e:
             error_message: str = str(e)
-            context_logger.error(
+            _logger.error(
                 "Не удалось сохранить документ",
                 error_message=error_message,
             )
             document.status = DocumentStatus.failed
             document.error_message = error_message
 
-        document_repo = uow.get_repository(DocumentRepository)
-        await document_repo.create(**document.model_dump())
+        try:
+            return await self.save_document_metadata(document)
+        except Exception:
+            raw_storage.delete(document.raw_storage_path)
+            raise
 
-    # TODO функция для обновления статуса документа
-    async def update_status(self) -> None:
-        ...
 
-    # async def process(
-    #     self,
-    #     file: File,
-    #     document_id: str,
-    #     workspace_id: str,
-    #     uow: UnitOfWork,
-    # ) -> None:
-    #     """
-    #     Выполняет полный цикл обработки загруженного документа.
-    #
-    #     Метаданные документа сохраняются, если они присутствуют в результате извлечения.
-    #     В случае любой ошибки на этапе обработки в поле метаданных будет записано
-    #     ``status=DocumentStatus.failed`` и текст ошибки в ``error_message``.
-    #     Метод гарантирует попытку сохранить метаданные в любом случае (успех/ошибка обработки).
-    #
-    #     Пайплайн:
-    #         1. Сохранение исходного файла в ``RawStorage``.
-    #         2. Извлечение текста и метаданных с помощью ``TextExtractor``.
-    #         3. Определение языка документа.
-    #         4. Разбиение текста на чанки с помощью ``TextSplitter``.
-    #         5. Генерация эмбеддингов для каждого чанка.
-    #         6. Загрузка векторов в ``VectorStore``.
-    #         7. Сохранение метаданных в репозиторий.
-    #
-    #     :param file: Объект файла, содержащий байты и метаданные (:class:`File`).
-    #     :type file: File
-    #     :param document_id: Идентификатор документа (используется для ключей/путей хранения).
-    #     :type document_id: str
-    #     :param workspace_id: Идентификатор рабочего пространства (workspace).
-    #     :type workspace_id: str
-    #     :param uow: UnitOfWork - менеджер транзакции и фабрика репозиториев.
-    #     :type uow: UnitOfWork
-    #     """
-    #
-    #     context_logger = logger.bind(document_id=document_id, workspace_id=workspace_id)
-    #
-    #     document = DocumentDTO(
-    #         id=document_id,
-    #         workspace_id=workspace_id,
-    #         name=file.name,
-    #         media_type=file.type,
-    #         raw_storage_path=f"{workspace_id}/{document_id}{file.extension}",
-    #         size_bytes=file.size,
-    #         status=DocumentStatus.success,
-    #     )
-    #
-    #     try:
-    #         context_logger.info(
-    #             "Сохранение необработанного документа",
-    #             raw_storage_path=document.raw_storage_path,
-    #         )
-    #         self.raw_storage.save(file.content, document.raw_storage_path)
-    #
-    #         context_logger.info(
-    #             "Извлечение текста и метаданных из документа",
-    #             media_type=document.media_type,
-    #             file_size_bytes=file.size,
-    #         )
-    #         document_info: ExtractedInfo = extract_from_document(file)
-    #         document.page_count = document_info.document_page_count
-    #         document.author = document_info.author
-    #         document.creation_date = document_info.creation_date
-    #
-    #         context_logger.info("Определение основного языка документа")
-    #         sample: str = self._get_text_sample(document_info.pages, min_chars=1000)
-    #         document.detected_language = langdetect.detect(sample)
-    #
-    #         context_logger.info("Разбиение текста на чанки")
-    #         chunks: list[Chunk] = self.text_splitter.split_pages(document_info.pages)
-    #
-    #         context_logger.info("Создание эмбеддингов для каждого чанка, векторизация")
-    #         vectors: list[Vector] = self.embedding_model.encode(
-    #             sentences=[chunk.text for chunk in chunks],
-    #             metadata=[
-    #                 VectorMetadata(
-    #                     document_id=document_id,
-    #                     workspace_id=workspace_id,
-    #                     document_name=file.name,
-    #                     page_start=chunk.page_spans[0].page_num,
-    #                     page_end=chunk.page_spans[-1].page_num,
-    #                     text=chunk.text,
-    #                 )
-    #                 for chunk in chunks
-    #             ],
-    #         )
-    #
-    #         context_logger.info("Сохранение векторов")
-    #         self.vector_store.upsert(vectors)
-    #     except Exception as e:
-    #         error_message: str = str(e)
-    #         context_logger.error(
-    #             "Не удалось обработать документ",
-    #             error_message=error_message,
-    #         )
-    #         document.status = DocumentStatus.failed
-    #         document.error_message = error_message
-    #
-    #     context_logger.info("Сохранение метаданных документа")
-    #     document_repo = uow.get_repository(DocumentRepository)
-    #     await document_repo.create(**document.model_dump())
-    #
-    # def _get_text_sample(self, pages: list[Page], min_chars: int = 1000) -> str:
-    #     """
-    #     Пытается получить кусочек текста из списка страниц ``pages`` заданного размера ``min_chars``.
-    #
-    #     Полезно для случаев, когда первая страница документа не содержит текста.
-    #
-    #     :param pages: Список страниц документа.
-    #     :type pages: list[Page]
-    #     :param min_chars: Минимальное количество символов, которое нужно попытаться извлечь. Если документ
-    #         содержит меньше указанного количества символов, будут извлечены все символы.
-    #     :type min_chars: int
-    #     :return: Кусочек текста.
-    #     :rtype str:
-    #     """
-    #
-    #     text: str = ""
-    #     for page in pages:
-    #         if page.text:
-    #             text += f" {page.text}" if text else page.text
-    #             if len(text) >= min_chars:
-    #                 break
-    #     return text
+class DocumentProcessor:
+    @classmethod
+    async def update_document(cls, document_id: str, **kwargs) -> DocumentDTO:
+        async with async_scoped_session_ctx() as session:
+            document_repo = DocumentRepository(session)
+            return await document_repo.update(document_id, **kwargs)
+
+    @classmethod
+    async def update_document_status(
+        cls,
+        document_id: str,
+        status: DocumentStatus,
+    ) -> DocumentDTO:
+        """
+        Обновляет статус документа в БД.
+
+        :param document_id: Идентификатор документа.
+        :param status: Статус документа.
+        """
+
+        return await cls.update_document(document_id, status=status)
+
+    @classmethod
+    async def get_pending_documents_ids(cls) -> list[str]:
+        """
+        Возвращает список идентификаторов документов, ожидающих добавления в очередь на обработку.
+        """
+
+        async with async_scoped_session_ctx() as session:
+            document_repo = DocumentRepository(session)
+            return await document_repo.get_pending_documents_ids()

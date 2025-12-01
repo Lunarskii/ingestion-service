@@ -8,8 +8,18 @@ from app.domain.database.mixins import (
 
 
 class APIKeysDAO(BaseDAO, IDMixin, CreatedAtMixin):
+    """
+    DAO (ORM) модель, представляющая API-ключ.
+
+    :ivar id: Идентификатор API-ключа.
+    :ivar key_hash: Хэш API-ключа.
+    :ivar label: Название API-ключа.
+    :ivar is_active: Флаг валидности API-ключа. Если False, то не валиден.
+    :ivar created_at: Время создания API-ключа.
+    """
+
     __tablename__ = "api_keys"
 
-    key_hash: Mapped[bytes]
+    key_hash: Mapped[str]
     label: Mapped[str]
     is_active: Mapped[bool]

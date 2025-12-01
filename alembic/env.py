@@ -6,12 +6,13 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
-from config import settings
+from app.core import settings
 from app.domain.database.models import BaseDAO
 from app.domain.chat import models as chat_models  # noqa
 from app.domain.workspace import models as workspace_models  # noqa
 from app.domain.document import models as document_models  # noqa
 from app.domain.security import models as security_models  # noqa
+from app.domain.classifier import models as classifier_models  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

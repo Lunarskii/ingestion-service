@@ -1,6 +1,9 @@
 import uuid
 from enum import Enum
-from typing import Annotated
+from typing import (
+    Annotated,
+    Optional,
+)
 
 from pydantic import Field
 
@@ -20,36 +23,53 @@ class ChatRole(str, Enum):
     Перечисление ролей участников чата.
 
     :cvar user: Пользователь.
-    :vartype user: str
     :cvar assistant: Ассистент/LLM
-    :vartype assistant: str
     """
 
     user = "user"
     assistant = "assistant"
 
 
-class ChatMessageSource(BaseSchema):
-    """
-    Схема источника (фрагмента документа).
+class RetrievalChunk(BaseSchema):
+    chunk_id: str = Field(..., description="Идентификатор чанка в хранилище обработанных документов")
+    page_start: int = Field(..., description="Страница, на которой находится начало фрагмента документа")
+    page_end: int = Field(..., description="Страница, на которой находится конец фрагмента документа")
+    retrieval_score: float = Field(..., description="Релевантность")
+    reranked_score: Optional[float] = Field(default=None, description="Релевантность")
+    combined_score: Optional[float] = Field(default=None, description="Релевантность")
+    text: Optional[str] = Field(default=None, description="Текст") # TODO временное решение, убрать после
 
-    :ivar source_id: Идентификатор источника (документа).
-    :vartype source_id: str
-    :ivar document_name: Имя документа.
-    :vartype document_name: str
-    :ivar page_start: Страница, на которой находится начало источника (фрагмента документа).
-    :vartype page_start: int
-    :ivar page_end: Страница, на которой находится конец источника (фрагмента документа).
-    :vartype page_end: int
-    :ivar snippet: Фрагмент.
-    :vartype snippet: str
+
+class RetrievalChunkDTO(BaseDTO, IDMixin, CreatedAtMixin):
+    retrieval_source_id: int = Field(..., description="...")
+    chunk_id: str = Field(..., description="Идентификатор чанка в хранилище обработанных документов")
+    page_start: int = Field(..., description="Страница, на которой находится начало фрагмента документа")
+    page_end: int = Field(..., description="Страница, на которой находится конец фрагмента документа")
+    retrieval_score: float = Field(..., description="Релевантность")
+    reranked_score: Optional[float] = Field(default=None, description="Релевантность")
+    combined_score: Optional[float] = Field(default=None, description="Релевантность")
+
+
+class RetrievalSource(BaseSchema, CreatedAtMixin):
+    """
+    Схема полученного источника для ответа LLM.
+
+    Заметки:
+        - В данный момент источником (source_id) может выступать только документ (document_id),
+          поэтому source_id = document_id.
     """
 
-    source_id: str
-    document_name: str
-    page_start: int
-    page_end: int
-    snippet: str
+    source_id: str = Field(..., description="Идентификатор источника")
+    title: Optional[str] = Field(default=None, description="Заголовок документа/страницы, если есть")
+    source_type: Optional[str] = Field(default=None, description="Тип источника (краулер, веб и др.)")
+    chunks: list[RetrievalChunk] = Field(..., description="Полученные чанки документа")
+
+
+class RetrievalSourceDTO(BaseDTO, IDMixin, CreatedAtMixin):
+    source_id: str = Field(..., description="Идентификатор источника")
+    message_id: str = Field(..., description="Идентификатор сообщения")
+    title: Optional[str] = Field(default=None, description="Заголовок документа/страницы, если есть")
+    source_type: Optional[str] = Field(default=None, description="Тип источника (краулер, веб и др.)")
 
 
 class ChatMessage(BaseSchema, CreatedAtMixin):
@@ -57,20 +77,13 @@ class ChatMessage(BaseSchema, CreatedAtMixin):
     Схема представления сообщения чат-сессии.
 
     :ivar id: Идентификатор сообщения (UUID в строковом виде).
-    :vartype id: str
     :ivar session_id: Идентификатор чат-сессии, к которой относится сообщение.
-    :vartype session_id: str
     :ivar role: Роль автора (:class:`ChatRole`).
-    :vartype role: ChatRole
     :ivar content: Текст сообщения.
-    :vartype content: str
     :ivar sources: Список источников, связанных с сообщением (если имеются).
-    :vartype sources: list[ChatMessageSource] | None
     :ivar created_at: Время создания сообщения.
-    :vartype created_at: datetime
     """
 
-    # TODO скорее всего нужно убрать default_factory, потому что эта схема возвращает уже существующие данные из DTO
     id: Annotated[
         str,
         Field(
@@ -81,7 +94,7 @@ class ChatMessage(BaseSchema, CreatedAtMixin):
     session_id: str
     role: ChatRole
     content: str
-    sources: list[ChatMessageSource] = []
+    sources: list[RetrievalSource] = []
 
 
 class ChatSession(BaseSchema, CreatedAtMixin):
@@ -89,11 +102,8 @@ class ChatSession(BaseSchema, CreatedAtMixin):
     Схема представления чат-сессии.
 
     :ivar id: Идентификатор сессии (UUID в строковом виде).
-    :vartype id: str
     :ivar workspace_id: Идентификатор рабочего пространства, к которому относится сессия.
-    :vartype workspace_id: str
     :ivar created_at: Время создания сессии.
-    :vartype created_at: datetime
     """
 
     id: Annotated[
@@ -111,13 +121,9 @@ class RAGRequest(BaseSchema):
     Схема запроса к RAGService.
 
     :ivar question: Текст вопроса пользователя.
-    :vartype question: str
     :ivar workspace_id: Идентификатор рабочего пространства.
-    :vartype workspace_id: str
     :ivar session_id: Идентификатор сессии.
-    :vartype session_id: str | None
     :ivar top_k: Количество релевантных источников (фрагментов) для поиска в RAG.
-    :vartype top_k: int
     """
 
     question: str
@@ -131,15 +137,12 @@ class RAGResponse(BaseSchema):
     Схема ответа от RAGService.
 
     :ivar answer: Сгенерированный ответ на вопрос.
-    :vartype answer: str
     :ivar sources: Список источников (фрагментов), на которых основан ответ.
-    :vartype sources: list[Source]
     :ivar session_id: Идентификатор сессии.
-    :vartype session_id: str
     """
 
     answer: str
-    sources: list[ChatMessageSource]
+    sources: list[RetrievalSource]
     session_id: str
 
 
@@ -148,11 +151,8 @@ class ChatSessionDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
     DTO (Data Transfer Object) для представления чат-сессии.
 
     :ivar id: Идентификатор сессии (UUID в строковом виде).
-    :vartype id: str
     :ivar workspace_id: Идентификатор рабочего пространства, к которому относится сессия.
-    :vartype workspace_id: str
     :ivar created_at: Время создания сессии.
-    :vartype created_at: datetime
     """
 
     workspace_id: str
@@ -163,43 +163,12 @@ class ChatMessageDTO(BaseDTO, UUIDMixin, CreatedAtMixin):
     DTO (Data Transfer Object) для представления сообщения чата.
 
     :ivar id: Идентификатор сообщения (UUID в строковом виде).
-    :vartype id: str
     :ivar session_id: Идентификатор чат-сессии, к которой относится сообщение.
-    :vartype session_id: str
     :ivar role: Роль автора (:class:`ChatRole`).
-    :vartype role: ChatRole
     :ivar content: Текст сообщения.
-    :vartype content: str
     :ivar created_at: Время создания сообщения.
-    :vartype created_at: datetime
     """
 
     session_id: str
     role: ChatRole
     content: str
-
-
-class ChatMessageSourceDTO(BaseDTO, IDMixin):
-    """
-    DTO (Data Transfer Object) для представления схемы источника (фрагмента документа).
-
-    :ivar source_id: Идентификатор источника (UUID в строковом виде).
-    :vartype source_id: str
-    :ivar message_id: Идентификатор сообщения (UUID в строковом виде).
-    :vartype message_id: str
-    :ivar document_name: Имя документа.
-    :vartype document_name: str
-    :ivar page_start: Страница, на которой находится начало источника (фрагмента документа).
-    :vartype page_start: int
-    :ivar page_end: Страница, на которой находится конец источника (фрагмента документа).
-    :vartype page_end: int
-    :ivar snippet: Фрагмент.
-    :vartype snippet: str
-    """
-
-    source_id: str
-    message_id: str
-    document_name: str
-    page_start: int
-    page_end: int
-    snippet: str

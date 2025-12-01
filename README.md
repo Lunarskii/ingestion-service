@@ -11,6 +11,28 @@
    - Скачать исходный документ из источника.
    - Задать вопрос снова
 
+## Карта портов
+
+### Внутренние
+- API -> 8000
+- Celery Worker -> Отсутствует
+- Celery Beat -> Отсутствует
+- Celery Exporter (Метрики Celery) -> 9091
+- Flower (UI/Monitoring Celery) -> 5555
+- Redis -> 6379
+- Prometheus -> 9090
+- UI -> 8501
+- Kafka (Потребители + Метрики) -> 9093
+
+### Внешние (default)
+- MinIO -> 9000 (API), 9001 (UI)
+- Qdrant -> 6333 (API), 6334 (gRPC API)
+- Keycloak -> 8080
+- PostgreSQL -> 5432
+- Ollama -> 11434
+- Kafka -> 9092 (Внутренний, Docker), 19092 (Внешний)
+- Kafka-UI -> 8081
+
 ## Функционал
 
 ### 1. Documents API
@@ -43,8 +65,7 @@
 - **Описание**: Загружает документ; запускает полную обработку (сохранение, извлечение текста, векторизация, запись метаданных) в фоне.
 - **Прием файлов**: `multipart/form-data` (файл/документ).
 - **Параметры**: `workspace_id` (query).
-- **Ответ**: `202 Accepted` немедленный ответ с `document_id`.
-- **Фоновая обработка**: Разбор документа и индексирование выполняются в фоновых задачах.
+- **Ответ**: `202 Accepted` - ответ с `document_id`.
 - **Пример ответа**:
 ```json
 { "document_id": "d290f1ee-..." }
@@ -66,6 +87,17 @@ curl -X GET "http://localhost:8000/v1/documents/f3e73666-2e23-461f-919a-ed420aeb
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
 100 1281k  100 1281k    0     0  2959k      0 --:--:-- --:--:-- --:--:-- 2958k
+```
+- **Возможные ошибки**:
+  - `404 Not Found` - документ с таким `document_id` не найден.
+
+#### `GET /v1/documents/{document_id/status`:
+- **Описание**: Возвращает статус обработки документа, например PENDING, RUNNING и др.
+- **Параметры**: `document_id` (path).
+- **Ответ**: `200 OK` - ответ с `document_status`.
+- **Пример ответа**:
+```json
+{ "document_status": "EXTRACTING" }
 ```
 - **Возможные ошибки**:
   - `404 Not Found` - документ с таким `document_id` не найден.
@@ -183,10 +215,33 @@ curl -X GET "http://localhost:8000/v1/documents/f3e73666-2e23-461f-919a-ed420aeb
 - **Ответ**: `204 No Content` - задача удаления запускается в фоновом режиме.
 - **Примечание**: при удалении могут быть удалены большие объёмы данных — убедитесь, что вы создаёте бэкапы при необходимости.
 
-### 4. Адаптеры
+### 4. Operations API
+
+#### `GET /v1/ops/status`
+- **Описание**: Возвращает статус (состояние) внутренних сервисов.
+- **Ответ**: `200 OK` - JSON
+- **Пример ответа**:
+```json
+{
+  "api": "ok",
+  "redis": {
+    "status": "unavailable",
+    "error_message": "..."
+  },
+  "celery": {
+    "status": "ok",
+    "workers": [...],
+    "available": 4
+  }
+}
+```
+
+### 5. Адаптеры
 Приложение поддерживает несколько реализаций (адаптеров) для внешних сервисов:
 - Репозиторий (`Repository`) - хранение метаданных.
   - `AlchemyRepository` - может быть и stub, и prod, реализован как репозиторий для общения с БД.
+    - stub - локальная SQLite БД.
+    - prod - PostgreSQL БД.
 - Сырое хранилище (`RawStorage`) - хранение сырых файлов PDF, DOCX и др.
   - `FileRawStorage`: stub, реализован как локальное файловое хранилище.
   - `MinIORawStorage`: MinIO, S3-совместимое файловое хранилище.
@@ -205,7 +260,7 @@ curl -X GET "http://localhost:8000/v1/documents/f3e73666-2e23-461f-919a-ed420aeb
 ### Конфигурация базы данных
 
 ```text
-DATABASE_URL=dialect+driver://username:password@host:port/dbname
+DATABASE_URL=dialect[+driver]://username:password@host:port/dbname
 
 # например для PostgreSQL
 DATABASE_URL=postgres+asyncpg://username:password@host:5432/dbname
@@ -256,11 +311,11 @@ QDRANT_DISTANCE=Cosine
 ### 1. Требования
 
 - Python 3.12+
-- Poetry (Если не планируете использовать Poetry, то замените везде вызовы 'poetry run' на 'python -m')
+- Poetry
 
 ### 2. Установка зависимостей
 
-**Если Poetry не установлен**
+#### 1. Установка poetry
 ```bash
 # Через pip
 pip install poetry
@@ -270,16 +325,38 @@ export POETRY_VERSION=1.8.2
 curl -sSL https://install.python-poetry.org | python3 -
 ```
 
-**Если Poetry установлен**
+#### 2. Установка зависимостей (API)
+Устанавливает все зависимости, в том числе требуемые для Celery Worker и Celery Beat.
 ```bash
-# Установка всех зависимостей
-poetry install
-
-# Без dev-зависимостей (ruff, pytest, pytest-mock, ...)
-poetry install --without=dev
+poetry install --no-root --only=main
 ```
 
-**Установка дополнительных библиотек для `python-magic`**
+#### 3. Установка зависимостей (Celery Worker)
+```bash
+poetry install --no-root --only=celery-worker
+```
+
+#### 4. Установка зависимостей (Celery Beat)
+```bash
+poetry install --no-root --only=celery-beat
+```
+
+#### 5. Установка зависимостей (Celery Exporter, метрики Celery)
+```bash
+poetry install --no-root --only=celery-exporter
+```
+
+#### 6. Установка зависимостей (Kafka Consumer)
+```bash
+poetry install --no-root --only=kafka-consumer
+```
+
+#### 7. Установка зависимостей (Unit, Интеграцинное тестирование, pytest)
+```bash
+poetry install --no-root --only=main --only=dev
+```
+
+#### 8. Установка дополнительных библиотек для `python-magic`
 ```bash
 # Debian/Ubuntu
 apt-get install libmagic1
@@ -304,7 +381,8 @@ poetry run alembic upgrade head
 cp .env.example .env
 ```
 По умолчанию сервис использует локальные "заглушки", которые сохраняют данные в папку `./local_storage/`.
-Никаких дополнительных настроек не требуется.
+Требуется настройка Celery (CELERY_BROKER_URL, CELERY_RESULT_BACKEND), так как сервис выполняет
+тяжелые задачи в Celery.
 
 ### 5. Запуск сервиса (отдельно backend и frontend)
 
@@ -319,7 +397,7 @@ API будет доступен по адресу http://127.0.0.1:8000.
 Или используйте gunicorn для запуска с несколькими рабочими процессами.
 ```bash
 # <pr_num> требуется изменить на необходимое количество рабочих процессов 
-poetry run gunicorn app.main:app --workers <pr_num> --worker-class uvicorn.workers.UvicornWorker
+poetry run gunicorn services.api.main:app --workers <pr_num> --worker-class uvicorn.workers.UvicornWorker
 ```
 Рекомендуемое количество процессов - (2 * количество_ядер_CPU + 1)
 
@@ -328,16 +406,41 @@ poetry run gunicorn app.main:app --workers <pr_num> --worker-class uvicorn.worke
 poetry run streamlit run ui/main.py
 # Или если ваш backend имеет отличный адрес от http://127.0.0.1:8000, вы можете задать переменную окружения BACKEND_URL,
 # где вместо <backend_url> установить адрес вашего backend
-BACKEND_URL=<backend_url> poetry run streamlit run ui/main.py
+BACKEND_URL=<backend_url> poetry run streamlit run services/ui/main.py
 ```
 UI будет доступен по адресу http://127.0.0.1:8501
+
+#### 3. Запуск Celery Worker
+```bash
+# <pr_num> требуется изменить на необходимое количество рабочих процессов
+poetry run celery -A services.celery_worker.main.app worker --concurrency <pr_num>
+```
+
+#### 4. Запуск Celery Beat
+```bash
+poetry run celery -A services.celery_worker.main.app beat
+```
+
+#### 5. Запуск Celery Exporter
+```bash
+poetry run services/celery_exporter/main.py
+```
+
+#### 6. Запуск Kafka Consumer
+```bash
+# <pr_num> требуется изменить на необходимое количество рабочих процессов 
+poetry run gunicorn services.kafka_consumer.main:app --workers <pr_num> --worker-class uvicorn.workers.UvicornWorker
+```
 
 ### 6. Запуск сервиса (целиком, `docker compose`)
 ```bash
 # Требуется установленный Docker Engine и docker compose
-docker-compose up
-# Или если compose установлен нативно
-docker compose up
+
+# DEV сборка для локальной разработки и тестирования
+docker compose -f docker-compose.dev.yml up
+
+# PROD сборка
+docker compose -f docker-compose.yml up
 ```
 API будет доступен по адресу http://0.0.0.0:8000, UI по адресу http://0.0.0.0:8501
 
@@ -347,7 +450,7 @@ API будет доступен по адресу http://0.0.0.0:8000, UI по �
 poetry run pytest
 
 # Покрытие кода
-poetry run pytest --cov=api --cov=config --cov=domain --cov=exceptions --cov=infrastructure --cov=schemas --cov=services --cov=stubs --cov=utils --cov-report=term-missing
+poetry run pytest --cov=app --cov=services --cov-report=term-missing
 
 # Проверка качества кода с Ruff
 poetry run ruff check .

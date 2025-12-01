@@ -1,6 +1,4 @@
-from fastapi import status
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from app import status
 
 
 class ApplicationError(Exception):
@@ -17,6 +15,7 @@ class ApplicationError(Exception):
     """
 
     message: str = "Internal server error"
+    debug_message: str | None = None
     error_code: str = "unknown_error"
     status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
     headers: dict[str, str] | None = None
@@ -25,6 +24,7 @@ class ApplicationError(Exception):
         self,
         message: str | None = None,
         *,
+        debug_message: str | None = None,
         error_code: str | None = None,
         status_code: int | None = None,
         headers: dict[str, str] | None = None,
@@ -39,49 +39,35 @@ class ApplicationError(Exception):
         """
 
         self.message = message or self.message
+        self.debug_message = debug_message or self.debug_message
         self.error_code = error_code or self.error_code
         self.status_code = status_code or self.status_code
         self.headers = headers or self.headers
         super().__init__(
             self.message,
+            self.debug_message,
             self.error_code,
             self.status_code,
             self.headers,
         )
 
     def __repr__(self) -> str:
-        class_name = self.__class__.__name__
-        return f'{class_name}(message="{self.message}", error_code={self.error_code}, status_code={self.status_code})'
-
-
-class ErrorResponse(BaseModel):
-    """
-    Структура JSON-ответа для ошибок.
-
-    :ivar msg: Человеко-читаемое сообщение.
-    :vartype msg: str
-    :ivar code: Машинный код ошибки.
-    :vartype code: str
-    """
-
-    msg: str
-    code: str
-
-
-class UnexpectedErrorResponse(JSONResponse):
-    """
-    Ответ при непредвиденной ошибке, не относящейся к ApplicationError.
-
-    Возвращает:
-      - HTTP 500 Internal Server Error
-      - JSON: {msg: "Internal Server Error", code: "unexpected_error"}
-    """
-
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ErrorResponse(
-                msg="Internal Server Error",
-                code="unexpected_error",
-            ).model_dump(mode="json"),
+        return (
+            f"{self.__class__.__name__}"
+            f"(message='{self.message}', "
+            f"debug_message='{self.debug_message}', "
+            f"error_code='{self.error_code}', "
+            f"status_code='{self.status_code}', "
+            f"headers='{self.headers}')"
         )
+
+
+class UnexpectedError(ApplicationError):
+    """
+    Ответ при непредвиденной ошибке, не относящейся к ошибкам, наследованных от ApplicationError.
+    """
+
+    message = "Internal Server Error"
+    error_code = "unexpected_error"
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    headers = None

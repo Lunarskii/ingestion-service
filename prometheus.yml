@@ -5,4 +5,4 @@ scrape_configs:
   - job_name: celery_exporter
     metrics_path: /metrics
     static_configs:
-      - targets: ["localhost:9000"]
+      - targets: ["localhost:9091"]

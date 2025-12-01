@@ -14,6 +14,12 @@ from app.utils.datetime import (
 
 
 class IDMixin:
+    """
+    Mixin, добавляющий идентификатор записи (int).
+
+    :ivar id: Целочисленный идентификатор.
+    """
+
     id: int | None = None
 
 
@@ -22,7 +28,6 @@ class UUIDMixin:
     Mixin, добавляющий уникальный идентификатор (UUID).
 
     :ivar id: Уникальный идентификатор в формате UUID4, автоматически генерируется при создании экземпляра.
-    :vartype id: str
     """
 
     id: Annotated[str, Field(default_factory=lambda: str(uuid.uuid4()))]  # type: ignore
@@ -34,7 +39,6 @@ class CreatedAtMixin:
 
     :ivar created_at: Метка времени создания объекта, по умолчанию - текущее
                       UTC-время (наивный datetime без tzinfo).
-    :vartype created_at: datetime
     """
 
     created_at: Annotated[datetime, Field(default_factory=universal_time)]
@@ -50,7 +54,6 @@ class UpdatedAtMixin:
 
     :ivar updated_at: Метка времени последнего изменения объекта, по умолчанию - текущее
                       UTC-время (наивный datetime без tzinfo).
-    :typevar updated_at: datetime
     """
 
     updated_at: Annotated[datetime, Field(default_factory=universal_time)]

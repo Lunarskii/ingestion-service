@@ -18,7 +18,6 @@ class IDMixin:
     Mixin для целочисленного первичного ключа.
 
     :ivar id: Целочисленный первичный ключ.
-    :vartype id: int
     """
 
     __abstract__ = True
@@ -37,7 +36,6 @@ class UUIDMixin:
     Mixin для UUID-первичного ключа.
 
     :ivar id: UUID-первичный ключ.
-    :vartype id: UUID
     """
 
     __abstract__ = True
@@ -55,7 +53,6 @@ class CreatedAtMixin:
     Mixin, добавляющий поле ``created_at`` с временем создания записи.
 
     :ivar created_at: Время создания записи. По умолчанию используется ``universal_time``.
-    :vartype created_at: datetime
     """
 
     __abstract__ = True
@@ -72,7 +69,6 @@ class UpdatedAtMixin:
 
     :ivar updated_at: Время последнего обновления записи. По умолчанию используется ``universal_time``
         и автоматически обновляется при изменении записи.
-    :vartype updated_at: datetime
     """
 
     __abstract__ = True

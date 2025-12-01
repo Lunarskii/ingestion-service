@@ -1,11 +1,9 @@
-from app.exceptions.base import (
-    ApplicationError,
-    status,
-)
+from app.exceptions.base import ApplicationError
+from app import status
 
 
 class UnauthorizedError(ApplicationError):
-    message = 'Не авторизован'
+    message = "Не авторизован"
     error_code = "unauthorized"
     status_code = status.HTTP_401_UNAUTHORIZED
 
@@ -31,8 +29,7 @@ class TokenExpiredError(UnauthorizedError):
     error_code = "token_expired"
 
 
-class SignatureHasExpired(UnauthorizedError):
-    ...
+class SignatureHasExpired(UnauthorizedError): ...
 
 
 class KeycloakError(ApplicationError):

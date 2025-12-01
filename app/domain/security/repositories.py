@@ -1,4 +1,4 @@
-from app.domain.database.repositories import AlchemyRepository
+from app.adapters.sqlalchemy_repository import AlchemyRepository
 from app.domain.security.models import APIKeysDAO
 from app.domain.security.schemas import APIKeysDTO
 
